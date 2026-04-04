@@ -1,0 +1,5 @@
+{
+  "name": "voicenter-telephony",
+  "description": "Make calls, retrieve call history, and access recordings via the Voicenter Calls API",
+  "version": "1.0.0"
+}

@@ -1,0 +1,98 @@
+{
+  "name": "voicenter",
+  "owner": {
+    "name": "Voicenter",
+    "email": "[email protected]"
+  },
+  "metadata": {
+    "description": "Official Voicenter plugins for Claude Code — integrate telephony, SMS, IVR, webhooks, and analytics into your projects",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "voicenter-mcp",
+      "source": "./plugins/voicenter-mcp",
+      "description": "🔴 LIVE — Connect Claude Code directly to the Voicenter API via MCP. Make calls, send SMS, pull reports, and manage IVR without writing code. Requires VOICENTER_API_TOKEN env variable.",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://mcp.voicenter.co",
+      "repository": "https://github.com/VoicenterTeam/claude-marketplace",
+      "license": "MIT",
+      "category": "integrations",
+      "keywords": ["voicenter", "mcp", "live-api", "telephony", "sms", "ivr", "realtime"]
+    },
+    {
+      "name": "voicenter-telephony",
+      "source": "./plugins/voicenter-telephony",
+      "description": "Make calls, retrieve call history, and access recordings via the Voicenter Calls API",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/calls",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "telephony",
+      "keywords": ["voicenter", "telephony", "calls", "click-to-call", "recordings"]
+    },
+    {
+      "name": "voicenter-sms",
+      "source": "./plugins/voicenter-sms",
+      "description": "Send SMS messages and query SMS history using the Voicenter SMS API",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/sms",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "messaging",
+      "keywords": ["voicenter", "sms", "messaging", "notifications"]
+    },
+    {
+      "name": "voicenter-users",
+      "source": "./plugins/voicenter-users",
+      "description": "Manage agents, extensions, and users in your Voicenter account",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/users",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "administration",
+      "keywords": ["voicenter", "users", "agents", "extensions", "pbx"]
+    },
+    {
+      "name": "voicenter-reports",
+      "source": "./plugins/voicenter-reports",
+      "description": "Pull call reports, queue statistics, and analytics from Voicenter",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/reports",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "analytics",
+      "keywords": ["voicenter", "reports", "analytics", "statistics", "cdr"]
+    },
+    {
+      "name": "voicenter-ivr",
+      "source": "./plugins/voicenter-ivr",
+      "description": "Design IVR flows and configure AI Voice Bots using the Voicenter IVR API",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/ivr",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "automation",
+      "keywords": ["voicenter", "ivr", "voicebot", "ai", "flow", "automation"]
+    },
+    {
+      "name": "voicenter-webhooks",
+      "source": "./plugins/voicenter-webhooks",
+      "description": "Set up and handle real-time Voicenter webhook events in your application",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://developers.voicenter.com/docs/webhooks",
+      "repository": "https://github.com/voicenter/claude-marketplace",
+      "license": "MIT",
+      "category": "integrations",
+      "keywords": ["voicenter", "webhooks", "events", "real-time", "integration"]
+    }
+  ]
+}

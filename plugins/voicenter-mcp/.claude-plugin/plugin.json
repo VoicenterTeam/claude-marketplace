@@ -1,0 +1,10 @@
+{
+  "name": "voicenter-mcp",
+  "description": "Live Voicenter API access via MCP server at mcp01.voicenter.co",
+  "version": "1.0.0",
+  "mcpServers": {
+    "voicenter": {
+      "url": "https://mcp01.voicenter.co/mcp"
+    }
+  }
+}

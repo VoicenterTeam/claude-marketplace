@@ -1,0 +1,5 @@
+{
+  "name": "voicenter-webhooks",
+  "description": "Set up and handle real-time Voicenter webhook events in your application",
+  "version": "1.0.0"
+}

@@ -1,0 +1,36 @@
+{
+  "name": "voicenter",
+  "owner": {
+    "name": "Voicenter",
+    "email": "[email protected]"
+  },
+  "metadata": {
+    "description": "Official Voicenter Claude Code plugins — live MCP access and API integration skills for all 14 Voicenter APIs",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "voicenter-mcp",
+      "source": "./plugins/voicenter-mcp",
+      "description": "Live access to all Voicenter APIs directly from Claude Code via the MCP server at mcp01.voicenter.co. Authenticated via OAuth — no manual token setup required.",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://mcp01.voicenter.co/mcp",
+      "license": "MIT",
+      "category": "integrations",
+      "keywords": ["voicenter", "mcp", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
+    },
+    {
+      "name": "voicenter-api",
+      "source": "./plugins/voicenter-api",
+      "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls.",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://www.voicenter.com/API",
+      "license": "MIT",
+      "category": "integrations",
+      "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
+    }
+  ]
+}
