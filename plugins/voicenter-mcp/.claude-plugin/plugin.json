@@ -2,9 +2,13 @@
   "name": "voicenter-mcp",
   "description": "Live Voicenter API access via MCP server at mcp01.voicenter.co",
   "version": "1.0.0",
+  "icon": "https://www.voicenter.com/favicon.ico",
   "mcpServers": {
     "voicenter": {
       "url": "https://mcp01.voicenter.co/mcp"
     }
-  }
+  },
+  "skills": [
+    { "name": "setup", "path": "./skills/setup", "tags": ["auth", "oauth", "configuration"] }
+  ]
 }
