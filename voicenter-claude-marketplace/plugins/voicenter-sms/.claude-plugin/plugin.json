@@ -1,5 +1,0 @@
-{
-  "name": "voicenter-sms",
-  "description": "Send SMS messages and query SMS history using the Voicenter SMS API",
-  "version": "1.0.0"
-}
