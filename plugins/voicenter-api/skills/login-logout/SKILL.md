@@ -2,7 +2,23 @@
 description: Set agent login/logout and status via the Voicenter Login/Logout API
 ---
 
-Help the developer integrate **agent status management** — log agents in/out and set their work status (Login, Logout, Lunch, etc.) directly from their CRM or HR system.
+Help the developer integrate **agent status management** — log agents in/out and set their work status (Login, Logout, Lunch, etc.) directly from a CRM, HR system, or workforce management tool.
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Log an agent in to Voicenter automatically when they start their shift in the CRM
+- Log an agent out when their CRM session expires or they click "End Shift"
+- Set an agent to "Lunch" or "Break" status from the CRM without using the Voicenter softphone
+- Automate agent status based on calendar, schedule, or workforce management rules
+- Build a "Ready/Not Ready" toggle in a custom agent dashboard
+- Sync agent states between their CRM/HR system and Voicenter
+
+## Environment Variables
+
+```env
+VOICENTER_API_CODE=your_api_token_here
+```
 
 ## Endpoint
 
@@ -22,8 +38,8 @@ Response: `JSON`
 | Field | Required | Description |
 |---|---|---|
 | `Code` | ✅ | API authentication token |
-| `UserId` | ✅ | Voicenter user ID (from CPanel or Extension List API) |
-| `ExtensionUser` | ✅ | SIP code of the extension to log into (from Extension List API) |
+| `UserId` | ✅ | Voicenter user ID (from CPanel or provided by Voicenter support) |
+| `ExtensionUser` | ✅ | SIP code of the extension to log into — use `SIP` field from Extension List API |
 | `Status` | ✅ | Status code (see table below) |
 
 ### Status Codes
@@ -54,7 +70,7 @@ https://api.voicenter.com/UserLogin/SetStatusFromAPI?Code=XXXXXXXX&UserId=123456
 {
   "Code": "XXXXXXXXXXX",
   "UserId": "123456789",
-  "ExtensionUser": "sipsip",
+  "ExtensionUser": "SIPSIP1",
   "Status": 1
 }
 ```
@@ -71,14 +87,15 @@ https://api.voicenter.com/UserLogin/SetStatusFromAPI?Code=XXXXXXXX&UserId=123456
 
 | Field | Description |
 |---|---|
-| `Status` | `1` = success, `2` = invalid Code or UserId, `3` = invalid Extension, `4` = status not supported or extension invalid |
+| `Status` | `1` = success, `2` = invalid Code or UserId, `3` = invalid Extension, `4` = status not supported |
 | `StatusError` | `0` = request format error, `1` = success, `4` = internal error, `6` = missing parameters |
-| `StatusErroMessage` | Human-readable: `"OK"`, `"Authorization Failed"`, `"No extension found"`, `"Extension is already in use"`, `"Status not support"`, `"Error on update"` |
+| `StatusErroMessage` | `"OK"`, `"Authorization Failed"`, `"No extension found"`, `"Extension is already in use"`, `"Status not support"`, `"Error on update"` |
 
 ## TypeScript Implementation
 
 ```typescript
 const LOGIN_URL = 'https://api.voicenter.com/UserLogin/SetStatusFromAPI';
+const CODE = process.env.VOICENTER_API_CODE!;
 
 interface LoginResponse {
   Status: number;
@@ -101,7 +118,6 @@ const AgentStatus = {
 type AgentStatusCode = typeof AgentStatus[keyof typeof AgentStatus];
 
 async function setAgentStatus(
-  code: string,
   userId: string,
   extensionUser: string,
   status: AgentStatusCode
@@ -109,49 +125,44 @@ async function setAgentStatus(
   const res = await fetch(LOGIN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ Code: code, UserId: userId, ExtensionUser: extensionUser, Status: status }),
+    body: JSON.stringify({ Code: CODE, UserId: userId, ExtensionUser: extensionUser, Status: status }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data: LoginResponse = await res.json();
   if (data.Status !== 1) throw new Error(`Login API: ${data.StatusErroMessage}`);
   return data;
 }
-
-// Login agent at shift start
-await setAgentStatus('MY_CODE', '123456789', 'SIPSIP1', AgentStatus.LOGIN);
-
-// Set lunch break
-await setAgentStatus('MY_CODE', '123456789', 'SIPSIP1', AgentStatus.LUNCH);
-
-// Logout at shift end
-await setAgentStatus('MY_CODE', '123456789', 'SIPSIP1', AgentStatus.LOGOUT);
 ```
 
 ## CRM Integration Pattern
 
 ```typescript
-// Shift start: agent clicks "Start Shift" in CRM
-async function onShiftStart(crmUser: { voicenterId: string; extension: string }) {
-  await setAgentStatus(API_CODE, crmUser.voicenterId, crmUser.extension, AgentStatus.LOGIN);
-  // Record shift start in CRM
-  await crm.shiftLog.create({ userId: crmUser.voicenterId, type: 'login', time: new Date() });
+// Agent clicks "Start Shift" in CRM
+async function onShiftStart(agent: { voicenterId: string; extension: string }) {
+  await setAgentStatus(agent.voicenterId, agent.extension, AgentStatus.LOGIN);
+  await crm.shiftLog.create({ userId: agent.voicenterId, type: 'login', time: new Date() });
 }
 
-// Break: agent clicks "Take Break"
-async function onBreak(crmUser: { voicenterId: string; extension: string }, breakType: 'lunch' | 'other') {
-  const status = breakType === 'lunch' ? AgentStatus.LUNCH : AgentStatus.OTHER;
-  await setAgentStatus(API_CODE, crmUser.voicenterId, crmUser.extension, status);
+// Agent clicks "Take Lunch"
+async function onLunchBreak(agent: { voicenterId: string; extension: string }) {
+  await setAgentStatus(agent.voicenterId, agent.extension, AgentStatus.LUNCH);
 }
 
-// Auto-logout when CRM session expires
-async function onSessionTimeout(crmUser: { voicenterId: string; extension: string }) {
-  await setAgentStatus(API_CODE, crmUser.voicenterId, crmUser.extension, AgentStatus.LOGOUT);
+// CRM session expires → auto logout
+async function onSessionTimeout(agent: { voicenterId: string; extension: string }) {
+  await setAgentStatus(agent.voicenterId, agent.extension, AgentStatus.LOGOUT);
 }
 ```
 
 ## Tips
 
-- Get `UserId` and valid `ExtensionUser` (SIP) values from the **Organizational Extension List API** — `ExtensionUser` = `SIP` field, `UserId` is provided by Voicenter support or visible in CPanel.
-- `"Extension is already in use"` means another user is already logged into that extension. Logout the current user first or choose a different extension.
-- Pair with the **Real-Time API** `userStatusUpdate` event to confirm the status change propagated.
-- This API is designed for CRM-driven workforce management — replaces manual agent login in the Voicenter softphone.
+- Get `UserId` values from Voicenter support or from CPanel → Users. `ExtensionUser` (SIP code) comes from the **Extension List API**.
+- **`"Extension is already in use"`** means another user is already logged into that extension. Log out the current user first, or choose a different extension.
+- Pair with the **Real-Time API** `userStatusUpdate` event to confirm the status change propagated and update your UI.
+- Note the typo in the API response field name: `StatusErroMessage` (not `StatusErrorMessage`) — this is intentional in the API.
+
+## Related Skills
+
+- **Extension List** — Get valid `SIP` codes to use as `ExtensionUser`
+- **Real-Time API** — Listen to `userStatusUpdate` events to confirm and reflect status changes in your UI
+- **Active Calls** — Check `onlineUserStatus` field to see the current agent status without calling this API

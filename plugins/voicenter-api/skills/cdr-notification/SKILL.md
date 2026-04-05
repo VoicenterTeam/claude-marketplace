@@ -2,15 +2,31 @@
 description: Receive and handle CDR push notifications from Voicenter after every call ends
 ---
 
-Help the developer implement a **CDR Notification** endpoint — a webhook that Voicenter POSTs to after every call ends, containing full call detail records including AI analysis.
+Help the developer implement a **CDR Notification** endpoint — a webhook that Voicenter POSTs to after every call ends, containing full call detail records including optional AI analysis.
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Save call records to their database automatically after every call
+- Trigger follow-up actions when a call ends (send SMS, update CRM, create a ticket)
+- React to missed/abandoned calls in real time (callback offers, alerts)
+- Process AI call analysis data (transcripts, emotion detection, summaries, Q&A)
+- Build a real-time call activity feed or audit log
+- Sync call history with an external BI or reporting system
+
+## Environment Variables
+
+```env
+# No outbound API token needed — Voicenter sends requests TO your server.
+# Configure your webhook URL in: Voicenter CPanel → Integrations → CDR Notification
+```
 
 ## How it works
 
 1. A call ends in your Voicenter account.
-2. Voicenter converts the call data into a CDR and POSTs it as JSON/XML/form-encoded to your configured endpoint.
-3. Your server processes the CDR and responds with `{"Err": 0, "Errdesc": "OK"}`.
-
-Configure your endpoint URL in the Voicenter CPanel under **Integrations → CDR Notification**.
+2. Voicenter POSTs the CDR as JSON to your configured endpoint URL.
+3. Your server responds with `{"Err": 0, "Errdesc": "OK"}` immediately.
+4. Process the CDR asynchronously after responding.
 
 ## CDR Request Fields
 
@@ -28,7 +44,7 @@ Configure your endpoint URL in the Voicenter CPanel under **Integrations → CDR
 | `duration` | Total call duration in seconds (for queue calls includes wait time) |
 | `ivruniqueid` | **Unique call ID** — use to correlate with Pop-Up, Call Log, Real-Time |
 | `type` | Call type (see table below) |
-| `status` | Call status: `ANSWER`, `ABANDONE`, `NOANSWER`, `CANCEL`, `BUSY`, `TE`, etc. |
+| `status` | `ANSWER`, `ABANDONE`, `NOANSWER`, `CANCEL`, `BUSY`, `TE`, etc. |
 | `did` | DID (virtual number) dialed — only on incoming calls |
 | `queueid` / `queuename` | Queue details (if call went through a queue) |
 | `record` | URL to the call recording MP3 |
@@ -72,7 +88,6 @@ Configure your endpoint URL in the Voicenter CPanel under **Integrations → CDR
   "ivruniqueid": "2020072818dcDHFJcc804",
   "type": "Extension Outgoing",
   "status": "ANSWER",
-  "targetextension": "",
   "callerextension": "SIPSIP",
   "did": "",
   "queueid": 0,
@@ -130,8 +145,7 @@ When AI analysis is enabled on the account, `aiData` contains:
     },
     "emotions": {
       "sentences": [
-        { "sentence_id": 21, "emotion": "frustrated", "emotion_direction": -1, "confidence_emotion": 0.92, "intensity_emotion": 0.85, "personality_trait": "impatient", "confidence_trait": 0.9 },
-        { "sentence_id": 34, "emotion": "professional", "emotion_direction": 1, "confidence_emotion": 0.92, "intensity_emotion": 0.85, "personality_trait": "helpful", "confidence_trait": 0.88 }
+        { "sentence_id": 21, "emotion": "frustrated", "emotion_direction": -1, "confidence_emotion": 0.92, "intensity_emotion": 0.85 }
       ]
     },
     "transcript": [
@@ -144,6 +158,7 @@ When AI analysis is enabled on the account, `aiData` contains:
 
 - `Speaker0` = agent (callee), `Speaker1` = customer (caller)
 - `emotion_direction`: `1` = positive, `-1` = negative, `0` = neutral
+- `data_type` values: `1`=boolean, `2`=string, `3`=number, `4`=json array, `5`=json object list, `6`=json object
 
 ## TypeScript Implementation (Express)
 
@@ -160,39 +175,49 @@ interface CdrPayload {
   type: string;
   status: string;
   duration: number;
+  actualCallDuration: number;
   record: string;
   representative_name: string;
+  representative_code: string;
   did: string;
   queuename: string;
+  seconds_waiting_in_queue?: number;
+  IVR?: Array<{ layer_id: number; layer_name: string; Dtmf: number }>;
   aiData?: {
     insights?: { summary: string; questions: Array<{ key: string; answer: unknown }> };
     transcript?: Array<{ speaker: string; text: string; startTime: number }>;
+    emotions?: { sentences: Array<{ emotion: string; emotion_direction: number }> };
   };
 }
 
 app.post('/webhooks/voicenter/cdr', async (req: Request, res: Response) => {
   const cdr = req.body as CdrPayload;
 
-  // 1. Acknowledge immediately — Voicenter needs a response
+  // 1. Acknowledge immediately — Voicenter needs a fast response
   res.json({ Err: 0, Errdesc: 'OK' });
 
-  // 2. Process asynchronously
+  // 2. Process asynchronously after responding
   setImmediate(async () => {
     try {
-      // Save CDR to database
-      await db.calls.upsert({ callId: cdr.ivruniqueid, ...cdr });
+      // Deduplicate — Voicenter may retry on network errors
+      const exists = await db.calls.findOne({ callId: cdr.ivruniqueid });
+      if (exists) return;
 
-      // If call was abandoned in queue — trigger follow-up
+      // Save CDR to database
+      await db.calls.create({ callId: cdr.ivruniqueid, ...cdr });
+
+      // Missed queue call → trigger SMS callback offer
       if (cdr.status === 'ABANDONE' && cdr.queuename) {
-        await sendFollowUpSms(cdr.caller, 'We missed your call. We will call you back shortly.');
+        await sendSms(cdr.caller, 'We missed your call. We will call you back shortly.');
       }
 
-      // Save AI summary if available
+      // Save AI analysis if available
       if (cdr.aiData?.insights?.summary) {
         await db.callInsights.create({
           callId: cdr.ivruniqueid,
           summary: cdr.aiData.insights.summary,
           questions: cdr.aiData.insights.questions,
+          transcript: cdr.aiData.transcript,
         });
       }
     } catch (err) {
@@ -204,7 +229,7 @@ app.post('/webhooks/voicenter/cdr', async (req: Request, res: Response) => {
 app.listen(3000);
 ```
 
-## Your required response
+## Your Required Response
 
 ```json
 { "Err": 0, "Errdesc": "OK" }
@@ -218,8 +243,14 @@ app.listen(3000);
 
 ## Tips
 
-- **Respond immediately** before processing — Voicenter waits for your `200 OK`. Heavy processing should be async (queue job, `setImmediate`, etc.).
-- **Idempotency** — Voicenter may retry. Store `ivruniqueid` as a unique key and skip duplicates.
-- **Recording URL** — The `record` field is a direct link to the MP3. Store it in your CRM for playback.
-- **Queue abandons** — `status: ABANDONE` + `queuename` set means a customer hung up while waiting. Send them an SMS/WhatsApp callback offer.
-- **AI data** — `data_type` values: `1`=boolean, `2`=string, `3`=number, `4`=json array, `5`=json object list, `6`=json object.
+- **Respond immediately** before processing — Voicenter waits for your `200 OK`. Use `setImmediate`, a queue job, or background worker for heavy processing.
+- **Idempotency** — Voicenter may retry on network failures. Store `ivruniqueid` as a unique key and skip duplicates.
+- **Recording URL** — The `record` field is a direct MP3 link. Store it in your CRM for playback.
+- **Queue abandons** — `status: ABANDONE` + `queuename` set = customer hung up while waiting. Send them an SMS/WhatsApp callback offer.
+
+## Related Skills
+
+- **Call Log API** — Query historical CDRs on-demand instead of receiving them via webhook
+- **Pop-Up Screen** — Uses `ivruniqueid` from CDR to correlate with the ringing-phase popup
+- **Real-Time API** — Receive call events live during the call (before it ends)
+- **Blacklist** — Automatically blacklist numbers that opt out via DTMF during a call

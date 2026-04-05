@@ -4,6 +4,21 @@ description: Get a real-time snapshot of all active calls and queue activity via
 
 Help the developer query **live call state** — who is on a call right now, what extensions are active, and how many callers are waiting in queues — using simple HTTP requests (no socket connection required).
 
+## When to use this skill
+
+Use this skill when the user wants to:
+- Show a wallboard or dashboard with current call activity
+- Check if a specific agent is currently on a call before routing or assigning a task
+- Display live queue depth (how many callers are waiting)
+- Build a CRM screen that shows an agent's current call when they open a customer record
+- Poll for call state on-demand (not continuously — use Real-Time API for streaming)
+
+## Environment Variables
+
+```env
+VOICENTER_API_CODE=your_api_token_here
+```
+
 ## Endpoints
 
 | Method | URI |
@@ -143,12 +158,6 @@ Omit `queue` to get all queues.
           "CallID": "202010131430590714966",
           "JoinTime": 1602599565,
           "Duration": 21
-        },
-        {
-          "Phone": "0501234567",
-          "CallID": "202010131433000d14cc4b",
-          "JoinTime": 1602599583,
-          "Duration": 3
         }
       ]
     },
@@ -189,6 +198,7 @@ Omit `queue` to get all queues.
 
 ```typescript
 const ACTIVE_CALLS_BASE = 'https://monapisec.voicenter.co.il/comet/API';
+const CODE = process.env.VOICENTER_API_CODE!;
 
 interface ActiveCall {
   callStarted: number;
@@ -218,22 +228,22 @@ interface QueueCaller {
   Duration: number;
 }
 
-async function getExtensionCalls(code: string, extension?: string): Promise<ExtensionCalls[]> {
+async function getExtensionCalls(extension?: string): Promise<ExtensionCalls[]> {
   const res = await fetch(`${ACTIVE_CALLS_BASE}/GetExtensionsCalls`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, ...(extension && { extension }) }),
+    body: JSON.stringify({ code: CODE, ...(extension && { extension }) }),
   });
   const data = await res.json();
   if (data.ERR !== 0) throw new Error(`Active Calls error: ${data.DESC}`);
   return data.EXTENSIONS;
 }
 
-async function getQueueCallers(code: string, queue?: string) {
+async function getQueueCallers(queue?: string) {
   const res = await fetch(`${ACTIVE_CALLS_BASE}/GetQueuesCallers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, ...(queue && { queue }) }),
+    body: JSON.stringify({ code: CODE, ...(queue && { queue }) }),
   });
   const data = await res.json();
   if (data.ERR !== 0) throw new Error(`Queue Callers error: ${data.DESC}`);
@@ -241,10 +251,10 @@ async function getQueueCallers(code: string, queue?: string) {
 }
 
 // Wallboard: poll every 10 seconds
-async function updateWallboard(code: string) {
+async function updateWallboard() {
   const [extensions, queues] = await Promise.all([
-    getExtensionCalls(code),
-    getQueueCallers(code),
+    getExtensionCalls(),
+    getQueueCallers(),
   ]);
 
   const activeCalls = extensions.filter(e => e.calls.length > 0);
@@ -254,14 +264,19 @@ async function updateWallboard(code: string) {
   return { extensions, queues };
 }
 
-setInterval(() => updateWallboard('MY_CODE'), 10_000);
+setInterval(updateWallboard, 10_000);
 
-// CRM popup: agent opens a customer record and triggers an on-demand check
-async function checkAgentCurrentCall(code: string, extensionSip: string) {
-  const [ext] = await getExtensionCalls(code, extensionSip);
+// CRM: check if agent is currently on a call when they open a customer record
+async function checkAgentCurrentCall(extensionSip: string) {
+  const [ext] = await getExtensionCalls(extensionSip);
   if (ext?.calls.length > 0) {
     const call = ext.calls[0];
-    return { active: true, caller: call.callerphone, ivrid: call.ivrid, duration: Date.now() / 1000 - call.callStarted };
+    return {
+      active: true,
+      caller: call.callerphone,
+      ivrid: call.ivrid,
+      duration: Date.now() / 1000 - call.callStarted,
+    };
   }
   return { active: false };
 }
@@ -269,8 +284,15 @@ async function checkAgentCurrentCall(code: string, extensionSip: string) {
 
 ## Tips
 
-- **Poll vs. stream** — This API gives a point-in-time snapshot. For real-time streaming use the Real-Time API (socket.io). Use this API when you need an on-demand check (e.g., agent opens a CRM record and you want to show if they're on a call).
-- **`onlineUserStatus: 2`** (Logout) is the default for extensions with no logged-in user.
+- **Poll vs. stream** — This API gives a point-in-time snapshot. For real-time streaming use the **Real-Time API** (socket.io). Use this API when you need an on-demand check (e.g., agent opens a CRM record).
+- `onlineUserStatus: 2` (Logout) is the default for extensions with no logged-in user.
 - Use `Callers[].Duration` to detect long-waiting callers and trigger supervisor alerts.
-- `recording.IsMuted: 1` combined with the Mute Recording API lets you toggle recording from a CRM button.
-- Combine with `GetExtensionsCalls` + `ivrid` to show the caller details in your CRM when an agent answers.
+- `recording.IsMuted: 1` combined with the **Mute Recording API** lets you toggle recording from a CRM button.
+- The `ivrid` field links this call to CDR Notification, Call Log, and Pop-Up Screen events.
+
+## Related Skills
+
+- **Real-Time API** — For continuous streaming of call events instead of polling
+- **Mute Recording** — Toggle recording mute state using the `ivrid` from this API
+- **Extension List** — Get all SIP codes to know which extensions exist
+- **CDR Notification / Call Log** — Correlate live calls with historical records using `ivrid`

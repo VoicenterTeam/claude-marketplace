@@ -4,6 +4,24 @@ description: Pull call detail records (CDR) from Voicenter using the Call Log AP
 
 Help the developer query **call history (CDR records)** from the Voicenter Call Log API — filter by date, phone, extension, call type, and choose exactly which fields to return.
 
+## When to use this skill
+
+Use this skill when the user wants to:
+- Retrieve historical call records for reporting or analytics
+- Find all calls to/from a specific phone number or extension
+- Get recording URLs for past calls to display in a CRM
+- Build missed-call reports (filter by `DialStatus: ABANDONE` or `NOANSWER`)
+- Correlate a specific call by its ID (`ivruniqueid` / `CALLID`)
+- Export call data to BI tools or billing systems
+- Audit agent activity over a date range
+
+## Environment Variables
+
+```env
+VOICENTER_API_CODE=your_api_token_here
+# The server making requests must also have its IP authorized in Voicenter CPanel
+```
+
 ## Endpoint
 
 ```
@@ -15,8 +33,8 @@ Response: `JSON`
 
 ## Authentication
 
-Send your `code` in the request body (or as a Bearer token header).  
-The requesting server's IP must be authorized in the Voicenter CPanel.
+Send your `code` in the request body.
+The requesting server's IP must be authorized in the Voicenter CPanel under **API Settings**.
 
 ## Request Structure
 
@@ -78,23 +96,10 @@ Choose which CDR fields to receive:
 {
   "code": "xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "fields": [
-    "CallerNumber",
-    "TargetNumber",
-    "Date",
-    "Duration",
-    "CallID",
-    "Type",
-    "CdrType",
-    "DialStatus",
-    "DID",
-    "QueueName",
-    "RecordURL",
-    "RingTime",
-    "RepresentativeName",
-    "RepresentativeCode",
-    "DTMFData",
-    "CustomData",
-    "DepartmentName"
+    "CallerNumber", "TargetNumber", "Date", "Duration", "CallID",
+    "Type", "CdrType", "DialStatus", "DID", "QueueName",
+    "RecordURL", "RingTime", "RepresentativeName", "RepresentativeCode",
+    "DTMFData", "CustomData", "DepartmentName"
   ],
   "search": {
     "fromdate": "2024-06-01T00:00:00",
@@ -104,16 +109,8 @@ Choose which CDR fields to receive:
     "extensions": ["SIPSIP1"],
     "IdentityCriteria": "Account"
   },
-  "sort": [
-    { "field": "date", "order": "desc" }
-  ]
+  "sort": [{ "field": "date", "order": "desc" }]
 }
-```
-
-## GET Request Example
-
-```
-https://api.voicenter.com/hub/cdr/?code=XXXX&fromdate=2024-06-01T00:00:00&todate=2024-06-30T23:59:59&phones=972501234567&fields=Date&fields=Type&fields=DID&fields=CallerNumber
 ```
 
 ## Response
@@ -136,7 +133,6 @@ https://api.voicenter.com/hub/cdr/?code=XXXX&fromdate=2024-06-01T00:00:00&todate
       "Type": "Extension Outgoing",
       "CdrType": 4,
       "DialStatus": "ANSWER",
-      "TargetExtension": "",
       "CallerExtension": "SIPSIP1",
       "DID": "",
       "RecordURL": "https://cpanel.voicenter.co.il/CallsHistory/PlayRecord/2024061043950926.mp3",
@@ -157,13 +153,14 @@ https://api.voicenter.com/hub/cdr/?code=XXXX&fromdate=2024-06-01T00:00:00&todate
 | 0 | 200 | OK |
 | 1 | 403 | Rate limit exceeded — wait 5 seconds between requests |
 | 2 | 403 | Authorization failed — invalid code |
-| 4 | 403 | IP not authorized |
+| 4 | 403 | IP not authorized — add server IP in CPanel |
 | 5 | 404 | Date range invalid |
 
 ## TypeScript Implementation
 
 ```typescript
 const CALL_LOG_URL = 'https://api.voicenter.com/hub/cdr/';
+const CODE = process.env.VOICENTER_API_CODE!;
 
 interface CdrRecord {
   CallerNumber: string;
@@ -193,7 +190,6 @@ interface CallLogResponse {
 }
 
 async function getCallLog(
-  code: string,
   fromdate: string,
   todate: string,
   options?: {
@@ -206,7 +202,7 @@ async function getCallLog(
   }
 ): Promise<CallLogResponse> {
   const body = {
-    code,
+    code: CODE,
     fields: options?.fields ?? [
       'CallerNumber', 'TargetNumber', 'Date', 'Duration', 'CallID',
       'Type', 'CdrType', 'DialStatus', 'DID', 'QueueName',
@@ -215,11 +211,11 @@ async function getCallLog(
     search: {
       fromdate,
       todate,
+      IdentityCriteria: 'Account',
       ...(options?.phones && { phones: options.phones }),
       ...(options?.extensions && { extensions: options.extensions }),
       ...(options?.cdrTypes && { cdrTypes: options.cdrTypes }),
       ...(options?.callID && { callID: options.callID }),
-      IdentityCriteria: 'Account',
     },
     sort: options?.sort ?? [{ field: 'date', order: 'desc' }],
   };
@@ -236,15 +232,13 @@ async function getCallLog(
   return data;
 }
 
-// Example: get all unanswered incoming calls today
+// Example: get all missed incoming calls today
 const { CDR_LIST } = await getCallLog(
-  'MY_CODE',
   '2024-06-01T00:00:00',
   '2024-06-01T23:59:59',
   {
-    cdrTypes: [1, 8],              // Incoming Call + Queue
+    cdrTypes: [1, 8],
     fields: ['CallerNumber', 'Date', 'DialStatus', 'QueueName', 'DID'],
-    sort: [{ field: 'date', order: 'desc' }],
   }
 );
 
@@ -254,14 +248,22 @@ console.log(`Missed calls: ${missed.length}`);
 
 ## Service Limits
 
-- Maximum **10,000 CDR records** per request
-- Maximum **30 requests per minute** — wait at least 5 seconds between requests
-- CDRs appear a few minutes after a call ends
-- Only authorized IP addresses can call this API (set in CPanel)
+- Maximum **10,000 CDR records** per request — break large date ranges into daily chunks
+- Maximum **30 requests per minute** — add a 2-second delay between sequential requests
+- CDRs appear a few minutes after a call ends — not suitable for real-time use
+- Only authorized IP addresses can call this API (set in CPanel under API Settings)
 
 ## Tips
 
 - Use `cdrTypes: [9, 10]` to get only Click2Call records and correlate Leg1/Leg2 by `CallID`.
 - `CustomData.OriginalIvrUniqueID` links a transferred call back to the original call.
 - `RecordURL` is a direct MP3 link — store it in your CRM for playback.
-- For large date ranges, break requests into daily chunks to stay under the 10K limit.
+- All dates in requests must be **GMT+0**. Israeli time is GMT+2 (or GMT+3 in summer).
+- `DialStatus` values: `ANSWER`, `NOANSWER`, `BUSY`, `CANCEL`, `ABANDONE`, `TIMEOUT`, `VOICEMAIL`.
+
+## Related Skills
+
+- **CDR Notification** — Receive CDRs in real time via webhook instead of polling
+- **Click2Call** — The `CALLID` returned by Click2Call is the same as `CallID` in CDR records
+- **Productive Dialer** — Filter dialer call records with `cdrTypes: [14, 15]`
+- **Active Calls** — For live call state; Call Log is for historical records only

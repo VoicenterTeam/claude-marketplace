@@ -2,16 +2,33 @@
 description: Build an External Layer IVR endpoint that lets Voicenter route inbound calls based on your CRM business logic
 ---
 
-Help the developer implement an **External Layer** endpoint — a URL that Voicenter's IVR calls mid-flow, so the developer's CRM can decide where to route each incoming call dynamically.
+Help the developer implement an **External Layer** endpoint — a URL that Voicenter's IVR calls mid-flow, so the developer's server can decide where to route each incoming call dynamically based on CRM data.
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Route VIP customers directly to their account manager, bypassing the general queue
+- Route callers with open support tickets directly to the assigned agent
+- Show a custom greeting (SAY_DIGITS) using the caller's name fetched from CRM
+- Route calls differently based on time of day, agent availability, or business rules in their system
+- Pass CRM data (customer ID, tier, open ticket) into the call for use by Pop-Up Screen and CDR Notification
+- Build smart IVR routing without reprogramming the Voicenter IVR layers
+
+## Environment Variables
+
+```env
+# No outbound API token needed — Voicenter sends requests TO your server.
+# Configure your endpoint URL in: Voicenter CPanel → Incoming → IVR → select layer → Layer Settings → "Allow mini external IVR"
+```
 
 ## How it works
 
 1. An inbound call reaches a Voicenter IVR layer configured with "Allow Mini External IVR" and your endpoint URL.
 2. Voicenter POSTs the call details (caller ID, DTMF input, layer info) to your endpoint.
-3. Your server queries its CRM/database and responds with a routing action: go to a layer, say something, or dial a number.
-4. Voicenter executes the action.
+3. Your server queries its CRM/database and responds with a routing action.
+4. Voicenter executes the action immediately.
 
-Configure the endpoint in Voicenter CPanel → **Incoming** → **IVR** → select a layer → **Layer Settings** → enable "Allow mini external IVR" → set your URL.
+**Critical:** Respond within **5 seconds** or Voicenter times out and uses the configured fallback layer.
 
 ## Request Voicenter sends you
 
@@ -33,9 +50,9 @@ Configure the endpoint in Voicenter CPanel → **Incoming** → **IVR** → sele
 |---|---|
 | `DID` | The virtual number (DID) the caller dialed |
 | `CALLER_ID` | Caller's phone number — use this to look them up in your CRM |
-| `IVR_UNIQUE_ID` | Unique call ID |
-| `DTMF` | Digits the caller pressed (default `"0"` if none pressed) |
-| `LAYER_ID` | Current IVR layer ID this request is sent from |
+| `IVR_UNIQUE_ID` | Unique call ID — correlates with CDR Notification and Pop-Up Screen |
+| `DTMF` | Digits the caller pressed. Default `"0"` if no input collected. |
+| `LAYER_ID` | Current IVR layer ID |
 | `PREVIOUS_LAYER_ID` | Previous IVR layer ID |
 
 ## Response Actions
@@ -50,7 +67,7 @@ Configure the endpoint in Voicenter CPanel → **Incoming** → **IVR** → sele
 }
 ```
 
-With optional caller name and CRM data (shown in Pop-Up and CDR):
+With CRM context (appears in Pop-Up Screen and CDR Notification):
 
 ```json
 {
@@ -84,10 +101,10 @@ With optional caller name and CRM data (shown in Pop-Up and CDR):
 }
 ```
 
-`LANGUAGE` options: `HE`, `EN`, `AR`, `RU` (more on request).
+`LANGUAGE` options: `HE`, `EN`, `AR`, `RU` (more available on request).
 `RecordType` options: `Recording` (play audio file), `Digits` (digit-by-digit), `Number`, `Date`, `DateTime`.
 
-### DIAL — Call an external phone or extension
+### DIAL — Call an external phone number or extension directly
 
 ```json
 {
@@ -110,13 +127,11 @@ With optional caller name and CRM data (shown in Pop-Up and CDR):
 
 `TARGET TYPE`: `PHONE` or `EXTENSION` (Voicenter SIP code). International numbers require country prefix.
 
-### Error response
+### Error Response — triggers configured fallback layer
 
 ```json
 { "STATUS": 1 }
 ```
-
-Send `STATUS: 1` when an error occurs. Voicenter will use the configured fallback layer.
 
 ## TypeScript Implementation (Express)
 
@@ -126,7 +141,7 @@ import express, { Request, Response } from 'express';
 const app = express();
 app.use(express.json());
 
-// Map of IVR layers — define these based on your Voicenter IVR setup
+// Map your Voicenter IVR layer IDs here
 const LAYERS = {
   SALES: 10,
   SUPPORT: 11,
@@ -150,7 +165,6 @@ app.post('/webhooks/voicenter/external-layer', async (req: Request, res: Respons
   const { DATA } = req.body as ExternalLayerRequest;
 
   try {
-    // Look up caller in CRM
     const contact = await crm.findByPhone(DATA.CALLER_ID);
 
     if (!contact) {
@@ -158,18 +172,21 @@ app.post('/webhooks/voicenter/external-layer', async (req: Request, res: Respons
       return res.json({ STATUS: 0, ACTION: 'GO_TO_LAYER', LAYER: LAYERS.GENERIC });
     }
 
-    // VIP client → skip queue, route directly to account manager
+    // VIP → skip queue, route directly to account manager
     if (contact.tier === 'VIP') {
       return res.json({
         STATUS: 0,
         ACTION: 'GO_TO_LAYER',
         LAYER: LAYERS.VIP,
         CALLER_NAME: contact.name,
-        CUSTOM_DATA: { CRM_client_ID: contact.id, Account_manager: contact.accountManager },
+        CUSTOM_DATA: {
+          CRM_client_ID: contact.id,
+          Account_manager: contact.accountManager,
+        },
       });
     }
 
-    // Existing client with open ticket → route to assigned agent via DIAL
+    // Has open ticket with assigned agent → dial directly
     if (contact.openTicket?.assignedExtension) {
       return res.json({
         STATUS: 0,
@@ -185,7 +202,7 @@ app.post('/webhooks/voicenter/external-layer', async (req: Request, res: Respons
       });
     }
 
-    // Existing client → support queue
+    // Known contact → support queue with CRM context
     return res.json({
       STATUS: 0,
       ACTION: 'GO_TO_LAYER',
@@ -196,22 +213,31 @@ app.post('/webhooks/voicenter/external-layer', async (req: Request, res: Respons
 
   } catch (err) {
     console.error('External layer error:', err);
-    return res.json({ STATUS: 1 }); // Trigger Voicenter fallback layer
+    return res.json({ STATUS: 1 }); // Voicenter uses configured fallback layer
   }
 });
 
 app.listen(3000);
 ```
 
-## CPanel Configuration Tips
+## CPanel Configuration
 
-- **MiniExternalDTMFLen** — Max DTMF digits to wait for (e.g., `8` for an 8-digit ID). Set to `0` if no DTMF input is needed.
-- **Delay** — Seconds to wait for DTMF after the prompt plays (1–9). Set appropriately for the prompt length.
-- **MiniExternalDefaultMethodData** — Fallback layer ID if your endpoint is unreachable. Always set this to prevent calls being dropped.
+| Setting | Description |
+|---|---|
+| **MiniExternalDTMFLen** | Max DTMF digits to collect before calling your endpoint (e.g. `8` for an 8-digit account ID). Set to `0` if no DTMF needed. |
+| **Delay** | Seconds to wait for DTMF input after the prompt plays (1–9). |
+| **MiniExternalDefaultMethodData** | **Fallback layer ID** — always set this. It is used when your endpoint is unreachable or returns `STATUS: 1`. |
 
 ## Tips
 
-- **Respond within 5 seconds** or Voicenter will time out and use the fallback layer.
-- **Normalize phone numbers** — `CALLER_ID` may come without country prefix for Israeli numbers.
-- Use `CUSTOM_DATA` to pass CRM context into CDR Notification and Pop-Up Screen later in the call.
-- For DTMF-driven flows (e.g., "press 1 for Sales"), read `DATA.DTMF` and route accordingly.
+- **Respond within 5 seconds** or Voicenter times out and uses the fallback layer.
+- **Normalize `CALLER_ID`** — Israeli numbers may arrive without country prefix. Add `972` prefix if missing and strip the leading `0`.
+- **Use `CUSTOM_DATA`** to carry CRM context (customer ID, tier, open ticket ID) through the entire call — it appears in CDR Notification and Pop-Up Screen payloads.
+- For DTMF-driven flows ("press 1 for Sales"), read `DATA.DTMF` and map it to the appropriate layer.
+
+## Related Skills
+
+- **Pop-Up Screen** — Receives `CUSTOM_DATA` you pass here to display caller info to the agent
+- **CDR Notification** — `CUSTOM_DATA` also appears in the CDR after the call ends
+- **VoiceBot API** — Combine with External Layer: External Layer runs at call start, VoiceBot runs mid-conversation
+- **Active Calls** — Check queue depth before routing to decide between queues

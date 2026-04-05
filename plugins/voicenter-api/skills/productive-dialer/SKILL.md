@@ -2,7 +2,25 @@
 description: Manage auto-dialer campaigns via the Voicenter Dialer API — add/remove destinations, control campaigns, manage agents
 ---
 
-Help the developer integrate the **Voicenter Productive Dialer API** — manage campaigns, upload call destinations, control campaign state, and manage agent assignments entirely from their CRM.
+Help the developer integrate the **Voicenter Productive Dialer API** — manage campaigns, upload call destinations, control campaign state, and manage agent assignments from their CRM.
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Add leads or contacts to a dialer campaign from their CRM
+- Upload a bulk list of numbers to dial (up to 100,000 at once)
+- Start or stop a dialer campaign programmatically
+- Schedule callbacks for specific times ("call this customer at 3 PM")
+- Add or remove agents from a campaign
+- Check how many calls are still pending in a campaign
+- Clear all pending calls from a campaign
+- Pass CRM lead data (lead ID, campaign source) into the call for reporting
+
+## Environment Variables
+
+```env
+VOICENTER_API_CODE=your_api_token_here
+```
 
 ## Base URL
 
@@ -10,25 +28,25 @@ Help the developer integrate the **Voicenter Productive Dialer API** — manage 
 https://api.voicenter.com/ForwardDialer/Dialer/
 ```
 
-All methods use `POST-JSON` (or `GET`). Authentication via `Code` field.
+All methods use `POST-JSON`. Authentication via `Code` field.
 
 ## Workflow
 
-1. Call **GetCampaignList** to get your campaign codes.
-2. Use the campaign `Code` (not name) in all subsequent calls.
+1. Call **GetCampaignList** to get campaign codes.
+2. Use the campaign `Code` (not the name) in all subsequent calls.
 3. Upload destinations with **AddCall** or **AddCallsBulk**.
 4. Control execution with **StartCampaign** / **StopCampaign**.
 
 ---
 
-## GetCampaignList
-
-Returns all campaigns in your account.
+## GetCampaignList — Get all campaigns
 
 ```json
 // Request
 { "Code": "MY_API_CODE" }
+```
 
+```json
 // Response
 {
   "ErrorCode": 0,
@@ -47,8 +65,9 @@ Returns all campaigns in your account.
 }
 ```
 
-`StatusName`: `"Enabled"` = active, `"Disabled"` = stopped.  
-`TotalAwaitingCalls` is the reliable count for IVR Dialer campaigns. Use `TotalPendingCalls` for Agent Dialer.
+`StatusName`: `"Enabled"` = active, `"Disabled"` = stopped.
+- For **IVR/Predictive Dialer** campaigns: use `TotalAwaitingCalls` for queue depth.
+- For **Agent Dialer** campaigns: use `TotalPendingCalls`.
 
 ---
 
@@ -61,7 +80,7 @@ URI: https://api.voicenter.com/ForwardDialer/Dialer/AddCall
 ```json
 {
   "Campaign": "CAMPAIGN_CODE",
-  "Target": "0501234567",
+  "Target": "972501234567",
   "CustomerName": "John Doe",
   "CallerID": "0722776772",
   "Priority": 42,
@@ -70,7 +89,7 @@ URI: https://api.voicenter.com/ForwardDialer/Dialer/AddCall
   "IgnoreDncStatus": "true",
   "CustomData": {
     "var_LeadID": 1234567,
-    "var_LeadCampaign": "Facebook"
+    "var_LeadSource": "Facebook"
   }
 }
 ```
@@ -78,18 +97,19 @@ URI: https://api.voicenter.com/ForwardDialer/Dialer/AddCall
 | Field | Required | Description |
 |---|---|---|
 | `Campaign` | ✅ | Campaign code from `GetCampaignList` |
-| `Target` | ✅ | Phone number (international prefix required outside Israel) |
-| `CustomerName` | ❌ | Name shown to agent |
+| `Target` | ✅ | Phone number (E.164 format; international prefix required for non-Israeli numbers) |
+| `Code` | ✅ | API authentication token |
+| `CustomerName` | ❌ | Customer name shown to agent |
 | `CallerID` | ❌ | Outbound caller ID shown to customer — must be a number in your account |
-| `Priority` | ❌ | Higher = dialed first |
-| `OriginateTime` | ❌ | Schedule for future dial (Epoch time). Must send with `IsDateLocal`. |
-| `IsDateLocal` | ❌ | `true` = use account local timezone, `false` = GMT+0. Recommended: `true`. |
-| `IgnoreDncStatus` | ❌ | `true` = bypass Do-Not-Call-Me service |
-| `CustomData` | ❌ | Key-value pairs for pop-up screen and CDR logs |
+| `Priority` | ❌ | Higher value = dialed first |
+| `OriginateTime` | ❌ | Schedule for future dial (Epoch time). Must include `IsDateLocal`. |
+| `IsDateLocal` | ❌ | `"true"` = use account's local timezone. `"false"` = GMT+0. Recommended: `"true"`. |
+| `IgnoreDncStatus` | ❌ | `"true"` = bypass Do-Not-Call service |
+| `CustomData` | ❌ | Key-value pairs passed to Pop-Up Screen and CDR records |
 
 ---
 
-## AddCallsBulk — Add up to 100,000 destinations
+## AddCallsBulk — Upload up to 100,000 destinations
 
 ```
 URI: https://api.voicenter.com/ForwardDialer/Dialer/AddCallsBulk
@@ -101,95 +121,97 @@ Send an array of destination objects (same fields as `AddCall`):
 [
   {
     "Campaign": "CAMPAIGN_CODE",
-    "Target": "0501234567",
+    "Code": "MY_API_CODE",
+    "Target": "972501234567",
     "CustomerName": "John Doe",
     "Priority": 1,
     "CustomData": { "var_LeadID": 111 }
   },
   {
     "Campaign": "CAMPAIGN_CODE",
-    "Target": "0501234568",
+    "Code": "MY_API_CODE",
+    "Target": "972501234568",
     "CustomerName": "Jane Doe"
   }
 ]
 ```
 
-**Limits:** Up to 100,000 per request. Detailed per-destination results returned only for ≤ 3,000 destinations. Pass `"async": true` to force detailed response (max 3,000).
-
-**Response:**
+**Limits:**
+- Up to 100,000 destinations per request
+- Detailed per-destination results returned only for ≤ 3,000 destinations
+- Add `"async": true` to force detailed response (max 3,000)
 
 ```json
+// Response
 {
   "ErrorCode": 0,
   "Description": "OK",
   "AddResult": [
-    { "Target": "0501234567", "ErrorCode": 0, "Description": "OK", "CustomData": { "var_LeadID": 111 } },
-    { "Target": "0501234568", "ErrorCode": 0, "Description": "OK", "CustomData": {} }
+    { "Target": "972501234567", "ErrorCode": 0, "Description": "OK" },
+    { "Target": "972501234568", "ErrorCode": 0, "Description": "OK" }
   ]
 }
 ```
 
 ---
 
-## RemoveCall — Remove a destination
+## RemoveCall — Remove a specific destination
 
 ```
 URI: https://api.voicenter.com/ForwardDialer/Dialer/RemoveCall
 ```
 
 ```json
-{ "Campaign": "CAMPAIGN_CODE", "Target": "0501234567" }
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE", "Target": "972501234567" }
 ```
 
 ---
 
-## ClearCampaignCalls — Remove ALL destinations
+## ClearCampaignCalls — Remove ALL pending destinations
 
 ```
 URI: https://api.voicenter.com/ForwardDialer/Dialer/ClearCampaignCalls
 ```
 
 ```json
-{ "Campaign": "CAMPAIGN_CODE" }
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE" }
 ```
 
 ---
 
-## StopCampaign / StartCampaign
-
-Pause and resume dialing:
+## StartCampaign / StopCampaign
 
 ```json
-// Stop
-{ "Campaign": "CAMPAIGN_CODE" }
-// URI: https://api.voicenter.com/ForwardDialer/Dialer/StopCampaign
-
 // Start
-{ "Campaign": "CAMPAIGN_CODE" }
 // URI: https://api.voicenter.com/ForwardDialer/Dialer/StartCampaign
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE" }
+
+// Stop
+// URI: https://api.voicenter.com/ForwardDialer/Dialer/StopCampaign
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE" }
 ```
 
 ---
 
-## GetMembersList / AddMember / RemoveMember — Agent management
+## Agent Management
 
-**Get agents in campaign:**
+### GetMembersList
 ```json
-// Request: { "Campaign": "CAMPAIGN_CODE" }
+// Request: { "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE" }
 // Response: { "Data": [{ "Member": "SIPSIP1", "DisplayName": "John Doe" }], "ErrorCode": 0 }
 ```
 
-**Add agent:**
+### AddMember
 ```json
 // URI: /AddMember
-{ "Campaign": "CAMPAIGN_CODE", "Member": "SIPSIP1" }
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE", "Member": "SIPSIP1" }
 // Response: { "Data": { "TotalAdded": 1 }, "ErrorCode": 0 }
 ```
 
-**Remove agent:**
+### RemoveMember
 ```json
 // URI: /RemoveMember
-{ "Campaign": "CAMPAIGN_CODE", "Member": "SIPSIP1" }
+{ "Campaign": "CAMPAIGN_CODE", "Code": "MY_API_CODE", "Member": "SIPSIP1" }
 // Response: { "Data": { "TotalRemoved": 1 }, "ErrorCode": 0 }
 ```
 
@@ -227,12 +249,13 @@ URI: https://api.voicenter.com/ForwardDialer/Dialer/GetCampaignPendingCalls
 
 ```typescript
 const DIALER_BASE = 'https://api.voicenter.com/ForwardDialer/Dialer';
+const CODE = process.env.VOICENTER_API_CODE!;
 
 async function dialerRequest<T>(method: string, body: object): Promise<T> {
   const res = await fetch(`${DIALER_BASE}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ Code: CODE, ...body }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -240,18 +263,15 @@ async function dialerRequest<T>(method: string, body: object): Promise<T> {
   return data;
 }
 
-// Get all campaigns
-const campaigns = await dialerRequest<any>('GetCampaignList', { Code: 'MY_CODE' });
-const campaignCode = campaigns.Data[0].Code;
+// Full campaign workflow: get campaigns → upload leads → start
+const { Data: campaigns } = await dialerRequest<any>('GetCampaignList', {});
+const campaignCode = campaigns[0].Code;
 
-// Upload leads from CRM
 const leads = [
-  { Campaign: campaignCode, Target: '0501234567', CustomerName: 'John', Priority: 1, CustomData: { var_LeadID: 101 } },
-  { Campaign: campaignCode, Target: '0501234568', CustomerName: 'Jane', Priority: 2, CustomData: { var_LeadID: 102 } },
+  { Campaign: campaignCode, Target: '972501234567', CustomerName: 'John', Priority: 1, CustomData: { var_LeadID: '101' } },
+  { Campaign: campaignCode, Target: '972501234568', CustomerName: 'Jane', Priority: 2, CustomData: { var_LeadID: '102' } },
 ];
 await dialerRequest('AddCallsBulk', leads);
-
-// Start the campaign
 await dialerRequest('StartCampaign', { Campaign: campaignCode });
 
 // Later — stop and clear
@@ -259,19 +279,25 @@ await dialerRequest('StopCampaign', { Campaign: campaignCode });
 await dialerRequest('ClearCampaignCalls', { Campaign: campaignCode });
 ```
 
-## Error Codes (common to all methods)
+## Error Codes
 
 | ErrorCode | Description |
 |---|---|
 | 0 | OK |
 | 1 | Invalid campaign code |
-| 2 | Missing required field (Target, Member, etc.) |
+| 2 | Missing required field |
 | -2 | Phone number format invalid |
 
 ## Tips
 
-- Always call `GetCampaignList` first — the `Code` in the response is your campaign identifier, not the campaign name.
-- For **IVR Dialer campaigns** (predictive), use `TotalAwaitingCalls` for queue depth; for **Agent Dialer**, use `TotalPendingCalls`.
-- `CustomData` values are passed through to the Pop-Up Screen and CDR Notification — use them to carry CRM lead IDs.
-- `OriginateTime` + `IsDateLocal: true` lets you schedule callbacks for a specific time — great for "call back at 3 PM" CRM features.
-- CDR records for dialer calls have `type: "ProductiveCall Leg1/Leg2"` — filter by `cdrTypes: [14, 15]` in the Call Log API.
+- **Always call `GetCampaignList` first** — the `Code` in the response is the campaign identifier, not the name.
+- `OriginateTime` + `IsDateLocal: "true"` lets you schedule future callbacks — great for "call me back at 3 PM" CRM features.
+- `CustomData` values flow through to the **Pop-Up Screen** and **CDR Notification** — use them to carry CRM lead IDs and source attribution.
+- CDR records for dialer calls have `type: "ProductiveCall Leg1/Leg2"` — filter with `cdrTypes: [14, 15]` in the **Call Log API**.
+
+## Related Skills
+
+- **Extension List** — Get valid SIP codes to use as `Member` when adding agents to a campaign
+- **Call Log** — Retrieve dialer call results using `cdrTypes: [14, 15]`
+- **CDR Notification** — Receive dialer call CDRs in real time via webhook
+- **Blacklist** — Blacklisted numbers are automatically skipped by the dialer

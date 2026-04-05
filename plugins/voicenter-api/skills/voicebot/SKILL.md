@@ -2,24 +2,39 @@
 description: Build a VoiceBot data endpoint that the Voicenter Voice Agent calls mid-conversation to fetch dynamic CRM data
 ---
 
-Help the developer implement a **VoiceBot API endpoint** — a URL that the Voicenter Voice Agent calls during a live conversation when it needs to retrieve or update data from the CRM before continuing.
+Help the developer implement a **VoiceBot API endpoint** — a URL that the Voicenter Voice Agent (AI bot) calls during a live conversation to retrieve dynamic CRM data before continuing.
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Feed real-time CRM data to an AI voice agent mid-conversation (account balance, order status, open tickets)
+- Let a voice bot look up customer information by the caller ID or DTMF input collected during the call
+- Return structured data that the voice agent will read back to the caller
+- Route the voice agent's behavior dynamically based on the caller's CRM profile
+- Return appointment slots, product info, or personalized offers from an external system
+- Handle multiple intents from a single endpoint using `LAYER_ID` to route logic
+
+## Environment Variables
+
+```env
+# No outbound API token needed — Voicenter sends requests TO your server.
+# Configure your endpoint URL in: Voice Agent intent settings → "URL" field under "תגובה" (Response)
+```
 
 ## How it works
 
 1. An inbound or outbound call is handled by a Voicenter Voice Agent (AI bot).
-2. During the conversation, the agent reaches a point where it needs external data (account balance, order status, open tickets, available slots, etc.).
-3. The Voice Agent POSTs a request to your configured URL containing call info, any DTMF input, and data collected so far.
-4. Your server fetches the relevant data from your CRM/DB and responds.
-5. The Voice Agent reads the response and continues the conversation with the new data.
+2. The agent reaches an intent that needs external data.
+3. The Voice Agent POSTs call info + collected intent parameters to your endpoint.
+4. Your server fetches the data from your CRM/DB and responds.
+5. The Voice Agent reads the response and continues the conversation.
 
-Configure the endpoint URL in the Voice Agent's intent settings, in the field called **URL**, under the "תגובה" (Response) options.
-
-**Note:** The VoiceBot API is typically combined with the [External Layer API](https://www.voicenter.com/API/External-Layer) — the External Layer passes initial caller context (from CRM) via `CUSTOM_DATA` before the Voice Agent starts, and the VoiceBot API is called later mid-conversation as needed.
+**Note:** Pair with the **External Layer API** for the full pattern — External Layer passes CRM context (caller ID, tier, ticket) into `CUSTOM_DATA` at call start, and VoiceBot fetches dynamic data mid-conversation.
 
 ## Request Voicenter sends you
 
-**Method:** `POST`  
-**Format:** `JSON`
+**Method:** `POST`
+**Content-Type:** `application/json`
 
 ```json
 {
@@ -28,7 +43,7 @@ Configure the endpoint URL in the Voice Agent's intent settings, in the field ca
     "CALLER_ID": "0501234567",
     "IVR_UNIQUE_ID": "ssss1bcd7954224861f85a2d70612f2",
     "DTMF": "1234",
-    "LAYER_ID": "5",
+    "LAYER_ID": "10",
     "PREVIOUS_LAYER_ID": "5"
   },
   "IntentParameters": {
@@ -48,38 +63,29 @@ Configure the endpoint URL in the Voice Agent's intent settings, in the field ca
 | Field | Type | Description |
 |---|---|---|
 | `CALL_INFO.DID` | String | The phone number the caller dialed |
-| `CALL_INFO.CALLER_ID` | String | Caller's phone number |
-| `CALL_INFO.IVR_UNIQUE_ID` | String | Unique call ID — use to correlate with CDR and other APIs |
-| `CALL_INFO.DTMF` | String | Digits the caller pressed. Default `"0"` if none pressed. |
-| `CALL_INFO.LAYER_ID` | String (int) | IVR layer ID the request is sent from — useful for routing logic when multiple intents call the same endpoint |
-| `CALL_INFO.PREVIOUS_LAYER_ID` | String (int) | Previous IVR layer ID |
-| `IntentParameters` | Object | Fields collected by the Voice Agent during this conversation so far (defined in the agent's intent configuration) |
-| `CUSTOM_DATA` | Object | Key-Value data passed in from an earlier stage (e.g. from External Layer API). Only supports flat Key + Value — no nested objects. |
+| `CALL_INFO.CALLER_ID` | String | Caller's phone number — use to look them up in CRM |
+| `CALL_INFO.IVR_UNIQUE_ID` | String | Unique call ID — correlates with CDR and other APIs |
+| `CALL_INFO.DTMF` | String | Digits the caller pressed. Default `"0"` if none. |
+| `CALL_INFO.LAYER_ID` | String | IVR layer ID — use to route different intents when multiple share the same endpoint |
+| `CALL_INFO.PREVIOUS_LAYER_ID` | String | Previous IVR layer ID |
+| `IntentParameters` | Object | Fields collected by the Voice Agent in this conversation so far |
+| `CUSTOM_DATA` | Object | Flat key-value data passed from External Layer API. **No nested objects.** |
 
 ## Your Response
 
-None of the response fields are mandatory. You can return an empty object `{}` and the Voice Agent will continue with its existing instructions.
+All fields are optional. Return `{}` to let the agent continue with existing instructions.
 
 ### Response Fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `function_output` | Object | No | Structured data for the agent to use. Any valid JSON object — the agent will use the field names and values to answer the caller. |
-| `user` | Array of strings | No | Instructions for the agent on what to do with the data. Supports Markdown (headers, bold, tables) for long prompts. Most commonly used field. |
-| `assistant` | Object | No | Additional influence on agent behavior. Rarely needed when the other fields are used. |
-| `system` | Object | No | General system-level instructions merged into the agent's base prompt. Use to restrict or refine behavior. Supports Markdown. |
+| Field | Type | Description |
+|---|---|---|
+| `function_output` | Object | Structured data for the agent to use. Any valid JSON — the agent reads field names and values. |
+| `user` | String[] | Instructions for the agent. **Most commonly used field.** Supports Markdown. |
+| `assistant` | Object | Additional influence on agent behavior. Rarely needed. |
+| `system` | Object | System-level instructions merged into the agent's base prompt. Supports Markdown. |
 
-### Simple Response — instruction only
+### Simple response — instruction only
 
-```json
-{
-  "user": [
-    "הסבר ללקוח שהזמנה מספר 123456 יצאה אליו הבוקר, וכי השליח צפוי להגיע היום בין 14:00 ל16:00 אחר הצהריים."
-  ]
-}
-```
-
-Or in English:
 ```json
 {
   "user": [
@@ -88,7 +94,7 @@ Or in English:
 }
 ```
 
-### Response with structured data (`function_output`)
+### Response with structured data
 
 ```json
 {
@@ -99,12 +105,12 @@ Or in English:
     "open_tickets": 2
   },
   "user": [
-    "Read the caller their account balance and plan. Let them know they have open tickets and offer to transfer them to support."
+    "Read the caller their account balance and plan. Let them know they have 2 open support tickets and offer to transfer them to support."
   ]
 }
 ```
 
-### Response with a list (e.g. open orders)
+### Response with a list (e.g., open orders)
 
 ```json
 {
@@ -115,22 +121,7 @@ Or in English:
     ]
   },
   "user": [
-    "Read the caller their open orders from the list above. For each order, state the order ID and its status."
-  ]
-}
-```
-
-### Weather API example (from official docs)
-
-```json
-{
-  "function_output": {
-    "weather": [{ "main": "Clear", "description": "clear sky" }],
-    "main": { "temp": 27.89, "feels_like": 28.78, "humidity": 55 },
-    "name": "Ramat Gan"
-  },
-  "user": [
-    "Read the maximum temperature in the caller's city and ask if they want any other weather details."
+    "Read the caller their open orders. For each order, state the order ID and current status."
   ]
 }
 ```
@@ -164,14 +155,13 @@ interface VoiceBotResponse {
 }
 
 app.post('/webhooks/voicenter/voicebot', async (req: Request, res: Response) => {
-  const payload = req.body as VoiceBotRequest;
-  const { CALL_INFO, IntentParameters, CUSTOM_DATA } = payload;
+  const { CALL_INFO, IntentParameters, CUSTOM_DATA } = req.body as VoiceBotRequest;
 
   try {
     const crmClientId = CUSTOM_DATA.CRM_client_ID;
     const layerId = CALL_INFO.LAYER_ID;
 
-    // Route logic based on which intent/layer triggered the call
+    // Route logic by intent/layer ID
     if (layerId === '10') {
       // Order status intent
       const order = await crm.getLatestOrder(crmClientId);
@@ -211,12 +201,12 @@ app.post('/webhooks/voicenter/voicebot', async (req: Request, res: Response) => 
       });
     }
 
-    // Default — let the agent continue with existing instructions
+    // Default — agent continues with existing instructions
     return res.json({});
 
   } catch (err) {
     console.error('VoiceBot endpoint error:', err);
-    // Return empty so agent continues gracefully
+    // Always return a valid response — never let it hang or return 5xx
     return res.json({});
   }
 });
@@ -226,10 +216,15 @@ app.listen(3000);
 
 ## Tips
 
-- **Always respond** — even on error, return `{}` so the Voice Agent continues. Never let the endpoint hang or return a 5xx.
-- **`LAYER_ID`** is your routing key when multiple intents call the same endpoint — use it to run different CRM queries per intent.
-- **`CUSTOM_DATA`** only supports flat Key + Value (no nested objects). If you need to pass complex data into the conversation, use the `function_output` in the response to return it dynamically instead.
-- **`user` field** supports Markdown — use it for complex multi-step instructions, tables, or lists when guiding the agent through structured data.
-- **`IntentParameters`** contains what the agent has already collected in this conversation — use it to look up records (e.g. an order number the caller just said).
-- The VoiceBot API works for both inbound and outbound calls.
-- Pair with **External Layer API** for the full flow: External Layer runs at call start (passes caller context), VoiceBot runs mid-conversation (fetches dynamic data on demand).
+- **Always respond** — even on error, return `{}` so the Voice Agent continues gracefully. Never return a 5xx or let the request hang.
+- **`LAYER_ID` is your routing key** when multiple intents call the same endpoint — use it to run different CRM queries per intent.
+- **`CUSTOM_DATA` is flat** — only supports simple key-value pairs (no nested objects). Use `function_output` in your response to return complex structured data.
+- **`user` field supports Markdown** — use headers, bold, tables, and lists when guiding the agent through structured data like order lists or slot tables.
+- **`IntentParameters`** contains what the agent has already collected — use it to look up records (e.g., an order number or ID the caller said aloud).
+- Works for both **inbound and outbound** calls.
+
+## Related Skills
+
+- **External Layer** — Run at call start to pass CRM context into `CUSTOM_DATA` before the VoiceBot is called
+- **CDR Notification** — Receives the full call record after the voice agent conversation ends
+- **Click2Call** — Use `IVR_UNIQUE_ID` to correlate voicebot calls with outbound Click2Call initiations
