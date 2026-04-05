@@ -2,21 +2,39 @@
 description: Mute or unmute call recording in real time via the Voicenter Mute Call Recording API
 ---
 
-Help the developer integrate **real-time recording mute/unmute** into their CRM — so agents can pause recording when a customer provides sensitive information (credit card, personal ID, etc.).
+Help the developer integrate **real-time recording mute/unmute** into their CRM — so agents can pause recording when a customer provides sensitive information (credit card, ID number, etc.).
+
+## When to use this skill
+
+Use this skill when the user wants to:
+- Add a "Pause Recording" button in their CRM for PCI-DSS compliance
+- Automatically pause recording when an agent opens a payment form
+- Mute recording for a specific call by its ID (`ivrid`)
+- Mute all calls on an extension (when the agent enters a sensitive mode)
+- Resume recording after sensitive data entry is complete
+
+## Environment Variables
+
+```env
+VOICENTER_MONITOR_SERVER=https://monitor1.voicenter.co
+# Replace "monitor1" with your account's actual monitor server.
+# Get the dynamic server from the Real-Time API connection URL, or contact Voicenter support.
+```
 
 ## How it works
 
 - Send a mute request **by extension** to mute all active calls on that extension.
-- Or send a mute request **by call ID (`ivrid`)** to mute one specific call.
-- Send `state: 0` to unmute and resume recording.
+- Send a mute request **by call ID (`ivrid`)** to mute one specific call.
+- Set `state: "0"` to unmute and resume recording.
 
-## ⚠️ Monitor Server
+## ⚠️ Dynamic Monitor Server
 
-The endpoint uses a **dynamic monitor server** assigned to your account, not a fixed hostname.  
-The URL format is: `https://<monitorX>.voicenter.co/api/MuteUnmuteCalls`
+The endpoint uses a **dynamic monitor server** assigned to your account.
+URL format: `https://<monitorX>.voicenter.co/api/MuteUnmuteCalls`
 
-To get your account's monitor server dynamically, use the [Real-Time API](https://www.voicenter.com/API/real-time).  
-Alternatively, contact Voicenter support to get your static monitor server name (e.g. `monitor1`, `monitor2`).
+To get your account's monitor server:
+- From the **Real-Time API**: the socket connection URL contains your monitor server hostname
+- Or contact Voicenter support to get your static monitor server name (e.g. `monitor1`, `monitor2`)
 
 ---
 
@@ -24,13 +42,7 @@ Alternatively, contact Voicenter support to get your static monitor server name 
 
 Mutes all active calls on the given extension SIP code.
 
-**Note:** If the agent makes a new call after this mute request, that new call will **not** be muted automatically — you must send another mute request.
-
-### GET
-
-```
-https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?extension=SIPSIP&state=1
-```
+**Note:** If the agent makes a new call after this request, that new call will **not** be muted automatically — send another mute request.
 
 ### POST-JSON
 
@@ -41,9 +53,15 @@ https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?extension=SIPSIP&state=1
 }
 ```
 
+### GET
+
+```
+https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?extension=SIPSIP&state=1
+```
+
 | Field | Required | Values |
 |---|---|---|
-| `extension` | ✅ | SIP ID of the extension (from CPanel) |
+| `extension` | ✅ | SIP code of the extension |
 | `state` | ✅ | `"1"` = Mute, `"0"` = Unmute |
 
 ---
@@ -51,12 +69,6 @@ https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?extension=SIPSIP&state=1
 ## Mute by Call ID (ivrid)
 
 Mutes one specific call by its unique Voicenter call ID.
-
-### GET
-
-```
-https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?ivrid=XXXXXXXXXXXXXXXX&state=1
-```
 
 ### POST-JSON
 
@@ -67,9 +79,15 @@ https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?ivrid=XXXXXXXXXXXXXXXX&sta
 }
 ```
 
+### GET
+
+```
+https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?ivrid=202406011200abc123def456&state=1
+```
+
 | Field | Required | Values |
 |---|---|---|
-| `ivrid` | ✅ | Unique call ID (from Click2Call response, CDR Notification, or Real-Time events) |
+| `ivrid` | ✅ | Unique call ID from Click2Call response, CDR Notification, or Real-Time events |
 | `state` | ✅ | `"1"` = Mute, `"0"` = Unmute |
 
 ---
@@ -95,8 +113,7 @@ https://YOUR_MONITOR.voicenter.co/api/MuteUnmuteCalls?ivrid=XXXXXXXXXXXXXXXX&sta
 ## TypeScript Implementation
 
 ```typescript
-// Replace with your account's actual monitor server
-const MONITOR_SERVER = 'https://monitor1.voicenter.co';
+const MONITOR_SERVER = process.env.VOICENTER_MONITOR_SERVER!; // e.g. 'https://monitor1.voicenter.co'
 
 interface MuteResponse {
   ErrorCode: string;
@@ -127,38 +144,40 @@ async function muteByCallId(ivrid: string, mute: boolean): Promise<MuteResponse>
   if (data.ErrorCode !== '200') throw new Error(`Mute failed: ${data.Message}`);
   return data;
 }
+```
 
-// CRM button: "Pause Recording" clicked by agent
-async function onPauseRecordingClick(extensionSip: string) {
-  await muteByExtension(extensionSip, true);
-  console.log('Recording paused');
+## PCI-DSS Payment Flow Pattern
+
+```typescript
+// 1. Agent clicks "Enter Payment Details" in CRM
+async function onPaymentFormOpen(agentExtension: string) {
+  await muteByExtension(agentExtension, true);
+  console.log('Recording paused — payment data not recorded');
 }
 
-// CRM button: "Resume Recording" clicked by agent
-async function onResumeRecordingClick(extensionSip: string) {
-  await muteByExtension(extensionSip, false);
+// 2. Agent collects credit card info (this portion is not recorded)
+
+// 3. Agent clicks "Done" in CRM
+async function onPaymentFormClose(agentExtension: string) {
+  await muteByExtension(agentExtension, false);
   console.log('Recording resumed');
 }
 ```
 
-## CRM Integration Pattern
-
-The most common pattern is a **Mute/Unmute button** in the CRM agent interface:
-
-```typescript
-// When agent clicks "Take credit card" button in CRM:
-// 1. Mute recording
-await muteByExtension(agentExtension, true);
-// 2. Agent collects credit card info (not recorded)
-// 3. Agent clicks "Done" button
-await muteByExtension(agentExtension, false);
-// 4. Recording resumes
-```
-
 ## Tips
 
-- The `ivrid` for a live call comes from the **Real-Time API** (`ExtensionEvent`) or from the **Click2Call** response `CALLID`.
-- Mute state is visible in the CDR Notification payload — `isMuted: true` and in the `recording.IsMuted` field of Real-Time events.
 - Use **mute by ivrid** for precision when an agent has multiple concurrent calls (conference, attended transfer).
-- Use **mute by extension** for simplicity in single-call scenarios.
-- Compliant with PCI-DSS requirements for payment data protection.
+- Use **mute by extension** for simple single-call scenarios where you don't have the ivrid handy.
+- The `ivrid` for a live call is available from the **Real-Time API** (`ExtensionEvent`) or from the **Click2Call** response `CALLID`.
+- Mute state is reflected in:
+  - `recording.IsMuted` field in Real-Time `ExtensionEvent`
+  - `isMuted` field in Pop-Up Screen webhook payload
+  - The CDR recording metadata after the call ends
+- Compliant with **PCI-DSS** requirements for protecting cardholder data during voice transactions.
+
+## Related Skills
+
+- **Real-Time API** — Get `ivrid` of the current live call and monitor mute state changes
+- **Click2Call** — The `CALLID` returned is the same as `ivrid` for mute requests
+- **Active Calls** — `recording.IsMuted` field shows current mute state per extension
+- **Pop-Up Screen** — `isMuted` field in the popup payload reflects real-time recording state
