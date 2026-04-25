@@ -18,7 +18,6 @@
       "author": { "name": "Voicenter" },
       "homepage": "https://mcp01.voicenter.co/mcp",
       "license": "MIT",
-      "icon": "https://www.voicenter.com/favicon.ico",
       "category": "integrations",
       "keywords": ["voicenter", "mcp", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
     },
@@ -30,7 +29,6 @@
       "author": { "name": "Voicenter" },
       "homepage": "https://www.voicenter.com/API",
       "license": "MIT",
-      "icon": "https://www.voicenter.com/favicon.ico",
       "category": "integrations",
       "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
     }
