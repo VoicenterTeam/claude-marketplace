@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2026-04-26
+
+### Fixed
+- Bump to force plugin cache refresh — 1.1.0 update was not re-syncing SKILL.md files
+
 ## [1.1.0] - 2026-04-26
 
 ### Fixed
