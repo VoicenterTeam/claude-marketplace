@@ -1,4 +1,5 @@
 ---
+name: real-time
 description: Connect to Voicenter real-time call and agent events via the EventsSDK (socket.io)
 ---
 

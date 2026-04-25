@@ -1,4 +1,5 @@
 ---
+name: setup
 description: Connect Claude Code to the Voicenter MCP server using OAuth authentication
 ---
 

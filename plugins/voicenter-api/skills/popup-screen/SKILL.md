@@ -1,4 +1,5 @@
 ---
+name: popup-screen
 description: Implement a Pop-Up Screen endpoint that Voicenter calls during incoming calls to display caller CRM data to agents
 ---
 

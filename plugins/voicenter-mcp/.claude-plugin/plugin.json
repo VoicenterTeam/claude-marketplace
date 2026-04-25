@@ -2,7 +2,6 @@
   "name": "voicenter-mcp",
   "description": "Live Voicenter API access via MCP server at mcp01.voicenter.co",
   "version": "1.0.0",
-  "skills": "./skills/",
   "mcpServers": {
     "voicenter": {
       "type": "http",

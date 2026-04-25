@@ -1,4 +1,5 @@
 ---
+name: voicebot
 description: Build a VoiceBot data endpoint that the Voicenter Voice Agent calls mid-conversation to fetch dynamic CRM data
 ---
 
