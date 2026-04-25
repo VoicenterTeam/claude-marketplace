@@ -1,4 +1,5 @@
 ---
+name: productive-dialer
 description: Manage auto-dialer campaigns via the Voicenter Dialer API — add/remove destinations, control campaigns, manage agents
 ---
 

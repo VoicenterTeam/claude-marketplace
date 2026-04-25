@@ -1,4 +1,5 @@
 ---
+name: cdr-notification
 description: Receive and handle CDR push notifications from Voicenter after every call ends
 ---
 

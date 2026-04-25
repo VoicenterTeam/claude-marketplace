@@ -1,4 +1,5 @@
 ---
+name: blacklist
 description: Add or remove phone numbers from the Voicenter organization blacklist
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: login-logout
 description: Set agent login/logout and status via the Voicenter Login/Logout API
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: mute-recording
 description: Mute or unmute call recording in real time via the Voicenter Mute Call Recording API
 ---
 

@@ -1,4 +1,5 @@
 ---
+name: extension-list
 description: Retrieve the full list of active extensions and users in a Voicenter organization
 ---
 

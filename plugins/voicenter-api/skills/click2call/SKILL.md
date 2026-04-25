@@ -1,4 +1,5 @@
 ---
+name: click2call
 description: Initiate or terminate outgoing calls using the Voicenter Click2Call API
 ---
 

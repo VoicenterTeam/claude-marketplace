@@ -1,4 +1,5 @@
 ---
+name: external-layer
 description: Build an External Layer IVR endpoint that lets Voicenter route inbound calls based on your CRM business logic
 ---
 
