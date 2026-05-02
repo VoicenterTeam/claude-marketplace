@@ -13,6 +13,9 @@ Official Claude Code plugins for integrating the Voicenter telephony platform in
 
 # 3. Install the API skills plugin (integration guides for all 14 APIs)
 /plugin install voicenter-api@voicenter
+
+# 4. (Optional) Install the bot-builder plugin (design Voicenter Bots end-to-end)
+/plugin install voicenter-bot-builder@voicenter
 ```
 
 ---
@@ -47,6 +50,18 @@ Each skill teaches Claude exactly how to help you build a specific Voicenter API
 | `/login-logout` | In/Out | Set agent login/logout and status from your CRM |
 | `/lead-tracker` | Incoming | Track which marketing campaign generated each call (JS SDK) |
 | `/active-calls` | In/Out | Snapshot of all live calls and queue activity |
+
+---
+
+### `voicenter-bot-builder` — 3-skill Bot Authoring Pipeline
+
+Design and emit deployable Voicenter Bot JSON through a guided interview. Build-time tooling — used once per bot, not per call. Hands off through one shared `agent-spec.md` file.
+
+| Skill | Phase | Purpose |
+|---|---|---|
+| `/voicenter-bot-spec-designer` | 1 — Structural | Interview-driven design: identity, persona, intent graph, slots, RT specifics |
+| `/voicenter-bot-intent-detail-author` | 2 — Per-intent language | Slot descriptions, validationPrompt, RT-specific announcements, post-execution instructions (Conversation Routines style) |
+| `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs §15.4 cross-reference (7 blocking checks); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
 
 ---
 
