@@ -1,0 +1,808 @@
+---
+name: voicenter-bot-json-assembler
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 7 checks, all blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+---
+
+# Skill 3 — JSON Assembler & Publish
+
+This skill produces the **deployable Bot JSON** by mechanically projecting a fully-detailed Agent Spec into Voicenter wire-format. It is the third and final skill in the Voicenter Bot generation pipeline:
+
+- **Skill 1 (Agent Spec Designer):** structural design via interview → fills sections 1, 2, 3, 4, 4.5; creates section 5 stubs marked `[structural]`.
+- **Skill 2 (Intent Detail Author):** language-heavy per-intent content → fills section 5 entries, marks them `[detailed]`.
+- **Skill 3 (this skill):** mechanical assembly of spec → wire-format JSON.
+
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. It does not best-effort interpret ambiguous spec content; if the spec deviates from the strict template, Skill 3 reports a structured parse error and refuses to assemble. The entire skill architecture depends on Skill 3 being deterministic — if Skill 3 interprets, "what JSON does this spec produce?" depends on Skill 3's mood, and the source-of-truth contract dies. Discipline is the design.
+
+The risk vector for this skill is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations, deciding RT-specific defaults the spec didn't specify. The anti-list (§8) is the longest and most opinionated section — read it before doing anything else.
+
+---
+
+## 1. Required reading at invocation
+
+Before touching the spec, load context from these references.
+
+| Read | Why |
+|---|---|
+| Doc 1 §4 — Bot top-level wrapper | Mapping for spec section 1 root fields |
+| Doc 1 §5 — `ActiveVersionInfo` envelope | Mapping for version-level fields |
+| Doc 1 §6 — The two `AIModelConfig` objects | Top-level vs version-level + `created` payload duplication |
+| Doc 1 §7 — Crosswalk: training-doc → JSON paths | Field-name reconciliation reference |
+| Doc 1 §8 — `intentList` six parallel collections | The bulk of assembly |
+| Doc 1 §9 — `intents[]` 16-field skeleton | Per-intent shape |
+| Doc 1 §10 — `IntentParameters` slot definitions | Per-slot shape |
+| Doc 1 §11 — `ResponseTypeId` reference (RT=1/2/3/4) | RT-specific Configuration assembly (§4.4) |
+| Doc 1 §11.2 — RT=2 pairing rule | Cross-reference check 5 + 6 |
+| Doc 1 §12 — `ParameterTypeId` catalog | Slot type emission |
+| Doc 1 §13 — Mustache + variable categories | Cross-reference check 7 |
+| Doc 1 §15.3 — ID placeholder strategy (Option A) | §4.1 allocation |
+| Doc 1 §15.4 — Cross-reference pass spec | §6 — the seven checks |
+| Doc 1 §16 — Schema quirks summary | §4.5 + Appendix A |
+| Doc 2 §3.7 — Strict-template enforcement | §3 parse rules |
+| Doc 2 §6 — Skill 3 architecture | Everything in this file implements this |
+| Doc 2 §7.5 — Routing failures back | Appendix B |
+| `locked-decisions.md` decision B | Sentinel strategy |
+| `locked-decisions.md` decision M | Section 4.5 inventory drives Mustache check |
+
+Also load this file from Skill 1's package:
+
+- `skills/voicenter-bot-spec-designer/model-catalog.md` — required for resolving named catalog entries to `AIModelConfigID` / `AIModelTypeId` and provider model string (§4.2.3).
+
+Skill 3 does **not** load Skill 2's `conversation-routines-style-guide.md`. The style of `validationPrompt` and `intentInstructions` text is Skill 2's concern; Skill 3 emits the text verbatim from the spec, regardless of style.
+
+---
+
+## 2. Setup
+
+### 2.1 Detect runtime
+
+| Signal | Runtime |
+|---|---|
+| Conversation in claude.ai or mobile app, no workspace file system, no `agent-spec.md` accessible | **Single-conversation** |
+| Workspace file system available (Claude Code), `agent-spec.md` readable as a file | **Claude Code** |
+
+State the detected runtime. The user can correct.
+
+### 2.2 Read the spec
+
+**Single-conversation:** read backward through the conversation context to find the most recent spec emission. The spec is identifiable by its `## 1. Bot Identity` header and `## 7. Generation Metadata` footer. If both Skill 1 and Skill 2 ran in this conversation, take the most recent (Skill 2's output).
+
+**Claude Code:** read `agent-spec.md` from the workspace (or whatever filename the user references).
+
+**No spec found:** abort with: *"No Agent Spec found. Skill 3 requires a fully-detailed spec produced by Skill 1 → Skill 2. Invoke Skill 1 (Agent Spec Designer) first."*
+
+### 2.3 Pre-flight gates
+
+Two gates run before any assembly work. Both are blocking. Refusal at either gate emits a clear message and halts; no JSON is produced.
+
+#### Gate A — Completeness
+
+Walk section 5. Count entries with status `[structural]` or `[detailed-revisit]`. If the count is greater than zero, refuse:
+
+> Skill 3 will not assemble an incomplete spec. Section 5 has [N] intents still pending: [list with status per intent]. Run **Skill 2 (Intent Detail Author)** to detail them, then re-invoke Skill 3.
+
+The list shows identifier + status (e.g., `validate_customer_address [structural]`, `confirm_appointment [detailed-revisit]`), not detail level.
+
+Cross-check against section 7.5 (which Skill 2 maintains). If 7.5 says zero pending but section 5 has pending entries, that's a Skill 2 bookkeeping bug — surface it: *"Spec inconsistency: section 7.5 reports 0 pending, but section 5 has [N] intents in non-detailed state. Re-run Skill 2 once to refresh, then re-invoke Skill 3."*
+
+#### Gate B — Parseability
+
+Run the strict-template parser (§3) over the spec. The first deviation halts parsing and produces a structured error. No partial assembly.
+
+Parseability is checked before completeness in cases where the file is malformed at the section-header level (e.g., section headers missing entirely) — in that case, Skill 3 cannot even tell which intents are pending. Practical order: try a quick scan for the seven `## N.` section headers first; if they're missing, Gate B fires first. If headers are present, Gate A fires first.
+
+---
+
+## 3. Strict-template parsing
+
+### 3.1 The deterministic parse principle
+
+The Agent Spec template is documented in Doc 2 §3 and codified in Skill 1's `spec-skeleton.md`. Skill 3 reads it as a fixed grammar — no synonyms, no flexibility, no creative tolerance.
+
+Specifically, the parser expects:
+
+- **Section headers exact:** `## 1. Bot Identity`, `## 2. Persona Bundle`, `## 3. Caller Silence Behavior`, `## 4. Intent List (Structural)`, `## 4.5 Available Variables`, `## 5. Intent Details`, `## 6. Cross-References`, `## 7. Generation Metadata`. Exact strings, exact numbering, exact punctuation. `## 1: Bot Identity` is a parse error. `## Bot Identity` is a parse error.
+- **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`. Bold markdown around the colon-terminated label, exactly as written.
+- **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms (e.g., `[done]`, `[in progress]`).
+- **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. The angle-bracket format is not optional; `(UNKNOWN: ...)` is a parse error.
+- **Intent header in section 4:** `### Intent N: <identifier>` where N is the 1-based ordinal and identifier is snake_case. The number determines section 4 ordering (used for first-intent start-marker logic in `botIntents[]`).
+- **Intent header in section 5:** `### Intent: <identifier>` (no ordinal). Identifier matches a section 4 entry.
+- **Slot lines in section 4:** numbered list under `**Slots:**` heading, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM]`.
+- **Transition lines in section 4:** numbered list under `**Transitions out:**` heading, each item is a target intent identifier optionally followed by a parenthetical role label (e.g., `1. get_available_slots (success path)`).
+- **RT-specific sub-labels in section 4:** for RT=1 intents, `**Layer:**` followed by an integer. For RT=2 intents, `**URL:**`, `**Method:**`, `**Headers:**`, `**Body:**`, and `**API silence behavior:**` (the silence block has six sub-bullets exact: `silence_duration:`, `silence_loops:`, `silence_sentence:`, `silence_ending_sentence:`, `silence_instructions:`, `fallback intent:`). For RT=3 intents, the RT-specific block is empty (no sub-bullets). For RT=4 intents, `**Dial source:**` (`parameter` | `static`), then either `**Parameter phone:**` (slot identifier, when dial-source=parameter) or `**Phone1:** / **Phone2:** / **Phone3:**` (when dial-source=static); plus `**selectdial_option:**`, `**NEXT_VO_ID:**`, `**MAX_DIAL_DURATION:**`, `**Record:**`, optional `**Announcement:**` / `**Loading announcement:**` / `**Post-execution intent instructions:**`, and `**Response success:**` (object with `instructions` key).
+
+### 3.2 Parse error format
+
+When a deviation is detected, halt and emit:
+
+```
+Skill 3 parse error.
+
+Location: line <N> in <spec source>
+Section: <section number, e.g., 4>
+Expected: <pattern>
+Found: <actual content, truncated to one line>
+
+Fix: <one-line hint about the fix>
+
+Skill 3 will not assemble. Re-run Skill 1 patch mode (if the spec was hand-edited or structurally invalid) or fix the deviation manually, then re-invoke Skill 3.
+```
+
+The `<spec source>` is the conversation message reference (single-conv) or the file path (Claude Code). Line numbers are within that source.
+
+Skill 3 does not attempt to interpret around the deviation. It does not emit a partial JSON. It does not flag and continue. One deviation, one error, one halt.
+
+### 3.3 Common deviations and example messages
+
+These are illustrative — the parser is grammar-driven, not pattern-matched, so anything off-grammar surfaces. The examples here are the most common shapes the user will see.
+
+| Deviation | Example error |
+|---|---|
+| Missing section header | `Expected: '## 4. Intent List (Structural)'. Found: '## Intent List'. Fix: restore the section number and exact heading.` |
+| Bold field label punctuation off | `Expected: '**Bot Name:** <value>'. Found: 'Bot Name: <value>'. Fix: wrap the label in bold markdown.` |
+| Unknown marker shape wrong | `Expected: '<UNKNOWN: <description>>'. Found: '(UNKNOWN: ...)'. Fix: use angle brackets and the literal token UNKNOWN.` |
+| Status marker synonym | `Expected: one of '[structural]', '[detailed]', '[detailed-revisit]'. Found: '[done]'. Fix: re-run Skill 2 to set the canonical marker.` |
+| Intent identifier in section 5 has no match in section 4 | `Section 5 entry 'verify_caller_id' has no matching intent in section 4. Fix: re-run Skill 1 patch mode to add the intent or remove the orphan section 5 entry.` |
+| Section 4 reference to undeclared transition target | `Intent 'validate_customer_address' transitions to 'get_slots', but no intent 'get_slots' exists in section 4 (closest match: 'get_available_slots'). Fix: re-run Skill 1 patch mode to correct the transition target.` |
+| Spec ends mid-intent (truncated upload) | `Section 5 entry 'confirm_appointment' has no closing structure (no following section 6 header). Fix: re-attach the complete spec.` |
+| RT-specific sub-label punctuation off | `Expected: '**URL:** <value>'. Found: 'URL: <value>'. Fix: wrap the sub-label in bold markdown.` |
+
+The transition-target check (last two rows) blurs into cross-reference territory — it's caught at parse time because it's a dangling identifier discoverable from sections 4-5 alone, and Skill 3 already has the data. Treating it as a parse error rather than waiting for §15.4 lets the user fix one thing at a time.
+
+---
+
+## 4. Spec-to-wire-format assembly
+
+Run only if both pre-flight gates pass and the parser succeeds. Assembly happens in memory; nothing is emitted until §6 (cross-reference pass) also passes.
+
+### 4.1 ID placeholder allocation
+
+Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-coded so the kind of ID is identifiable at a glance.
+
+| ID kind | Placeholder range | Allocation rule |
+|---|---|---|
+| `BotID` | `-1` | Single value |
+| `BotVersionId` | `-2` | Single value |
+| `IntentCategoryId` | `-3` | Single default category |
+| `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering (Intent 1 → -10, Intent 2 → -11, ...) |
+| `BotIntentID` | `-100, -101, -102, ...` | One per intent, same ordering |
+| `ParameterId` | `-1000, -1001, -1002, ...` | One per slot, walked intent-by-intent then slot-by-slot |
+
+`AccountID` is **user-supplied** (spec section 1). If the spec marks `<UNKNOWN: Account ID>`, emit the sentinel `-999` per §4.6.
+
+`AIModelConfigID` and `AIModelTypeId` come from spec section 1 + the model catalog (§4.2.3). If the catalog has TODO placeholders or the spec marks them unknown, emit `-999` sentinels.
+
+**Allocation procedure:**
+
+1. Walk section 4 in order. For each intent: assign `IntentId` from the `-10` series and `BotIntentID` from the `-100` series. Cache the mapping `<identifier> → (IntentId, BotIntentID)`.
+2. Within each intent's section 5 entry, walk slots in `Order` value. For each slot: assign `ParameterId` from the `-1000` series. Cache the mapping `<intent identifier>.<slot name> → ParameterId`.
+3. Emit `BotID = -1`, `BotVersionId = -2`, `IntentCategoryId = -3` as fixed values.
+
+The cached mappings are used in §4.3 wherever an ID is referenced (transition rows, parameter parent-ID, api-silence relations, botIntents references).
+
+The numerical ranges are wide so a human reading the JSON can identify what kind of ID a placeholder represents at a glance. Real platform-assigned IDs after import will be positive integers, so there's no collision risk on re-export.
+
+### 4.2 Top-level wrapper and version envelope
+
+#### 4.2.1 Top-level fields (spec section 1 → root)
+
+| Spec field | Wire-format path | Source |
+|---|---|---|
+| Bot Name | `<root>.Name` | Direct copy |
+| Description | `<root>.Description` | Direct copy |
+| (allocated) | `<root>.BotID` | `-1` |
+| Account ID | `<root>.AccountID` | Direct copy, or `-999` sentinel if `<UNKNOWN>` |
+| (constant) | `<root>.BotStatusId` | `1` (per Doc 1 §4) |
+| (constant) | `<root>.BotLanguages` | `[]` (preserved per §16, even though the bot has a language elsewhere) |
+| (generated) | `<root>.CreatedDate` | ISO timestamp at assembly time, format `"YYYY-MM-DD HH:MM:SS"` |
+| (constant) | `<root>.ModifiedDate` | `null` (no modifications yet) |
+| (resolved) | `<root>.AiModelConfig` | §4.2.3 below |
+| (assembled) | `<root>.ActiveVersionInfo` | §4.2.2 below |
+| (assembled) | `<root>.intentList` | §4.3 below |
+
+#### 4.2.2 `ActiveVersionInfo` envelope
+
+| Wire-format path | Value |
+|---|---|
+| `BotVersionId` | `-2` (placeholder) |
+| `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
+| `BotVersionStatusId` | `3` (per Doc 1 §5) |
+| `IsActive` | `1` |
+| `Description` | `""` (matches both production samples) |
+| `CreatedDate` | Same ISO timestamp as root |
+| `ModifiedDate` | `null` |
+| `SystemPrompt` | `""` (preserved per §16; NOT the same as the bot's system prompt, which lives in `AIModelConfig.prompts`) |
+| `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
+| `AIModelConfig` | §4.2.3 + 4.2.4 + 4.2.5 below |
+
+#### 4.2.3 The two `AIModelConfig` objects
+
+Doc 1 §6 defines two distinct objects with confusingly similar names. Both must be emitted, and their `created` payloads must be **identical**.
+
+**Top-level `<root>.AiModelConfig`** (catalog reference, Doc 1 §6.A):
+
+| Field | Source |
+|---|---|
+| `AIModelConfigID` | From `model-catalog.md` if spec section 1 names a catalog entry; from spec if `raw: ID=N, TypeID=M`; `-999` if unknown |
+| `Name` | From `model-catalog.md` "Display name"; `<USER_TO_FILL: model_config_name>` if raw override |
+| `Description` | From `model-catalog.md` "Notes" if available; `null` otherwise |
+| `BaseUrl` | `null` (matches both production samples) |
+| `AIModelTypeId` | Same source rule as `AIModelConfigID` |
+| `Type` | `{ "AIModelTypeId": <id>, "Name": <type name>, "Description": null }` — type name is the catalog entry's display name; `null` if unknown |
+| `created` | The runtime LLM API payload; see §4.2.4 below |
+
+**Version-level `<root>.ActiveVersionInfo.AIModelConfig`** (runtime config, Doc 1 §6.B):
+
+| Field | Source |
+|---|---|
+| `prompts` | §4.2.4 below |
+| `created` | **Identical** to `<root>.AiModelConfig.created` (same object; per §16 quirk, both are required) |
+| `silence_behaviour` | §4.2.5 below; omitted entirely if spec section 3 is `[not configured]` |
+| `tools` | `[]` (preserved per §16) |
+| `instructions` | `""` (preserved per §16) |
+
+#### 4.2.4 The `created` payload (provider config) and `prompts` bundle
+
+The `created` payload mirrors the Gemini Live setup format. v1 emits a known-good baseline with language code and voice name substituted from the spec; other generation params use defaults.
+
+| Wire-format path | Source |
+|---|---|
+| `model` | From `model-catalog.md` "Provider model string"; `<USER_TO_FILL: provider_model_string>` if raw override |
+| `generationConfig.temperature` | `1.5` (default; matches both production samples) |
+| `generationConfig.topP` | `0.95` (default) |
+| `generationConfig.topK` | `64` (default) |
+| `generationConfig.responseModalities` | `["AUDIO"]` |
+| `generationConfig.speechConfig.languageCode` | Direct copy from spec section 1 "Primary Language" |
+| `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | Direct copy from spec section 1 "Voice Name"; omit `voiceConfig` entirely if no voice channel |
+| `generationConfig.proactivity` | `{}` (default; provider-specific, leave empty unless spec extends) |
+| `generationConfig.thinkingConfig` | `{}` (default) |
+| `systemInstruction` | `{ "parts": [{ "text": "" }] }` (provider format wrapper, empty in production samples) |
+| `tools` | `[]` |
+
+The banner (§7.2) notes that the generation params (`temperature`, `topP`, `topK`, etc.) are v1 defaults and may need adjustment; Skill 3 does not invent custom values.
+
+The `prompts` bundle (§4.2.4 path: `ActiveVersionInfo.AIModelConfig.prompts`) maps from spec section 2 directly:
+
+| Wire-format path | Spec source |
+|---|---|
+| `prompts.persona` | Section 2.1 verbatim |
+| `prompts.voiceInstructions` | Section 2.2 verbatim (whether user-authored or `[default — not user-authored]` template content) |
+| `prompts.chatInstructions` | Section 2.3 verbatim |
+| `prompts.intentInstructions` | Section 2.4 verbatim (the **bot-level** opening/disambiguation instructions, NOT per-intent) |
+| `prompts.openingAnnouncement` | Section 2.5 verbatim |
+
+If the spec marks any of these `<UNKNOWN>`, emit the empty string `""` and add the field path to the banner. (Empty `prompts.persona` is a known §14.3.1 anti-pattern — the banner makes it visible.)
+
+#### 4.2.5 `silence_behaviour` (spec section 3, conditional)
+
+If section 3 reads `[not configured]`: **omit** the entire `silence_behaviour` field from `ActiveVersionInfo.AIModelConfig`. Do not emit it as `null`, do not emit it as `{}`. Refua's production sample omits it entirely; Skill 3 follows that pattern.
+
+If section 3 has the four fields populated: emit them direct field-to-field.
+
+| Wire-format path | Spec source |
+|---|---|
+| `silence_behaviour.silence_duration` | Section 3 `silence_duration` |
+| `silence_behaviour.silence_loops` | Section 3 `silence_loops` |
+| `silence_behaviour.silence_sentence` | Section 3 `silence_sentence` |
+| `silence_behaviour.silence_ending_sentence` | Section 3 `silence_ending_sentence` |
+
+### 4.3 `intentList` assembly (sections 4 + 5 → six parallel collections)
+
+Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. Skill 3 builds them from the cached ID map (§4.1) and section 4-5 content.
+
+#### 4.3.1 `intents[]`
+
+For each section 4 intent (in order), build a 16-field entry per Doc 1 §9.0:
+
+| Wire-format field | Spec source (or default) |
+|---|---|
+| `IntentId` | Cached `<identifier> → IntentId` placeholder |
+| `Name` | Section 4 "Display name" |
+| `Description` | Section 4 "Description" |
+| `IntentToolName` | Section 4 "Tool name" (= identifier) |
+| `HandlingInstructions` | `null` (preserved per §16) |
+| `IsSilenceIntent` | `false` (v1 doesn't generate silence-handler intents) |
+| `IntentCategoryId` | `-3` (the single default category) |
+| `Priority` | `1` (per Doc 1 §9.0) |
+| `MaxAttempts` | `3` (per Doc 1 §9.0) |
+| `ValidationTimeout` | `30` (per Doc 1 §9.0) |
+| `IntentParameters` | §4.3.2 below |
+| `IntentConfig.prompts.llmDescription` | `""` (preserved per §16) |
+| `IntentConfig.prompts.validationPrompt` | Section 5 "Validation Prompt" verbatim |
+| `IntentScripts` | `{}` (preserved per §16) |
+| `IntentResponces` | §4.4 below |
+| `IsActive` | `1` |
+| `IsDeleted` | `0` |
+
+#### 4.3.2 `IntentParameters[]` (per intent, slot list)
+
+For each slot in section 5 (or section 4 if section 5 didn't add details — but a `[detailed]` entry will have):
+
+| Wire-format field | Spec source (or default) |
+|---|---|
+| `ParameterId` | Cached `<intent>.<slot> → ParameterId` placeholder |
+| `IntentId` | Cached `<intent> → IntentId` placeholder (parent backreference) |
+| `Name` | Slot name |
+| `Description` | Section 5 slot description |
+| `IsRequired` | Slot required flag |
+| `DefaultValue` | Slot default value, or `null` |
+| `CollectionOrder` | Slot order |
+| `ParameterTypeId` | Slot type ID (1, 10, 16, or 19 per Doc 1 §12) |
+| `ParameterType` | `{ "ParameterTypeId": <id>, "Name": <type name> }` — denormalized echo per Doc 1 §10 |
+| `OptionList` | Slot option list (for ENUM); `[]` for other types |
+| `ValidationRules` | `{}` (preserved per §16) |
+| `ValidationPattern` | `null` (preserved per §16) |
+| `IsActive` | `1` |
+| `IsDeleted` | `0` |
+
+#### 4.3.3 `botIntents[]`
+
+One entry per intent in section 4 ordering. Per Doc 1 §8.2:
+
+| Wire-format field | Value |
+|---|---|
+| `BotIntentID` | Cached `<identifier> → BotIntentID` placeholder |
+| `BotID` | `-1` (mirror of root) |
+| `IntentID` | Cached `<identifier> → IntentId` placeholder |
+| `BotIntentTypeID` | `1` (per Doc 1 §8.2 — v1 always emits 1 for every entry; the only observed value across both production samples) |
+| `ConditionGroupList` | `[]` (preserved per §16) |
+
+#### 4.3.4 `intentRelations[]`
+
+For each section 4 row's "Transitions out" list, emit one entry per transition. Origin = the row's intent; Next = each target identifier; Order = the 1-based position in the transitions list.
+
+| Wire-format field | Source |
+|---|---|
+| `OriginIntentID` | Cached `<origin identifier> → IntentId` |
+| `NextIntentID` | Cached `<target identifier> → IntentId` |
+| `IntentRelatedID` | Same as `NextIntentID` (per Doc 1 §8.3 observation: junction ID often duplicates `NextIntentID`) |
+| `Order` | 1-based position in the transitions list |
+| `ConditionGroupList` | `[]` (preserved per §16) |
+
+A "terminal" intent (typically `transfer_to_human` with RT=1) has zero outgoing transitions in section 4 — Skill 3 emits zero `intentRelations[]` rows with that intent as `OriginIntentID`. The platform handles call termination.
+
+#### 4.3.5 `intentCategories[]`
+
+Single default category, all intents reference it:
+
+| Wire-format field | Value |
+|---|---|
+| `IntentCategoryId` | `-3` |
+| `BotID` | `-1` |
+| `Name` | `"Default Category"` (matches both production samples per Doc 1 §8.4) |
+
+#### 4.3.6 `silenceRelations[]`
+
+`[]` (per Doc 1 §8.5 + §16; v1 always empty).
+
+#### 4.3.7 `apiSilenceRelations[]`
+
+For each RT=2 intent in section 4 ordering, emit one entry. The `Configuration` is **identical** to the same intent's `IntentResponces.Configuration.api_silence_behaviour` (the duplication rule per Doc 1 §11.2).
+
+| Wire-format field | Source |
+|---|---|
+| `OriginIntentID` | Cached `<RT=2 intent identifier> → IntentId` |
+| `ApiSilenceIntentID` | Cached `<fallback intent from spec section 5> → IntentId` |
+| `Configuration.silence_duration` | Section 5 "API silence behavior — silence_duration" |
+| `Configuration.silence_loops` | Section 5 "API silence behavior — silence_loops" |
+| `Configuration.silence_sentence` | Section 5 verbatim |
+| `Configuration.silence_ending_sentence` | Section 5 verbatim |
+| `Configuration.silence_instructions` | Section 5 verbatim (often empty `""`) |
+| `Configuration.intent` | Same value as `ApiSilenceIntentID` (mirror per Doc 1 §8.6) |
+
+If a non-RT=2 intent has API silence behavior in its section 5 entry, that's a Skill 2 bug — Skill 3 ignores it (RT determines whether the entry is emitted; non-RT=2 intents don't get `apiSilenceRelations[]` rows). The cross-reference pass §15.4 check 5 only fires the other way: RT=2 missing the pairing.
+
+### 4.4 RT-specific `IntentResponces.Configuration`
+
+Per intent, branch on `Response Type` (section 4) to assemble the correct `Configuration` shape. Doc 1 §11 has the per-RT field tables; the rules below codify Skill 3's behavior including unknowns.
+
+#### RT=1 — Layer Transfer (terminal)
+
+| Wire-format field | Source |
+|---|---|
+| `ResponseTypeId` | `1` |
+| `Configuration.layer` | Section 5 "Layer" — integer if specified; `-999` sentinel if `<UNKNOWN: layer ID>` |
+| `Configuration.announcement` | Section 5 "Announcement" verbatim |
+| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
+
+RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a terminal intent has no meaning per Doc 1 §11.5).
+
+#### RT=2 — API Call
+
+| Wire-format field | Source |
+|---|---|
+| `ResponseTypeId` | `2` |
+| `Configuration.url` | Section 5 "URL"; `<USER_TO_FILL: webhook_url>` if `<UNKNOWN>` |
+| `Configuration.method` | Section 5 "Method" (`"POST"` or `"GET"`) |
+| `Configuration.headers` | Section 5 "Headers" object; `{}` if not specified |
+| `Configuration.body` | Section 5 "Body" object verbatim (Mustache references resolved at runtime by the platform, not by Skill 3) |
+| `Configuration.apiResponseAnnouncement` | Section 5 verbatim |
+| `Configuration.fail_output` | Section 5 verbatim |
+| `Configuration.function_output` | Section 5 verbatim |
+| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
+| `Configuration.IntentLoadingAnnouncement` | **Identical** content to `intentLoadingAnnouncement` (the casing-bug pair per §16) |
+| `Configuration.intentInstructions` | Section 5 "Post-Execution Intent Instructions" verbatim |
+| `Configuration.api_silence_behaviour` | The same object emitted in `apiSilenceRelations[]` (§4.3.7) — the embedded copy |
+| `Configuration.response_success` | `""` (preserved per §16) |
+
+The `api_silence_behaviour` and the corresponding `apiSilenceRelations[]` registry entry must be **content-identical** — cross-reference check 6 (§6.2) verifies this on the assembled structure. Since Skill 3 emits both from the same spec source, they should always match by construction. Check 6 catches Skill 3 implementation bugs, not spec content errors.
+
+#### RT=3 — Continue
+
+| Wire-format field | Source |
+|---|---|
+| `ResponseTypeId` | `3` |
+| `Configuration.announcement` | Section 5 "Announcement" verbatim |
+| `Configuration.intentInstructions` | Section 5 "Post-Execution Intent Instructions" verbatim |
+| `Configuration.response_success` | `""` (preserved per §16) |
+
+#### RT=4 — Dial-Out
+
+RT=4 has two operating modes selected by section 4 `**Dial source:**`. Both modes emit the same Configuration shape; specific fields are populated or left empty per mode.
+
+| Wire-format field | Source |
+|---|---|
+| `ResponseTypeId` | `4` |
+| `Configuration.phone1` | Section 4 `**Phone1:**` (E.164 with leading `+`) when dial-source=static; `""` when dial-source=parameter |
+| `Configuration.phone2` | Section 4 `**Phone2:**` when dial-source=static; `""` when dial-source=parameter |
+| `Configuration.phone3` | Section 4 `**Phone3:**` when dial-source=static; `""` when dial-source=parameter; `<USER_TO_FILL: phone3>` if static and `<UNKNOWN>` |
+| `Configuration.parameter_phone` | Section 4 `**Parameter phone:**` (slot identifier) when dial-source=parameter; key omitted when dial-source=static |
+| `Configuration.selectdial_option` | Section 4 `**selectdial_option:**` — literal string `"Parameter"` when dial-source=parameter; key omitted (or set to user's literal value) when dial-source=static |
+| `Configuration.NEXT_VO_ID` | Section 4 `**NEXT_VO_ID:**` (int); `-999` sentinel if `<UNKNOWN>` |
+| `Configuration.MAX_DIAL_DURATION` | Section 4 `**MAX_DIAL_DURATION:**` (int seconds) |
+| `Configuration.record` | Section 4 `**Record:**` (boolean) |
+| `Configuration.announcement` | Section 4 `**Announcement:**` verbatim; key omitted if absent in spec |
+| `Configuration.intentLoadingAnnouncement` | Section 4 `**Loading announcement:**` verbatim; key omitted if absent |
+| `Configuration.intentInstructions` | Section 4 `**Post-execution intent instructions:**` verbatim; emit `""` if absent (parallel to RT=2/RT=3 §16 convention) |
+| `Configuration.response_success` | Section 4 `**Response success:**` object (e.g., `{ "instructions": "<text>" }`); emit `{}` if absent |
+
+**Empty-phone handling.** A spec entry of `""` for `Phone1`, `Phone2`, or `Phone3` is preserved as `""` in the JSON — the dialer's runtime contract is "try in order, skip empties." Do not coerce empty phones to `null` and do not collapse the keys.
+
+### 4.5 Quirk preservation
+
+Walk Appendix A. For every quirk in the table, ensure the assembled wire structure has the exact form prescribed. This is a verification pass against the in-memory structure — if any quirk is absent or mis-emitted, that's a Skill 3 implementation bug, halt and report.
+
+In normal operation, §4.2-4.4 already produce all quirks correctly. §4.5 is the verification gate that catches drift between the emission code and the §16 contract.
+
+The full 14-row checklist is in Appendix A.
+
+### 4.6 Sentinel emission for unknowns
+
+Walk spec section 7.4. For each unknown marker, the corresponding wire-format field has already received a sentinel during §4.2-4.4. §4.6 is the bookkeeping pass:
+
+1. Build the **sentinel inventory**: for each `<UNKNOWN: ...>` marker in section 7.4, identify the wire-format JSON path that received the sentinel and the sentinel value emitted.
+2. Build the **disagreement list**: any `<UNKNOWN: ...>` in section 7.4 that did not produce a sentinel (Skill 1/2 staged the unknown but Skill 3 didn't find a wire-format slot for it), or any sentinel emitted at §4.2-4.4 that is not in section 7.4 (Skill 3 found an unknown the spec didn't track).
+3. Both lists feed the banner (§7.2). The sentinel inventory is the user's pre-import checklist; the disagreement list is a soft warning about spec/skill drift.
+
+**Sentinel format reference:**
+
+| Spec marker shape | Wire-format emission |
+|---|---|
+| `<UNKNOWN: webhook_url>` (string field) | `"<USER_TO_FILL: webhook_url>"` |
+| `<UNKNOWN: layer ID>` (integer ID field) | `-999` |
+| `<UNKNOWN: NEXT_VO_ID>` (integer field) | `-999` |
+| `<UNKNOWN: phone destination>` (string) | `"<USER_TO_FILL: phone3>"` |
+| `<UNKNOWN: Account ID>` (integer ID) | `-999` |
+| `<UNKNOWN: AIModelConfigID>` (integer ID) | `-999` |
+| `<UNKNOWN: AIModelTypeId>` (integer ID) | `-999` |
+| `<UNKNOWN: AI Model Config>` (string name → triggers all model fields unknown) | `<USER_TO_FILL: ...>` for strings, `-999` for IDs across the whole `AiModelConfig` block |
+| `<UNKNOWN: <some object field>>` (object) | `{}` plus a banner note |
+| `<INCOMPLETE: ...>` (section partial) | Section emitted with available content; banner notes incompleteness |
+| `[not configured]` (whole-section omission) | Section omitted from JSON entirely |
+
+The sentinel value carries the field role (`webhook_url`, `phone3`, `model_config_name`) inside the placeholder text, so the banner's path-plus-value listing is self-documenting.
+
+---
+
+## 5. Section 6 regeneration sanity check
+
+After §4 assembly completes and before §6 cross-reference pass: regenerate spec section 6 (subsections 6.1–6.5) from sections 4-5 fully. Compare to the spec's existing section 6.
+
+| Subsection | Regeneration source |
+|---|---|
+| 6.1 Mustache variable usage | Walk every text field across sections 2 and 5 + section 4 RT=2 body; for each Mustache reference, record `(reference, location, resolution source)`. |
+| 6.2 Intent transition graph | Flatten section 4 transitions out → list of `(origin → next)` pairs. |
+| 6.3 RT=2 API silence pairings | For each RT=2 intent, the `apiSilenceRelations[]` registry entry that pairs with its embedded `api_silence_behaviour`. |
+| 6.4 Escalation paths | For each non-terminal intent, the transition row that points to escalation. |
+| 6.5 ID assignments | The `<identifier> → IntentId` mapping built in §4.1. |
+
+**Comparison logic:** subsection-by-subsection diff. Differences are normalized for whitespace and ordering before comparison — section 6 in spec is allowed to list entries in any order, since it's derivative.
+
+**Drift handling: soft warning, not blocking.** Section 6 is derivative; sections 4-5 are authoritative. If the regenerated 6 differs from the spec's 6, that's a signal that either (a) sections 4-5 were edited inconsistently after section 6 was generated (e.g., manual edits between Skill 1/2 invocations), or (b) Skill 1/2's section 6 update logic has a bug. Skill 3 doesn't auto-fix and doesn't block emission. It records the drift in the banner and section 7.3 generation log.
+
+The banner section "DRIFT NOTES" lists each subsection that drifted, with a one-line summary (e.g., `6.1: regenerated had 3 references the spec missed; 6.2: spec had 1 transition that no longer exists in section 4`).
+
+If the user cares enough about the drift to fix it, they invoke Skill 1 patch mode (which regenerates section 6 cleanly). Otherwise the JSON is still emitted from the authoritative sections 4-5.
+
+---
+
+## 6. The §15.4 cross-reference pass
+
+After §4 assembly and §5 sanity check: run all seven checks per Doc 1 §15.4. **All blocking.** Failure of any check halts emission. Per locked decision C.
+
+### 6.1 Order, timing, what each check operates on
+
+The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
+
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7. All seven run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time.
+
+### 6.2 The seven checks
+
+| # | Check | What it validates | Detection |
+|---|---|---|---|
+| 1 | `botIntents[].IntentID` resolves | Every `botIntents[].IntentID` matches an `intents[].IntentId`. | Build the set of `intents[].IntentId` values; for each `botIntents[i].IntentID`, verify membership. |
+| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. | Same set; verify membership for both endpoint fields. `IntentRelatedID` is not checked separately (it duplicates `NextIntentID` per Doc 1 §8.3). |
+| 3 | `apiSilenceRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `ApiSilenceIntentID` matches an `intents[].IntentId`. | Same set; verify membership. |
+| 4 | `intents[].IntentCategoryId` resolves | Every `intents[].IntentCategoryId` matches an `intentCategories[].IntentCategoryId`. | v1 has a single category (`-3`); check is trivial but explicit. |
+| 5 | RT=2 has `apiSilenceRelations[]` pairing | Every intent with `IntentResponces.ResponseTypeId = 2` has a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`. | Walk RT=2 intents; for each, verify a row exists. |
+| 6 | `api_silence_behaviour` matches `apiSilenceRelations[].Configuration` | For each RT=2 intent, the `IntentResponces.Configuration.api_silence_behaviour` content equals the corresponding `apiSilenceRelations[].Configuration` content. | Field-by-field deep equality on the 6 fields (`silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions`, `intent`). |
+| 7 | Mustache resolvability | Every Mustache reference (in any text field across the assembled structure) resolves: (a) collected by the same intent that uses it, OR (b) in 4.5.1+4.5.2 whitelist (call-context or env), OR (c) in 4.5.3 collected by an intent that is upstream of the using intent in the transition graph, OR (d) in 4.5.4 declared for the same RT=2 intent or an upstream RT=2 intent. | Walk every text field; extract Mustache tokens; for each, classify against (a)-(d). |
+
+**Check 7 specifics — the dotted-path validation depth:**
+
+| Mustache shape | How resolution works |
+|---|---|
+| `{{slot_name}}` | Match against 4.5.1, 4.5.2, or 4.5.3. For 4.5.3 (slot variables), the slot must be collected by the same intent OR by an intent upstream in the transition graph. Cousin intents (no path either way) are violations. |
+| `{{response.foo.bar}}` or `{{available_slots.N.field}}` | Match against 4.5.4 dotted-path declarations. The owning RT=2 intent must be the using intent itself OR an upstream RT=2 intent in the transition graph. Downstream or cousin = violation. |
+| `{{ENV.SOMETHING}}` | Match against 4.5.2. |
+
+**Upstream determination (v1 simplification per Conv 4 decision):** intent A is upstream of intent B if there is a path A → ... → B in the transition graph (`intentRelations[]`). Cousins (no path either direction) and downstream intents (path B → ... → A) are not upstream. Check 7 uses simple reachability, not full dataflow analysis. False negatives are possible (a runtime path may exist that the static graph doesn't capture); false positives are unlikely.
+
+### 6.3 Failure routing per Doc 2 §7.5
+
+For each failing check, the structured error includes a "route to" recommendation.
+
+| Failure | Route |
+|---|---|
+| Check 1, 2, 3 — dangling ID | **Skill 1 patch mode** — likely a structural error (intent deleted but reference not cleaned up). |
+| Check 4 — IntentCategoryId mismatch | **Skill 1 patch mode** — should never happen in v1 (single hardcoded category); if it does, either Skill 1 has a bug or the spec was hand-edited inconsistently. |
+| Check 5 — RT=2 missing `apiSilenceRelations` pairing | **Skill 1 patch mode** — RT=2 structural authoring incomplete. |
+| Check 6 — `api_silence_behaviour` mismatch | **Skill 3 internal bug** — Skill 3 emits both from the same source; a mismatch means an emission bug. Report and halt; user files a skill-level issue. |
+| Check 7 — Mustache unresolvable | **Skill 1 patch mode** if the missing variable should exist (e.g., add to 4.5.1 or 4.5.4), OR **Skill 2 reactivation** if the reference is wrong (e.g., typo in `validationPrompt`). The error message identifies the field and suggests both paths. |
+
+Appendix B has the consolidated routing table.
+
+### 6.4 Pass/fail behavior
+
+**On all seven checks passing:** proceed to §7 emission.
+
+**On any check failing:** emit a structured error report:
+
+```
+Skill 3 cross-reference pass failed.
+
+Checks failed: <count> of 7
+Checks passed: <count>
+
+[For each failure:]
+Check <N>: <name>
+  Violation: <one-line description>
+  Field path: <wire-format path or spec source>
+  Route to: <Skill 1 patch mode | Skill 2 reactivation | Skill 3 internal bug>
+  Suggested fix: <one-line hint>
+
+No JSON emitted. Section 7.3 has been updated with this failure log.
+
+Next step: <route guidance based on highest-frequency failure type>.
+```
+
+Skill 3 does not invoke Skill 1 or Skill 2 itself. The user reads the routing recommendation and invokes the appropriate skill manually (per locked decision C and architecture §9.1). After the user's fix, they re-invoke Skill 3.
+
+---
+
+## 7. Emission
+
+Run only if §3 (parse), §5 (regen sanity check), and §6 (cross-reference pass) all complete. §5's drift is a soft warning, not a fail; §6 is the hard gate.
+
+### 7.1 JSON output structure
+
+A single JSON object per Doc 1 §4 (the top-level wrapper). Pretty-printed with 2-space indent, UTF-8, keys in the order Doc 1 documents them (Doc 1 ordering matters for human reading even though the platform parses by key not position).
+
+The output is **valid JSON only** — no comments, no trailing commas, no JSONC extensions. The banner is delivered separately (§7.2).
+
+### 7.2 Banner format
+
+The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar file (Claude Code runtime). It is plain text — never embedded in the JSON itself — so the user can copy the JSON code block directly without stripping anything before importing.
+
+**Banner sections, in order:**
+
+```
+# Voicenter Bot JSON — generation banner
+# Skill suite: v1
+# Generated: <ISO-8601 timestamp>
+# Source spec: <spec source reference>
+# Source spec version: <from section 7.1>
+#
+# UNKNOWN VALUES — user must replace before import:
+#   - <wire-format JSON path>: <sentinel value> (<role description>)
+#   [...]
+#
+# DRIFT NOTES (section 6 sanity check):
+#   - 6.1: <one-line drift summary> [if any]
+#   - 6.2: <one-line drift summary> [if any]
+#   - [...]
+#   [or:]
+#   - No drift detected.
+#
+# RECONCILIATION (section 7.4 vs emitted sentinels):
+#   - <one-line note per discrepancy> [if any]
+#   [or:]
+#   - 7.4 and emitted sentinels in agreement.
+#
+# DEFAULTS APPLIED:
+#   - generationConfig.temperature = 1.5 (v1 default)
+#   - generationConfig.topP = 0.95 (v1 default)
+#   - generationConfig.topK = 64 (v1 default)
+#   - [...]
+```
+
+Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.
+
+The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not authored in the spec — generation params, the constants per Doc 1 §16 (e.g., `Priority: 1`, `MaxAttempts: 3`), and the catalog-derived `created` payload defaults. This makes Skill 3's contributions auditable: anything not in the banner came from the spec.
+
+### 7.3 Filename convention
+
+`bot-<bot-snake-name>-<YYYY-MM-DD>.json`
+
+Where `<bot-snake-name>` is the spec section 1 `**Identifier:**` value (a snake_case ASCII identifier captured by Skill 1 at interview time). If the field is missing (legacy spec from before this patch), Skill 3 falls back to ASCII-folding `**Bot Name:**`, then to `bot`.
+
+Companion banner file (Claude Code only): `bot-<bot-snake-name>-<YYYY-MM-DD>.banner.md`.
+
+If the file already exists in the workspace (Claude Code), append `-<counter>` before `.json` (e.g., `bot-yuval-2026-05-01-2.json`). Single-conv runtime doesn't have files; just emit the code block.
+
+### 7.4 Runtime-specific delivery
+
+**Single-conversation runtime:**
+
+1. Render the banner as plain text in the chat message.
+2. Render the JSON in a fenced code block (` ```json `).
+3. Append a closing message:
+
+> Bot JSON ready. Copy the code block above, save as `bot-<name>-<date>.json`, replace any `<USER_TO_FILL: ...>` strings or `-999` IDs with real platform values listed in the banner, then import to Voicenter via the platform UI.
+
+**Claude Code runtime:**
+
+1. Write the JSON to `bot-<bot-snake-name>-<YYYY-MM-DD>.json` in the workspace.
+2. Write the banner to `bot-<bot-snake-name>-<YYYY-MM-DD>.banner.md` in the workspace.
+3. Append a closing message:
+
+> Bot JSON written to `<filename>`. Banner sidecar at `<banner filename>`. Replace any `<USER_TO_FILL: ...>` strings or `-999` IDs (full list in the banner) with real platform values, then import to Voicenter.
+
+### 7.5 Spec section 7.3 update — success path
+
+Append one entry to spec section 7.3:
+
+```
+[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 7/7 passed.
+```
+
+In single-conv: this entry appears in the regenerated spec, which is part of Skill 3's chat output below the JSON code block.
+
+In Claude Code: write the updated spec back to `agent-spec.md`.
+
+### 7.6 Spec section 7.3 update — failure path
+
+If parse fails, completeness gate fails, or cross-reference pass fails: append one entry to spec section 7.3:
+
+```
+[ISO-8601 timestamp]  Skill 3  assembling  Failed at <stage>: <one-line summary>. No JSON emitted. Route: <skill recommendation>.
+```
+
+`<stage>` is one of `parse`, `gate-completeness`, `cross-reference-pass-N` (where N is the failing check), or `internal`.
+
+In Claude Code, write the updated spec back. In single-conv, the regenerated spec with the failure log is part of the error output.
+
+---
+
+## 8. Anti-list — what Skill 3 does NOT do
+
+Skill 3's main risk is doing too much: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations, deciding RT-specific defaults the spec didn't specify. This list is the guard.
+
+- **Author any text content.** No `validationPrompt`, no `intentInstructions`, no persona, no announcements. All text is verbatim from the spec. If the spec has `<UNKNOWN>` for a text field, Skill 3 emits the sentinel — never invents.
+- **Interpret deviations from the strict template.** First deviation halts the parser. Skill 3 does not best-effort guess what the user meant. Does not "smooth over" minor formatting issues. Does not accept synonyms for status markers. Does not tolerate alternate intent header conventions.
+- **Auto-fix cross-reference violations.** Dangling IDs, missing API silence pairings, unresolvable Mustache references — none of these get repaired by Skill 3. The error report routes the user to the responsible skill (Skill 1 patch or Skill 2 reactivation per Doc 2 §7.5). The user invokes that skill; Skill 3 re-runs from scratch on the next invocation.
+- **Modify the spec beyond appending to section 7.3.** No edits to sections 1-6. No changes to status markers. No regeneration of section 4.5.3 (Skill 2's job) or section 6 (Skill 1/2's job; Skill 3 only compares as a sanity check).
+- **Skip the cross-reference pass.** Under any circumstance. Even if the user explicitly asks ("just give me the JSON, I'll fix it later") — the pass is non-negotiable per locked decision C. The cross-reference pass is the difference between a JSON that the platform can import but the runtime can't execute, and a JSON the runtime actually runs.
+- **Suppress fail-loud sentinels.** They are the entire point of the unknown-value model (decision B). The banner makes them visible at import time so the user catches them before deploying. Quiet defaults (empty string, 0, null) would import successfully and break at runtime, which is much harder to diagnose.
+- **Emit JSON if any of the 7 cross-reference checks fail.** Partial emission is worse than no emission — a partial JSON looks deployable, the user might import it and find out at runtime that it's broken. Hard halt is the correct behavior.
+- **Run iteratively or repeatedly within a single invocation.** One parse, one assembly, one sanity check, one cross-reference pass, one emission. If something fails, halt and report. The user re-invokes after fixing.
+- **Invoke Skill 1 or Skill 2.** Skill 3 reports routing recommendations; the user invokes the relevant skill manually (per architecture §9.1; skill-to-skill direct invocation is v3).
+- **Validate content quality.** Whether the persona is good, whether the `validationPrompt` is well-styled, whether the slot collection logic makes sense — none of these are Skill 3's concern. Skills 1 and 2 own content quality. Skill 3 only validates structural/cross-reference correctness.
+- **Test the bot at runtime.** No simulation, no behavior check, no deployment, no end-to-end flow. v1 lifecycle ends at "JSON ready for the user to import manually" per locked decision G.
+- **Query the Voicenter platform.** No MCP in v1 (per architecture §9). The model catalog is hardcoded in `model-catalog.md`; the user's account-specific call-context variables come from spec section 4.5.1 (the user's claim, trusted at face value).
+- **Modify quirk preservation.** Doc 1 §16 lists 14 quirks; Skill 3 emits exactly what they prescribe. Any "this looks redundant, I'll skip it" reasoning is forbidden — the platform's import endpoint may strictly require these keys. When in doubt, emit what production samples emit.
+- **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
+- **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.
+- **Tolerate intent identifier collisions.** If two intents share an identifier across section 4 (which shouldn't happen post Skill 1 validation but could from a hand-edit), Skill 3 reports a parse error rather than silently reusing the cached ID. Identifier uniqueness is structurally required.
+
+---
+
+## Appendix A — Doc 1 §16 quirks: complete preservation checklist
+
+All 14 quirks must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
+
+| # | Quirk | Wire-format location | Action |
+|---|---|---|---|
+| 1 | `IntentResponces` (typo) | Per intent | Emit as `IntentResponces` — never autocorrect to `IntentResponses`. The platform expects this typo; correcting it breaks import. |
+| 2 | `intentLoadingAnnouncement` + `IntentLoadingAnnouncement` (casing-bug pair) | RT=2 `Configuration` | Emit both, identical content. Both observed in production samples. |
+| 3 | `HandlingInstructions: null` | Per intent (root) | Emit `null`. Appears deprecated but required. |
+| 4 | `SystemPrompt: ""` | `ActiveVersionInfo` | Emit empty string. NOT the bot's actual system prompt — that lives in `prompts.persona`. |
+| 5 | Top-level `AiModelConfig` + `ActiveVersionInfo.AIModelConfig` | Root + version | Emit both as distinct objects with **identical** `created` payloads. |
+| 6 | `AIModelConfig.tools: []` | Inside `AIModelConfig` | Emit empty array. |
+| 7 | `AIModelConfig.instructions: ""` | Inside `AIModelConfig` | Emit empty string. |
+| 8 | `IntentScripts: {}` | Per intent | Emit empty object. |
+| 9 | `ValidationRules: {}` | Per parameter | Emit empty object. |
+| 10 | `ValidationPattern: null` | Per parameter | Emit `null`. |
+| 11 | `IntentConditionList: []` | Inside `ConditionGroupList` (when present) | Emit empty array. v1 always empty. |
+| 12 | `silenceRelations: []` | Top of `intentList` | Emit empty array. v1 always empty. |
+| 13 | `BotLanguages: []` | Bot top-level | Emit empty array. |
+| 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
+| (extra) | `response_success: ""` | RT=2 + RT=3 `Configuration` | Emit empty string. Observed in samples though purpose unclear. |
+
+The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 14 numbered quirks.
+
+**Rule for Skill 3:** when in doubt, emit what production samples emit, even if it looks redundant or empty. The platform's import endpoint may strictly require these keys to be present. Cleaning up the schema is a v3 concern (per Doc 1 §17 v2 Roadmap), not Skill 3's call.
+
+---
+
+## Appendix B — Doc 2 §7.5 routing table
+
+When Skill 3 fails, it tells the user which skill to invoke for the fix. This table consolidates the routing logic.
+
+| Failure type | Source | Route |
+|---|---|---|
+| Parse error: section header / field label deviation | §3 | **Manual fix** — usually a spec hand-edit. Restore the strict-template form, re-invoke Skill 3. |
+| Parse error: orphan section 5 entry / undeclared transition target | §3.3 | **Skill 1 patch mode** — structural issue (added/removed an intent, broke transition references). |
+| Pre-flight gate A: incomplete spec | §2.3 | **Skill 2 reactivation** — detail the remaining `[structural]` / `[detailed-revisit]` intents. |
+| Cross-reference check 1 fail (botIntents→intents dangling) | §6.2 | **Skill 1 patch mode** — intent removed but `botIntents[]` reference not cleaned up. |
+| Cross-reference check 2 fail (intentRelations dangling) | §6.2 | **Skill 1 patch mode** — transition target removed without cleaning up relation. |
+| Cross-reference check 3 fail (apiSilenceRelations dangling) | §6.2 | **Skill 1 patch mode** — API silence fallback intent removed. |
+| Cross-reference check 4 fail (IntentCategoryId mismatch) | §6.2 | **Skill 1 patch mode** — should not happen in v1; report as a likely Skill 1 bug. |
+| Cross-reference check 5 fail (RT=2 missing pairing) | §6.2 | **Skill 1 patch mode** — RT=2 structural authoring incomplete. |
+| Cross-reference check 6 fail (api_silence_behaviour content mismatch) | §6.2 | **Skill 3 internal bug** — both copies emitted from same source; report, don't try to repair. |
+| Cross-reference check 7 fail: missing variable in 4.5.1/4.5.2/4.5.4 | §6.2 | **Skill 1 patch mode** — add the missing variable to the appropriate 4.5.x subsection. |
+| Cross-reference check 7 fail: typo or wrong variable in per-intent text | §6.2 | **Skill 2 reactivation** — fix the reference in `validationPrompt` / `intentInstructions` / per-intent fields. |
+| Cross-reference check 7 fail: Mustache reference to slot from downstream/cousin intent | §6.2 | **Skill 1 patch mode** if the transition graph is wrong; **Skill 2 reactivation** if the reference is wrong. Skill 3 cannot tell which — error message presents both options. |
+| Quirk verification fail (§4.5) | §4.5 | **Skill 3 internal bug** — emission code drifted from §16 contract. Report, don't try to repair. |
+| Section 6 regeneration drift | §5 | **Soft warning, not blocking** — recorded in banner. User can fix via Skill 1 patch (regenerates section 6) if it bothers them; Skill 3 emits anyway. |
+
+---
+
+## Appendix C — Banner worked example
+
+Sample banner for a hypothetical bot with: 1 unknown layer ID, 1 unknown webhook URL, no model config IDs (Gemini Live with TODO), section 6 drift on subsection 6.1 (a Mustache reference Skill 2 forgot to log), and section 7.4 in agreement with emitted sentinels.
+
+```
+# Voicenter Bot JSON — generation banner
+# Skill suite: v1
+# Generated: 2026-05-01T14:32:18Z
+# Source spec: agent-spec.md
+# Source spec version: 1.0.0
+#
+# UNKNOWN VALUES — user must replace before import:
+#   - intents[3].IntentResponces.Configuration.layer: -999 (RT=1 layer ID for transfer_to_human; ask Voicenter platform team)
+#   - intents[1].IntentResponces.Configuration.url: "<USER_TO_FILL: webhook_url>" (RT=2 webhook for validate_customer_address)
+#   - AccountID: -999 (customer account ID; user knows this)
+#   - AiModelConfig.AIModelConfigID: -999 (Gemini Live; catalog has TODO)
+#   - AiModelConfig.AIModelTypeId: -999 (Gemini Live; catalog has TODO)
+#   - ActiveVersionInfo.AIModelConfigId: -999 (mirror of above)
+#
+# DRIFT NOTES (section 6 sanity check):
+#   - 6.1: regenerated had 1 reference the spec did not log — {{caller_phone}} used in confirm_appointment.intentInstructions
+#   - 6.2: in agreement
+#   - 6.3: in agreement
+#   - 6.4: in agreement
+#   - 6.5: in agreement
+#
+# RECONCILIATION (section 7.4 vs emitted sentinels):
+#   - 7.4 and emitted sentinels in agreement.
+#
+# DEFAULTS APPLIED:
+#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.temperature = 1.5 (v1 default)
+#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.topP = 0.95 (v1 default)
+#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.topK = 64 (v1 default)
+#   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
+#   - intentCategories: single default category, IntentCategoryId = -3
+#   - All §16 quirks emitted per Appendix A checklist
+```
+
+The banner stays terse — one line per item, prefixed with `#` so the user can paste it as a comment block in their notes if useful. The JSON code block follows the banner directly with no decorative separator beyond a blank line.

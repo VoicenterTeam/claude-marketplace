@@ -1,0 +1,532 @@
+{
+  "Name": "חברים לרפואה",
+  "BotID": -1,
+  "AccountID": -999,
+  "Description": "<USER_TO_FILL: bot description>",
+  "BotStatusId": 1,
+  "BotLanguages": [],
+  "CreatedDate": "2026-05-01 00:00:00",
+  "ModifiedDate": null,
+  "AiModelConfig": {
+    "AIModelConfigID": -999,
+    "Name": "Gemini Live",
+    "Description": "Production reference. Used by Yuval and Refua bots in Doc 1 samples.",
+    "BaseUrl": null,
+    "AIModelTypeId": -999,
+    "Type": {
+      "AIModelTypeId": -999,
+      "Name": "Gemini Live",
+      "Description": null
+    },
+    "created": {
+      "model": "models/gemini-2.5-flash-preview-native-audio-dialog",
+      "generationConfig": {
+        "temperature": 1.5,
+        "topP": 0.95,
+        "topK": 64,
+        "responseModalities": [
+          "AUDIO"
+        ],
+        "speechConfig": {
+          "languageCode": "he-IL",
+          "voiceConfig": {
+            "prebuiltVoiceConfig": {
+              "voiceName": "Orus"
+            }
+          }
+        },
+        "proactivity": {},
+        "thinkingConfig": {}
+      },
+      "systemInstruction": {
+        "parts": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "tools": []
+    }
+  },
+  "ActiveVersionInfo": {
+    "BotVersionId": -2,
+    "VersionNumber": "0.0.1",
+    "BotVersionStatusId": 3,
+    "IsActive": 1,
+    "Description": "",
+    "CreatedDate": "2026-05-01 00:00:00",
+    "ModifiedDate": null,
+    "SystemPrompt": "",
+    "AIModelConfigId": -999,
+    "AIModelConfig": {
+      "prompts": {
+        "persona": "את הקול של חברים לרפואה. את עוזרת לחברי הקופה למצוא נקודות איסוף\nקרובות, ולאשר איסוף תרופות.\nאת לא נותנת ייעוץ רפואי, לא משנה תרופות, לא מאשרת מרשמים —\nאלה תפקידים של רוקח/ית מורשה.\nספק רפואי מצריך הפניה לנציג.",
+        "voiceInstructions": "[default — not user-authored]\n\nYou are speaking as הקול של חברים לרפואה. Maintain the same identity and tone as defined in the global persona.\n\nVoice-channel guidelines:\n\n1. Speak clearly and at a measured pace. Avoid speaking too fast.\n2. Pronounce names, numbers, and addresses carefully. Confirm them back to the caller when collected.\n3. If the caller interrupts, stop speaking immediately and listen.\n4. Avoid long pauses. If you need a moment to look something up, say so explicitly (\"Give me a moment to check that...\").\n5. Use Hebrew only. Do not switch languages mid-call unless the caller does.\n\nThis is a generated default. If the user later activates voice as a primary channel, regenerate this section through Skill 1 patch mode (channel scope expansion).",
+        "chatInstructions": "[default — not user-authored]\n\nYou are speaking as הקול של חברים לרפואה. Maintain the same identity and tone as defined in the global persona.\n\nChat-channel guidelines:\n\n1. Use clear, short sentences. Avoid long paragraphs.\n2. Use numbered lists when presenting options.\n3. Avoid emojis unless the caller uses them first.\n4. Hebrew only. Do not switch languages mid-conversation unless the caller does.",
+        "intentInstructions": "OPENING BEHAVIOR\n1. ברכי קצרות.\n2. הקשיבי לבקשה.\n3. אם הלקוח מחפש נקודת איסוף: validate_customer_address.\n4. אם בעיה עם הזמנה: report_issue.\n5. אם שאלה כללית: general_inquiry.\n6. אם לא ברור: transfer_to_human.\n\nIRON RULE: לא לתת ייעוץ רפואי בשום מצב.",
+        "openingAnnouncement": "שלום, אני כאן מטעם חברים לרפואה. איך אוכל לעזור?"
+      },
+      "created": {
+        "model": "models/gemini-2.5-flash-preview-native-audio-dialog",
+        "generationConfig": {
+          "temperature": 1.5,
+          "topP": 0.95,
+          "topK": 64,
+          "responseModalities": [
+            "AUDIO"
+          ],
+          "speechConfig": {
+            "languageCode": "he-IL",
+            "voiceConfig": {
+              "prebuiltVoiceConfig": {
+                "voiceName": "Orus"
+              }
+            }
+          },
+          "proactivity": {},
+          "thinkingConfig": {}
+        },
+        "systemInstruction": {
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        },
+        "tools": []
+      },
+      "tools": [],
+      "instructions": ""
+    }
+  },
+  "intentList": {
+    "intents": [
+      {
+        "IntentId": -10,
+        "Name": "אימות כתובת לקוח",
+        "Description": "וידוא שהכתובת של הלקוח נמצאת באזור השירות.",
+        "IntentToolName": "validate_customer_address",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [
+          {
+            "ParameterId": -1000,
+            "IntentId": -10,
+            "Name": "address",
+            "Description": "כתובת מלאה: רחוב, מספר בית, עיר.",
+            "IsRequired": true,
+            "DefaultValue": null,
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ParameterType": {
+              "ParameterTypeId": 1,
+              "Name": "STRING"
+            },
+            "OptionList": [],
+            "ValidationRules": {},
+            "ValidationPattern": null,
+            "IsActive": 1,
+            "IsDeleted": 0
+          }
+        ],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "ADDRESS COLLECTION\n1. בקשי כתובת מלאה (רחוב, מספר, עיר).\n2. חזרי על הכתובת לאישור.\n3. שמרי {{address}} רק אחרי אישור.\n\nIRON RULE: לא ממשיכה ללא רחוב + מספר + עיר."
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 2,
+          "Configuration": {
+            "url": "https://connector.center/refua/validate-address",
+            "method": "POST",
+            "headers": {},
+            "body": {
+              "address": "{{address}}"
+            },
+            "apiResponseAnnouncement": "הכתובת אומתה. מחפשת נקודות איסוף קרובות...",
+            "fail_output": "אני לא מצליחה לאמת את הכתובת. אעבירך לנציג.",
+            "function_output": "Returns { valid: bool, service_area: string }. If valid=true proceed to get_nearest_collection_points; if valid=false transfer.",
+            "intentLoadingAnnouncement": "רגע, בודקת...",
+            "IntentLoadingAnnouncement": "רגע, בודקת...",
+            "intentInstructions": "POST-EXECUTION (address validated)\n1. הזיזי את השיחה ל-get_nearest_collection_points.\n2. אם valid=false: אמרי שהכתובת לא באזור שירות והעבירי לנציג.",
+            "api_silence_behaviour": {
+              "silence_duration": 8,
+              "silence_loops": 5,
+              "silence_sentence": "אני עדיין בודקת...",
+              "silence_ending_sentence": "השרת לא מגיב. אעבירך לנציג.",
+              "silence_instructions": "",
+              "intent": -15
+            },
+            "response_success": ""
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      },
+      {
+        "IntentId": -11,
+        "Name": "מציאת נקודות איסוף",
+        "Description": "איתור שלוש נקודות האיסוף הקרובות ביותר לכתובת הלקוח.",
+        "IntentToolName": "get_nearest_collection_points",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "PRE-EXECUTION\n1. ודאי שהכתובת ב-{{address}} זמינה ואומתה.\n2. אם לא — אל תפעילי, חזרי ל-transfer_to_human.\n\nIRON RULE: אסור להפעיל את ה-API בלי כתובת מאומתת."
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 2,
+          "Configuration": {
+            "url": "https://connector.center/refua/find-pickup-points",
+            "method": "POST",
+            "headers": {},
+            "body": {
+              "address": "{{address}}",
+              "max_results": 3
+            },
+            "apiResponseAnnouncement": "מצאתי שלוש נקודות איסוף קרובות:\n1. {{available_slots.0.display}} ({{available_slots.0.distance_km}} ק\"מ)\n2. {{available_slots.1.display}} ({{available_slots.1.distance_km}} ק\"מ)\n3. {{available_slots.2.display}} ({{available_slots.2.distance_km}} ק\"מ)\nאיזו מהן מתאימה לך?",
+            "fail_output": "אני לא מצליחה למצוא נקודות איסוף כרגע. אעבירך לנציג.",
+            "function_output": "Response shape: { available_slots: [{display, slot_id, distance_km}, ...] }. Caller will pick one in confirm_pickup_point intent.",
+            "intentLoadingAnnouncement": "רגע, מחפשת נקודות איסוף...",
+            "IntentLoadingAnnouncement": "רגע, מחפשת נקודות איסוף...",
+            "intentInstructions": "POST-EXECUTION (pickup points returned)\n1. הציגי את שלוש הנקודות עם המרחק.\n2. עברי ל-confirm_pickup_point.",
+            "api_silence_behaviour": {
+              "silence_duration": 8,
+              "silence_loops": 5,
+              "silence_sentence": "אני עדיין מחפשת...",
+              "silence_ending_sentence": "השרת לא מגיב. אעבירך לנציג.",
+              "silence_instructions": "",
+              "intent": -15
+            },
+            "response_success": ""
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      },
+      {
+        "IntentId": -12,
+        "Name": "אישור נקודת איסוף",
+        "Description": "הלקוח בוחר אחת מנקודות האיסוף שהוצעו.",
+        "IntentToolName": "confirm_pickup_point",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [
+          {
+            "ParameterId": -1001,
+            "IntentId": -12,
+            "Name": "selected_slot_id",
+            "Description": "הלקוח בוחר אחת מנקודות האיסוף שהוצעו.",
+            "IsRequired": true,
+            "DefaultValue": null,
+            "CollectionOrder": 1,
+            "ParameterTypeId": 19,
+            "ParameterType": {
+              "ParameterTypeId": 19,
+              "Name": "ENUM"
+            },
+            "OptionList": [],
+            "ValidationRules": {},
+            "ValidationPattern": null,
+            "IsActive": 1,
+            "IsDeleted": 0
+          }
+        ],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "PICKUP SELECTION\n1. הקשיבי לבחירה של הלקוח.\n2. אם הבחירה ברורה — שמרי {{selected_slot_id}}.\n3. אם לא ברור — חזרי על שלוש האפשרויות.\n\nIRON RULE: לא לשמור slot_id לפני אישור הלקוח."
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 3,
+          "Configuration": {
+            "announcement": "מעולה. בחרת את {{available_slots.0.display}}. נשלח לך SMS עם פרטים.",
+            "intentInstructions": "POST-EXECUTION (pickup confirmed)\n1. אם הלקוח שואל על משהו אחר — transfer_to_human.\n2. אחרת — סיימי בנימוס.",
+            "response_success": ""
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      },
+      {
+        "IntentId": -13,
+        "Name": "דיווח על בעיה",
+        "Description": "קבלת תיאור הבעיה בהזמנה והעברה לנציג.",
+        "IntentToolName": "report_issue",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [
+          {
+            "ParameterId": -1002,
+            "IntentId": -13,
+            "Name": "issue_description",
+            "Description": "תיאור הבעיה של הלקוח עם ההזמנה.",
+            "IsRequired": true,
+            "DefaultValue": null,
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ParameterType": {
+              "ParameterTypeId": 1,
+              "Name": "STRING"
+            },
+            "OptionList": [],
+            "ValidationRules": {},
+            "ValidationPattern": null,
+            "IsActive": 1,
+            "IsDeleted": 0
+          }
+        ],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "ISSUE COLLECTION\n1. בקשי מהלקוח לתאר את הבעיה.\n2. הקשיבי בלי להפריע.\n3. שמרי את התיאור ב-{{issue_description}}.\n\nIRON RULE: אל תנסי לפתור את הבעיה בעצמך — תעבירי לנציג עם הקשר."
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 3,
+          "Configuration": {
+            "announcement": "הבנתי. אעביר אותך לנציג עם פרטי הבעיה.",
+            "intentInstructions": "POST-EXECUTION\n1. תמיד עברי ל-transfer_to_human.",
+            "response_success": ""
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      },
+      {
+        "IntentId": -14,
+        "Name": "שאלה כללית",
+        "Description": "טיפול בשאלות שאינן קשורות לאיסוף תרופות.",
+        "IntentToolName": "general_inquiry",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [
+          {
+            "ParameterId": -1003,
+            "IntentId": -14,
+            "Name": "question",
+            "Description": "השאלה הכללית של הלקוח.",
+            "IsRequired": true,
+            "DefaultValue": null,
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ParameterType": {
+              "ParameterTypeId": 1,
+              "Name": "STRING"
+            },
+            "OptionList": [],
+            "ValidationRules": {},
+            "ValidationPattern": null,
+            "IsActive": 1,
+            "IsDeleted": 0
+          }
+        ],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "GENERAL INQUIRY\n1. הקשיבי לשאלה.\n2. שמרי {{question}}.\n\nIRON RULE: אל תיתני ייעוץ רפואי. רובן של השאלות → transfer_to_human."
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 3,
+          "Configuration": {
+            "announcement": "אעביר אותך לנציג שיוכל לעזור עם השאלה.",
+            "intentInstructions": "POST-EXECUTION\n1. תמיד עברי ל-transfer_to_human.",
+            "response_success": ""
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      },
+      {
+        "IntentId": -15,
+        "Name": "העברה לנציג",
+        "Description": "העברת השיחה לרוקח/ית או נציג שירות.",
+        "IntentToolName": "transfer_to_human",
+        "HandlingInstructions": null,
+        "IsSilenceIntent": false,
+        "IntentCategoryId": -3,
+        "Priority": 1,
+        "MaxAttempts": 3,
+        "ValidationTimeout": 30,
+        "IntentParameters": [],
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": ""
+          }
+        },
+        "IntentScripts": {},
+        "IntentResponces": {
+          "ResponseTypeId": 1,
+          "Configuration": {
+            "layer": 41,
+            "announcement": "אעבירך לרוקח/ית, רגע אחד.",
+            "intentLoadingAnnouncement": "מעבירה..."
+          }
+        },
+        "IsActive": 1,
+        "IsDeleted": 0
+      }
+    ],
+    "botIntents": [
+      {
+        "BotIntentID": -100,
+        "BotID": -1,
+        "IntentID": -10,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "BotIntentID": -101,
+        "BotID": -1,
+        "IntentID": -11,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "BotIntentID": -102,
+        "BotID": -1,
+        "IntentID": -12,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "BotIntentID": -103,
+        "BotID": -1,
+        "IntentID": -13,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "BotIntentID": -104,
+        "BotID": -1,
+        "IntentID": -14,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "BotIntentID": -105,
+        "BotID": -1,
+        "IntentID": -15,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": []
+      }
+    ],
+    "intentRelations": [
+      {
+        "OriginIntentID": -10,
+        "NextIntentID": -11,
+        "IntentRelatedID": -11,
+        "Order": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -10,
+        "NextIntentID": -15,
+        "IntentRelatedID": -15,
+        "Order": 2,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -11,
+        "NextIntentID": -12,
+        "IntentRelatedID": -12,
+        "Order": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -11,
+        "NextIntentID": -15,
+        "IntentRelatedID": -15,
+        "Order": 2,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -12,
+        "NextIntentID": -15,
+        "IntentRelatedID": -15,
+        "Order": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -13,
+        "NextIntentID": -15,
+        "IntentRelatedID": -15,
+        "Order": 1,
+        "ConditionGroupList": []
+      },
+      {
+        "OriginIntentID": -14,
+        "NextIntentID": -15,
+        "IntentRelatedID": -15,
+        "Order": 1,
+        "ConditionGroupList": []
+      }
+    ],
+    "intentCategories": [
+      {
+        "IntentCategoryId": -3,
+        "BotID": -1,
+        "Name": "Default Category"
+      }
+    ],
+    "silenceRelations": [],
+    "apiSilenceRelations": [
+      {
+        "OriginIntentID": -10,
+        "ApiSilenceIntentID": -15,
+        "Configuration": {
+          "silence_duration": 8,
+          "silence_loops": 5,
+          "silence_sentence": "אני עדיין בודקת...",
+          "silence_ending_sentence": "השרת לא מגיב. אעבירך לנציג.",
+          "silence_instructions": "",
+          "intent": -15
+        }
+      },
+      {
+        "OriginIntentID": -11,
+        "ApiSilenceIntentID": -15,
+        "Configuration": {
+          "silence_duration": 8,
+          "silence_loops": 5,
+          "silence_sentence": "אני עדיין מחפשת...",
+          "silence_ending_sentence": "השרת לא מגיב. אעבירך לנציג.",
+          "silence_instructions": "",
+          "intent": -15
+        }
+      }
+    ]
+  }
+}
