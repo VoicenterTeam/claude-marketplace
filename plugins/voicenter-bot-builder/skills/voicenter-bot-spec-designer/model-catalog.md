@@ -10,6 +10,8 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 
 ## AI model configs
 
+> **Canonical default:** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Gemini Live (Voice driven 3.1)** — `AIModelConfigID = 139`, `AIModelTypeId = 18`. The entry below is the source of truth for those numbers.
+
 ### Gemini Live (default — Voice driven 3.1)
 
 | Field | Value |

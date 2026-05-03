@@ -828,8 +828,6 @@ The banner stays terse — one line per item, prefixed with `#` so the user can 
 
 This appendix consolidates every static integer ID Skill 3 emits into the JSON. All values come from `database/Tables/StaticData/*.Data.sql`. The skill MUST NOT invent IDs outside this set. When in doubt, re-read the Data.sql files — they are the contract.
 
-The full design rationale and the gap analysis that motivated this appendix is at `docs/superpowers/specs/2026-05-03-skill3-import-proc-alignment-design.md`.
-
 ### D.1 `AiModelConfig.AccountId` — always `0` (the reuse-existing-config switch)
 
 The `ImportBotFromJSON` procedure branches on this field:
