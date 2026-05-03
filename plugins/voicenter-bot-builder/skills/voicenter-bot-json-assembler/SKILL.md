@@ -223,12 +223,15 @@ Doc 1 §6 defines two distinct objects with confusingly similar names. Both must
 | Field | Source |
 |---|---|
 | `AIModelConfigID` | From `model-catalog.md` if spec section 1 names a catalog entry; from spec if `raw: ID=N, TypeID=M`; `-999` if unknown |
+| **`AccountId`** | **Always `0`** — flags the import procedure to reuse the existing default `AIModelConfig` row (see Appendix D §D.1). Without this, `ImportBotFromJSON` falls through to its INSERT branch and fails on NOT NULL columns. |
 | `Name` | From `model-catalog.md` "Display name"; `<USER_TO_FILL: model_config_name>` if raw override |
 | `Description` | From `model-catalog.md` "Notes" if available; `null` otherwise |
 | `BaseUrl` | `null` (matches both production samples) |
-| `AIModelTypeId` | Same source rule as `AIModelConfigID` |
+| `AIModelTypeId` | Same source rule as `AIModelConfigID` (this is the `AIModel` FK in DB terms) |
 | `Type` | `{ "AIModelTypeId": <id>, "Name": <type name>, "Description": null }` — type name is the catalog entry's display name; `null` if unknown |
 | `created` | The runtime LLM API payload; see §4.2.4 below |
+
+**Account-private model config (future / Path 2).** When v2/v3 needs to insert a brand-new `AIModelConfig` per account, `AccountId` is set to any non-zero value (the procedure ignores it for account scoping — `p_new_account_id` is used instead). The wire-format then ALSO emits `AIModel` (BIGINT FK matching the `AIModelTypeId` value), `AIModelConfig` (the runtime payload, identical content to `created`), `IsActive: 1`, and `ApiKey: null`. v1 does not exercise this path — every emission goes through the `AccountId: 0` reuse branch.
 
 **Version-level `<root>.ActiveVersionInfo.AIModelConfig`** (runtime config, Doc 1 §6.B):
 
@@ -308,7 +311,8 @@ For each section 4 intent (in order), build a 16-field entry per Doc 1 §9.0:
 | `IntentParameters` | §4.3.2 below |
 | `IntentConfig.prompts.llmDescription` | `""` (preserved per §16) |
 | `IntentConfig.prompts.validationPrompt` | Section 5 "Validation Prompt" verbatim |
-| `IntentScripts` | `{}` (preserved per §16) |
+| `IntentScripts` | `[]` *(amended per §16 quirk #8 revision; was `{}` — see Appendix A)* |
+| **`IntentSources`** | **Per-channel array derived from spec section 1 `Channels Active`. See Appendix D §D.7. Voice-only bot → `[{ "SourceID": 1 }]`.** |
 | `IntentResponces` | §4.4 below |
 | `IsActive` | `1` |
 | `IsDeleted` | `0` |
@@ -340,22 +344,30 @@ One entry per intent in section 4 ordering. Per Doc 1 §8.2:
 
 | Wire-format field | Value |
 |---|---|
-| `BotIntentID` | Cached `<identifier> → BotIntentID` placeholder |
-| `BotID` | `-1` (mirror of root) |
-| `IntentID` | Cached `<identifier> → IntentId` placeholder |
-| `BotIntentTypeID` | `1` (per Doc 1 §8.2 — v1 always emits 1 for every entry; the only observed value across both production samples) |
+| **`BotIntentId`** | Cached `<identifier> → BotIntentID` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path read; intentional asymmetry with `intentRelations[]` capital-D casing — do not "fix")* |
+| `BotID` | `-1` (mirror of root; not read by the procedure but kept for wire-format parity) |
+| **`IntentId`** | Cached `<identifier> → IntentId` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path; without lowercase, the proc resolves NULL and the BotIntent INSERT fails on NOT NULL `IntentId`)* |
+| **`SortOrder`** | **1-based ordinal of the intent in section 4 (Intent 1 → 1, Intent 2 → 2, ...). Required — the column is `INT NOT NULL` and the procedure passes the extracted value explicitly, so a missing field becomes a NULL INSERT and fails.** |
+| **`IsActive`** | **`1` (explicit)** |
+| `BotIntentTypeID` | `1` (per Doc 1 §8.2 — v1 always emits 1 for every entry; capital `D` casing matches the procedure read) |
 | `ConditionGroupList` | `[]` (preserved per §16) |
 
 #### 4.3.4 `intentRelations[]`
 
-For each section 4 row's "Transitions out" list, emit one entry per transition. Origin = the row's intent; Next = each target identifier; Order = the 1-based position in the transitions list.
+For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission, keeping the lowest `Order` value.** The DB unique key `UK_IntentRelated_Origin_Next` forbids duplicates; emitting two would fail import on the second row.
+
+When the spec lists the same target twice (e.g., success path AND fallback both → `transfer_to_human`), this is a structural redundancy: the runtime takes the first matching transition, so the second row never fires. Skill 3 silently de-dupes and notes the collapse in the banner under DEFAULTS APPLIED:
+
+```
+#   - intentRelations: collapsed duplicate (initiate_purchase → transfer_to_human) — success and fallback share the same target
+```
 
 | Wire-format field | Source |
 |---|---|
-| `OriginIntentID` | Cached `<origin identifier> → IntentId` |
+| `OriginIntentID` | Cached `<origin identifier> → IntentId` *(capital-D `ID` — matches the procedure read; deliberate asymmetry with `botIntents[]` lowercase casing)* |
 | `NextIntentID` | Cached `<target identifier> → IntentId` |
 | `IntentRelatedID` | Same as `NextIntentID` (per Doc 1 §8.3 observation: junction ID often duplicates `NextIntentID`) |
-| `Order` | 1-based position in the transitions list |
+| `Order` | 1-based position in the transitions list (after dedup, the surviving row keeps its lowest pre-dedup `Order`) |
 | `ConditionGroupList` | `[]` (preserved per §16) |
 
 A "terminal" intent (typically `transfer_to_human` with RT=1) has zero outgoing transitions in section 4 — Skill 3 emits zero `intentRelations[]` rows with that intent as `OriginIntentID`. The platform handles call termination.
@@ -369,6 +381,9 @@ Single default category, all intents reference it:
 | `IntentCategoryId` | `-3` |
 | `BotID` | `-1` |
 | `Name` | `"Default Category"` (matches both production samples per Doc 1 §8.4) |
+| **`PriorityId`** | **`2`** *(Medium — from `Priority` static table; required because `IntentCategory.PriorityId` is `TINYINT NOT NULL` and the procedure passes the extracted value explicitly)* |
+| **`IsActive`** | **`1`** *(explicit)* |
+| **`Description`** | **`null`** *(explicit)* |
 
 #### 4.3.6 `silenceRelations[]`
 
@@ -729,7 +744,7 @@ All 14 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 5 | Top-level `AiModelConfig` + `ActiveVersionInfo.AIModelConfig` | Root + version | Emit both as distinct objects with **identical** `created` payloads. |
 | 6 | `AIModelConfig.tools: []` | Inside `AIModelConfig` | Emit empty array. |
 | 7 | `AIModelConfig.instructions: ""` | Inside `AIModelConfig` | Emit empty string. |
-| 8 | `IntentScripts: {}` | Per intent | Emit empty object. |
+| 8 | `IntentScripts: []` *(amended; was `{}` in earlier Doc 1 §16)* | Per intent | Emit empty **array**. The `ImportBotFromJSON` procedure iterates with `JSON_LENGTH` + integer indexing — the object form would index `[0]` on a populated `{}` and break. Older production samples may show `{}`; functionally equivalent only while empty. Forward-compatible shape is `[]`. |
 | 9 | `ValidationRules: {}` | Per parameter | Emit empty object. |
 | 10 | `ValidationPattern: null` | Per parameter | Emit `null`. |
 | 11 | `IntentConditionList: []` | Inside `ConditionGroupList` (when present) | Emit empty array. v1 always empty. |
@@ -806,3 +821,144 @@ Sample banner for a hypothetical bot with: 1 unknown layer ID, 1 unknown webhook
 ```
 
 The banner stays terse — one line per item, prefixed with `#` so the user can paste it as a comment block in their notes if useful. The JSON code block follows the banner directly with no decorative separator beyond a blank line.
+
+---
+
+## Appendix D — Static reference data (single source of truth)
+
+This appendix consolidates every static integer ID Skill 3 emits into the JSON. All values come from `database/Tables/StaticData/*.Data.sql`. The skill MUST NOT invent IDs outside this set. When in doubt, re-read the Data.sql files — they are the contract.
+
+The full design rationale and the gap analysis that motivated this appendix is at `docs/superpowers/specs/2026-05-03-skill3-import-proc-alignment-design.md`.
+
+### D.1 `AiModelConfig.AccountId` — always `0` (the reuse-existing-config switch)
+
+The `ImportBotFromJSON` procedure branches on this field:
+
+```sql
+IF $.AiModelConfig.AccountId = 0 THEN
+    use existing AIModelConfigID directly         -- "shared/default model" path
+ELSE
+    INSERT new AIModelConfig (AccountId=p_new_account_id,
+                              AIModel, Name, AIModelConfig (JSON), IsActive, ApiKey)
+END IF;
+```
+
+**v1 always emits `AccountId: 0`.** The catalog (`model-catalog.md`) lists only default `AIModelConfig` rows where `AccountId = 0` in the platform DB; emitting `AccountId: 0` causes the procedure to reuse the row pointed at by `AIModelConfigID`. No new row is inserted, no NOT NULL columns to fill.
+
+Path 2 (account-private new-config insert) is documented in §4.2.3 but not exercised in v1.
+
+### D.2 `BotStatusId` (root)
+
+| ID | Name | When |
+|---|---|---|
+| **1** | Active | **v1 default — always emitted** |
+| 2 | Inactive | not emitted by Skill 3 |
+| 3 | Maintenance | not emitted |
+| 4 | Deleted | not emitted |
+
+### D.3 `BotVersionStatusId` (`ActiveVersionInfo`)
+
+| ID | Name | When |
+|---|---|---|
+| 1 | Draft | not emitted |
+| 2 | Testing | not emitted |
+| **3** | Approved | **v1 default — matches Yuval/Refua production samples** |
+| 4 | Deployed | not emitted |
+| 5 | Archived | not emitted (inactive in DB) |
+
+### D.4 `BotIntentTypeID` (`botIntents[]`)
+
+| ID | Name | When |
+|---|---|---|
+| **1** | Normal | **v1 default — every botIntent row** |
+| 2 | Global | reserved for v2 (global intents) |
+
+### D.5 `IntentCategoryId` + `PriorityId` (`intentCategories[]`)
+
+| Field | Value | Source |
+|---|---|---|
+| `IntentCategoryId` | `-3` | placeholder; resolved by procedure |
+| `PriorityId` | **`2`** (Medium) | `Priority` static table; matches DB DEFAULT |
+| `Name` | `"Default Category"` | matches production samples |
+
+### D.6 `ResponseTypeId` (`intents[].IntentResponces.ResponseTypeId`)
+
+| ID | DB name | This skill's section label | Configuration shape |
+|---|---|---|---|
+| 1 | IVR | "Layer Transfer (terminal)" | §4.4 RT=1 |
+| 2 | API | "API Call" | §4.4 RT=2 |
+| 3 | Message | "Continue" | §4.4 RT=3 |
+| 4 | Dial | "Dial-Out" | §4.4 RT=4 |
+
+The DB names differ from this skill's documentation labels (e.g., RT=1 is "IVR" in the DB but "Layer Transfer" in §4.4). The integer IDs are the contract — labels are informational.
+
+### D.7 `SourceID` (`IntentSources[]`)
+
+The wire-format emits `IntentSources` per intent based on the spec section 1 `Channels Active` field. The procedure walks this array and inserts into the DB `IntentSource(IntentID, SourceID)` table.
+
+| `SourcesID` | `SourceName` | Spec `Channels Active` token |
+|---|---|---|
+| 1 | VOICE | `voice` |
+| 2 | CHAT | `chat` |
+| 3 | WEB | (not currently exposed in Skill 1's channel options) |
+
+| Spec `Channels Active` | Per-intent emission |
+|---|---|
+| `voice` | `[{ "SourceID": 1 }]` |
+| `chat` | `[{ "SourceID": 2 }]` |
+| `voice, chat` | `[{ "SourceID": 1 }, { "SourceID": 2 }]` |
+
+### D.8 `ParameterTypeId` (`IntentParameters[]`)
+
+| ID | Name | v1 supports |
+|---|---|---|
+| **1** | STRING | yes |
+| **10** | PHONE | yes |
+| **16** | BOOLEAN | yes |
+| **19** | ENUM | yes (with `OptionList`) |
+| 4 | INTEGER | accepted as raw spec input only |
+| 7 | EMAIL | accepted as raw spec input only |
+| 13 | DATE | accepted as raw spec input only |
+| 20 | JSON | accepted as raw spec input only |
+| 21 | LABEL_SET_SINGLE | v3 |
+| 24 | LABEL_SET_MULTIPLE | v3 |
+
+### D.9 `IntentRelatedTypeID` — procedure-internal, not emitted
+
+| ID | Name | Used by procedure for |
+|---|---|---|
+| 1 | IntentRelated | `IntentRelatedDTMF.RelatedTypeID` for `intentRelations[]` DTMF |
+| 2 | BotIntent | `IntentRelatedDTMF.RelatedTypeID` for `botIntents[]` DTMF |
+
+The procedure assigns these values internally based on which array it's iterating. JSON does not emit them.
+
+### D.10 `IntentScriptType` — not emitted in v1
+
+| ID | Name | Active in DB |
+|---|---|---|
+| 1 | Opening | active |
+| 2 | Collection | active |
+| 3 | Validation | active |
+| 4 | Success | inactive |
+| 5 | Failure | active |
+| 6 | Closing | active |
+
+v1 emits `IntentScripts: []`. v3 will populate; entries pair `ScriptTypeId` with `LanguageCode` from the DB `Language` table.
+
+### D.11 Default `AIModelConfig` rows (`AccountId = 0`)
+
+The full set of catalog-eligible default models. See `model-catalog.md` for the named entries Skill 1 presents to users.
+
+| `AIModelConfigID` | `AIModelTypeId` (= `AIModel` FK) | Name | Active |
+|---|---|---|---|
+| 1 | 1 | Public GPT-4 Standard | active |
+| 52 | 10 | Public Gemini-2.5 Standard | active |
+| 91 | 13 | Public GPT- RealTime | active |
+| 132 | 15 | Public GPT Realtime Mini | active |
+| 136 | 16 | Public Gemini voice driven | active |
+| 139 | 18 | Gemini 3.1 - Voice driven | active |
+| 142 | 21 | Gemini 3.1 - LLM driven | active |
+| 4 | 4 | Public GPT-3.5 Standard | inactive |
+| 7 | 7 | Public PaLM Standard | inactive |
+
+Skill 3 emits one of the active rows per the catalog mapping; the matching `AIModelTypeId` is the row's `AIModel` FK. When the user picks "Gemini Live" in Skill 1, the catalog resolves to row **139** (the active Gemini 3.1 Voice driven default).
