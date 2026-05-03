@@ -14,7 +14,7 @@ Each skill teaches Claude exactly how to help you build one specific integration
 {
   "name": "voicenter-api",
   "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
 }
 ```
@@ -146,7 +146,7 @@ The dedicated page under `docs/skills/<skill>/` mirrors and extends each section
 
 ## Versioning
 
-The plugin and the marketplace are released together. Current version: **1.1.1**. See [CHANGELOG.md](../../CHANGELOG.md).
+The plugin and the marketplace are released together. Current version: **1.1.2**. See [CHANGELOG.md](../../CHANGELOG.md).
 
 ---
 

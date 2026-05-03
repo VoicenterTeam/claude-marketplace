@@ -23,7 +23,7 @@ If you want Claude to scaffold the whole project in one shot so you can rehearse
    mkdir hot-lead-sniper && cd hot-lead-sniper
    npm init -y && npm install express dotenv
    ```
-2. **Verify plugins are enabled** — Run `/plugin` and confirm `voicenter-api` and `voicenter-mcp` show **Enabled**.
+2. **Verify plugins are enabled** — Run `/plugin` and confirm `voicenter-api`, `voicenter-mcp`, and `voicenter-bot-builder` show **Enabled**.
 3. **MCP authenticated** — Run the `/setup` skill once so the OAuth flow is fresh.
 4. **Tunnel running** for the voicebot/popup webhooks:
    ```bash
