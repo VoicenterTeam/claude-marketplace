@@ -75,7 +75,7 @@ Read [architecture.md](architecture.md) — it shows the four canonical call flo
 
 ## Versioning
 
-The marketplace is at **v1.2.0**. `voicenter-mcp` and `voicenter-api` are at v1.1.1; `voicenter-bot-builder` is at v1.0.0. See the project [CHANGELOG.md](../CHANGELOG.md) for release history.
+The marketplace is at **v1.2.1**. `voicenter-mcp` and `voicenter-api` are at v1.1.2; `voicenter-bot-builder` is at v1.0.1. See the project [CHANGELOG.md](../CHANGELOG.md) for release history.
 
 The skill documentation under this `docs/` tree is kept in lockstep with the source `SKILL.md` files in [`plugins/voicenter-api/skills/`](../plugins/voicenter-api/skills), [`plugins/voicenter-mcp/skills/`](../plugins/voicenter-mcp/skills), and [`plugins/voicenter-bot-builder/skills/`](../plugins/voicenter-bot-builder/skills). When a SKILL.md changes, update the corresponding `docs/skills/<skill>/README.md`.
 

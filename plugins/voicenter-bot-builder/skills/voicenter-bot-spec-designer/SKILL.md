@@ -81,7 +81,7 @@ Ask, in order:
 5. **Primary language** (BCP-47, e.g., `he-IL`, `en-US`). Required.
 6. **Channel scope:** voice / chat / voice+chat. Required.
 7. **If voice active:** voice name. Present `model-catalog.md` voice catalog (`Puck`, `Orus`, plus any others); user picks by name or supplies any other string the provider supports.
-8. **AI model config:** present `model-catalog.md` model list. User picks by name → map to `AIModelConfigID` + `AIModelTypeId`. Override path: user supplies raw IDs directly. If user can't decide: mark `<UNKNOWN: AI Model Config>`.
+8. **AI model config:** present `model-catalog.md` model list. User picks by name → map to `AIModelConfigID` + `AIModelTypeId`. Override path: user supplies raw IDs directly. **Default:** if the user requests defaults, can't decide, or skips this step, fall back to **Gemini Live (Voice driven 3.1)** → `AIModelConfigID=139`, `AIModelTypeId=18`. Only mark `<UNKNOWN: AI Model Config>` if the user explicitly defers the choice (e.g. "leave it blank, platform team will fill in").
 9. **Caller silence:** "Does this bot need to handle caller silence?" One yes/no.
    - If yes: walk the four fields — `silence_duration` (seconds, int), `silence_loops` (int), `silence_sentence` (text, Mustache OK), `silence_ending_sentence` (text).
    - If no: mark section 3 `[not configured]`.
