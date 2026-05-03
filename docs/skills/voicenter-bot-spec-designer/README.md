@@ -49,6 +49,38 @@ Skill 1 detects the mode automatically and states it to the user. The user can o
 
 ---
 
+## Tool conventions used during the interview
+
+Two tool patterns apply throughout greenfield and patch flows (full detail in SKILL.md §2.4):
+
+**A. Live resource lookup via `voicenter-mcp.list_resources` (recommended default).** For Voicenter platform resources — **Customer Account ID** (Phase 1) and **RT=1 Layer ID** (Phase 4) — Skill 1's default is to call the [voicenter-mcp](../setup/README.md) plugin's `list_resources` tool (with `entityFilter: ["Accounts"]` or `["Layers"]`, `refresh: false`), display the returned list as an id+name table, and prompt via `AskUserQuestion`.
+
+If MCP is unavailable, Skill 1 follows a **3-tier fallback** — never silently skipping to manual entry:
+
+1. **Plugin not installed.** Surfaces this once and prompts via `AskUserQuestion`: *"Install and authenticate now (Recommended)"* or *"Continue with manual entry"*. If the user installs and authenticates, Skill 1 retries the `list_resources` call.
+2. **Plugin installed but not authenticated** (OAuth not completed, token expired, or auth/connection error). Prompts via `AskUserQuestion`: *"Authenticate now (Recommended)"* or *"Continue with manual entry"*. If the user authenticates, Skill 1 retries.
+3. **User declined or the retry still failed.** Falls back to **text-only mode** — captures the value as free text and uses `<UNKNOWN: …>` if the user doesn't know it. Logs once to section 7.3 with the reason. Skill 1 does not re-prompt for the same MCP step in the rest of the session — once the user opts out, that decision is respected.
+
+The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they are not fetched live.
+
+**B. Menu prompts via `AskUserQuestion`.** Every closed-set choice the user makes during the interview is presented through `AskUserQuestion` — never plain free-text. The iron rule: if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. Free-text is reserved for genuinely open-ended fields (names, descriptions, free-form text content, integer/numeric values).
+
+Concretely, this covers:
+
+- **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
+- **Phase 1** — channel scope, voice name, AI model config, caller-silence yes/no, identifier ASCII-default confirmation
+- **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
+- **Phase 2/3 boundary** — pause vs skip Deep Research
+- **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
+- **Phase 4** — account selection (live list), layer selection (live list), POST vs GET, dial source (parameter vs static), per-slot `ParameterTypeId` (STRING / PHONE / BOOLEAN / ENUM / Other-fallback) and `IsRequired` (yes/no), RT=2 `silence` fallback intent reference (pick from the existing intent set), RT=4 `record` (yes/no), and the RT=4 rarity-warning confirmation
+- **Patch mode §4.5** — cascade confirmation, plus every iron-rule re-prompt during patch
+- **Self-validation checklist** — every "Move it?" / "Add one?" / "Add intent or trim persona?" / "Confirm or propose alternative?" / 3-way Mustache resolution prompt
+- **§2.4.A MCP fallback** — Install / Authenticate / Continue manually
+
+`AskUserQuestion` automatically adds an **Other** escape so the user can always type a custom value. Recommended options are listed first with *(Recommended)* appended to the label. Lists exceeding 4 items (the menu max) are first shown as a reference table, then prompted with the 3 most likely candidates plus **Other**.
+
+---
+
 ## Greenfield mode — four phases
 
 ### Phase 1 — Identity, Channels, Model, Caller-silence
@@ -58,12 +90,12 @@ Captures section 1 + section 3:
 1. **Bot name** (free text, often Hebrew)
 2. **Identifier** (snake_case ASCII; used as the JSON filename prefix by Skill 3 — defaults to a snake_cased Bot Name when ASCII)
 3. **Description**
-4. **Customer Account ID** (or `<UNKNOWN: Account ID>`)
+4. **Customer Account ID** — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Accounts"]` to fetch the live account list, displays it, and prompts via `AskUserQuestion`. Falls back to free-text + `<UNKNOWN: Account ID>` if MCP is not connected.
 5. **Primary language** (BCP-47, e.g., `he-IL`)
-6. **Channel scope** (voice / chat / voice+chat)
-7. **Voice name** (catalog name or any provider-supported string)
-8. **AI model config** (catalog name → IDs, or raw IDs)
-9. **Caller silence** — yes (4 fields) or no (`[not configured]`)
+6. **Channel scope** — `AskUserQuestion` (voice / chat / voice+chat)
+7. **Voice name** — `AskUserQuestion` over the `model-catalog.md` voice list; `Other` allows any provider-supported string
+8. **AI model config** — `AskUserQuestion` over the `model-catalog.md` model list; `Other` allows raw `AIModelConfigID` + `AIModelTypeId`
+9. **Caller silence** — `AskUserQuestion` (Yes → 4 silence fields / No → `[not configured]`)
 
 ### Phase 2 — Persona Bundle
 
@@ -104,18 +136,29 @@ Captures section 4 (intent rows) and section 4.5 stubs (call-context, environmen
 
 ### Phase 4 — Per-intent structural fields
 
-Finalizes section 4 entries with per-RT specifics, generates section 4.5.3 (slot variables), runs an advisory Mustache pre-check, and creates section 5 stubs.
+Finalizes section 4 entries with per-RT specifics, generates section 4.5.3 (slot variables), runs an advisory Mustache pre-check, creates section 5 stubs, and (optionally) captures advanced overrides into section 4.7.
 
 Per-RT capture:
 
 | RT | Required fields |
 |---|---|
-| 1 (Layer transfer) | `Layer:` (int) |
-| 2 (External API) | `URL:`, `Method:`, `Headers:`, `Body:`, `API silence behavior:` (six sub-fields) |
+| 1 (Layer transfer) | `Layer:` (int) — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]` and prompts via `AskUserQuestion` |
+| 2 (External API) | `URL:`, `Method:` (`AskUserQuestion` POST/GET), `Headers:`, `Body:`, `API silence behavior:` (six sub-fields) |
 | 3 (Conversational) | (none beyond slots — RT=3 fields are language-heavy, Skill 2 territory) |
-| 4 (Outbound dial) | `Dial source:` (parameter or static), then `Parameter phone:` OR `Phone1/2/3:`, plus `selectdial_option:`, `NEXT_VO_ID:`, `MAX_DIAL_DURATION:`, `Record:`, optional `Announcement:` / `Loading announcement:` / `Post-execution intent instructions:`, and `Response success:` |
+| 4 (Outbound dial) | `Dial source:` (`AskUserQuestion` parameter/static), then `Parameter phone:` OR `Phone1/2/3:`, plus `selectdial_option:`, `NEXT_VO_ID:`, `MAX_DIAL_DURATION:`, `Record:`, optional `Announcement:` / `Loading announcement:` / `Post-execution intent instructions:`, and `Response success:` |
 
 The RT-specific sub-labels are **bold** in the spec — Skill 3's strict-template parser depends on this exact form. See [Skill 3's parser](../voicenter-bot-json-assembler/README.md#strict-template-parser) for the full grammar.
+
+#### Optional advanced features (§3.5.5 — default: skip, *not required*)
+
+Two runtime features are **opt-in only** in v1 and not part of the default interview:
+
+| Feature | Default | When opted-in |
+|---|---|---|
+| `ConditionGroupList` (conditional branching on `BotIntent` / `IntentRelated`) | Skill 3 emits `[]`; proc skips cleanly via NULL-guard in `CreateConditionGroups` | Captured under spec **§4.7 Advanced overrides** as a freeform `condition_groups:` block per intent or transition; Skill 3 passes through verbatim |
+| `DTMFList` (DTMF keypad routing on `BotIntent` / `IntentRelated`) | Skill 3 omits the key; proc gates with `IS NOT NULL AND JSON_LENGTH > 0` | Captured under spec §4.7 as `dtmf_list:` block; Skill 3 emits a `DTMFList[]` sibling field |
+
+After Phase 4 captures the structural intent set, Skill 1 prompts once via `AskUserQuestion` (header: "Advanced features", options: "Skip — accept defaults *(Recommended)*" / "Configure conditional branching" / "Configure DTMF routing"). The default-skip path is what every existing bot in the catalog uses. Skill 1 does not validate the contents of §4.7 — it's pass-through to Skill 3, which lifts the blocks verbatim into the JSON.
 
 ---
 
@@ -213,7 +256,8 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 - Make creative decisions in patch mode beyond what the user describes
 - Discard `[detailed]` content silently — every reset is explicit and confirmed
 - Validate the bot at runtime — no testing, no simulation, no behavior check
-- Query the Voicenter platform for live data — the model catalog is hardcoded
+- Query live data for the model catalog or voice catalog — both remain hardcoded in `model-catalog.md`. (Accounts and layers ARE fetched live via `voicenter-mcp.list_resources` — see the *Tool conventions* section above.)
+- Capture `ConditionGroupList` or `DTMFList` as part of the default interview — these are **opt-in only** under spec §4.7. Default-skip emits the safe defaults that every existing bot uses; the proc imports cleanly without them.
 
 ---
 

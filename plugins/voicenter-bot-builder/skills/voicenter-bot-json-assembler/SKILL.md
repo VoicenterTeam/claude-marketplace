@@ -350,7 +350,8 @@ One entry per intent in section 4 ordering. Per Doc 1 §8.2:
 | **`SortOrder`** | **1-based ordinal of the intent in section 4 (Intent 1 → 1, Intent 2 → 2, ...). Required — the column is `INT NOT NULL` and the procedure passes the extracted value explicitly, so a missing field becomes a NULL INSERT and fails.** |
 | **`IsActive`** | **`1` (explicit)** |
 | `BotIntentTypeID` | `1` (per Doc 1 §8.2 — v1 always emits 1 for every entry; capital `D` casing matches the procedure read) |
-| `ConditionGroupList` | `[]` (preserved per §16) |
+| `ConditionGroupList` | **Default `[]` (preserved per §16).** **Optional opt-in:** if spec section 4.7 contains a `### Intent: <identifier>` block with a `condition_groups:` body, pass through verbatim (Skill 3 does not validate the contents — it's the user's responsibility to match the DB enum). |
+| `DTMFList` | **Not emitted by default.** **Optional opt-in:** if spec section 4.7 contains a `dtmf_list:` body for the intent, emit a sibling `DTMFList: [<digit strings>]` field; otherwise omit. |
 
 #### 4.3.4 `intentRelations[]`
 
@@ -368,9 +369,12 @@ When the spec lists the same target twice (e.g., success path AND fallback both 
 | `NextIntentID` | Cached `<target identifier> → IntentId` |
 | `IntentRelatedID` | Same as `NextIntentID` (per Doc 1 §8.3 observation: junction ID often duplicates `NextIntentID`) |
 | `Order` | 1-based position in the transitions list (after dedup, the surviving row keeps its lowest pre-dedup `Order`) |
-| `ConditionGroupList` | `[]` (preserved per §16) |
+| `ConditionGroupList` | **Default `[]` (preserved per §16).** **Optional opt-in:** if spec section 4.7 contains a `### Transition: <origin> → <next>` block with a `condition_groups:` body, pass through verbatim. |
+| `DTMFList` | **Not emitted by default.** **Optional opt-in:** if spec section 4.7 contains a `dtmf_list:` body for the transition, emit a sibling `DTMFList: [<digit strings>]` field; otherwise omit. |
 
 A "terminal" intent (typically `transfer_to_human` with RT=1) has zero outgoing transitions in section 4 — Skill 3 emits zero `intentRelations[]` rows with that intent as `OriginIntentID`. The platform handles call termination.
+
+**Section 4.7 pass-through rule.** Skill 3 does not parse the freeform contents of section 4.7 — it lifts the YAML-style `condition_groups:` and `dtmf_list:` blocks verbatim into the corresponding JSON fields. The user is responsible for the schema of those blocks matching what `CreateConditionGroups` (the called proc) and `IntentRelatedDTMF` (the target table) expect. If section 4.7 is absent or empty, every `botIntents[]` and `intentRelations[]` entry uses the safe defaults above and the bot imports cleanly. **Section 4.7 is opt-in only — default skip is the recommended path.**
 
 #### 4.3.5 `intentCategories[]`
 
