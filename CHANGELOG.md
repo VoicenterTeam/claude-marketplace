@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.0] - 2026-05-03
+
+### Added (`voicenter-bot-builder` 1.0.1 → 1.1.0) — Skill 1 interactive UX + optional advanced features
+
+Skill 1 (`voicenter-bot-spec-designer`) now uses live MCP lookup for Voicenter platform resources and `AskUserQuestion` (interactive menu inputs) for every closed-set choice in the interview, instead of free-text capture. Skill 1 also gains an opt-in path for the two runtime-supported features (`ConditionGroupList`, `DTMFList`) that were previously inaccessible from the build pipeline.
+
+- **Live resource lookup via `voicenter-mcp.list_resources` (recommended default).** Customer Account ID (Phase 1) and RT=1 Layer ID (Phase 4) are now fetched live with `entityFilter: ["Accounts"]` / `["Layers"]` and presented as id+name tables, then prompted via `AskUserQuestion`. New SKILL.md §2.4.A documents a 3-tier fallback that is **never silently skipped**: (1) plugin not installed → offer install + auth via `AskUserQuestion`; (2) plugin installed but unauthenticated → offer authenticate via `AskUserQuestion`; (3) user declines or retry fails → fall back to text-only mode and `<UNKNOWN: …>` markers, logged once to spec section 7.3 with the reason; the user is not re-prompted in the same session.
+- **`AskUserQuestion` for every closed-set choice** (SKILL.md §2.4.B). New iron rule: if the user can answer with one of a fixed set of strings, route through interactive inputs. Covers runtime/mode detection, channel scope, voice/model catalog picks, caller-silence yes/no, identifier ASCII confirmation, every Phase 2 "Accept draft / Edit" prompt, Deep Research pause/skip, Response Type (RT=1/2/3/4), per-slot `ParameterTypeId` + `IsRequired`, RT=2 Method (POST/GET) + fallback intent reference (from existing intent set), RT=4 dial source + `record` + rarity-warning confirmation, account / layer selection from live MCP lists, patch-mode cascade confirm, every self-validation iron-rule re-prompt, and the new MCP install/auth/skip prompts. Free-text capture is reserved for genuinely open-ended fields (names, descriptions, free-form text content, integer/numeric values).
+- **Optional advanced features (default: skip — *not required*)** — new SKILL.md §3.5.5 adds an opt-in capture path for `ConditionGroupList` (conditional branching on `BotIntent` / `IntentRelated`) and `DTMFList` (DTMF keypad routing). After Phase 4 captures the structural intent set, Skill 1 prompts once via `AskUserQuestion` with **"Skip — accept defaults *(Recommended)*"** as the default. Skip path writes nothing; Skill 3 falls back to existing safe defaults (`ConditionGroupList: []`, `DTMFList` omitted), and the `ImportBotFromJSON` proc skips both arrays cleanly via NULL-guards in `CreateConditionGroups` and the `IntentRelatedDTMF` insert. Opt-in path captures into a new freeform spec **section 4.7 Advanced overrides**; Skill 3 (§4.3.3 / §4.3.4) lifts `condition_groups:` and `dtmf_list:` blocks verbatim into the corresponding `botIntents[]` / `intentRelations[]` entries. Skill 1 does not validate §4.7 contents — pass-through to Skill 3.
+- **RT=3 schema cross-reference clarification** — Skill 1 §3.4.3 RT prompt now includes a parenthetical noting the DB seed name for `ResponseTypeId=3` is "Message" / "Update Bot Configuration" but the operational use is conversational data-collection. Cosmetic only; no behavior change.
+
+### Changed
+
+- **Skill 1 anti-list** updated: live MCP lookup is now in scope (was previously listed as out-of-scope with the model catalog); `ConditionGroupList` / `DTMFList` are documented as opt-in only via §4.7.
+- **Skill 3** §4.3.3 + §4.3.4 (`botIntents[]` and `intentRelations[]`): `ConditionGroupList` and `DTMFList` rows now read from spec §4.7 if present, fall back to the existing default-skip behavior if absent.
+- **Docs lockstep:** `docs/skills/voicenter-bot-spec-designer/README.md` and `docs/skills/voicenter-bot-json-assembler/README.md` updated with the new tool conventions, the §3.5.5 opt-in summary, and the §4.7 pass-through behavior.
+
+### Plugin version bumps (lockstep per CLAUDE.md)
+
+- `marketplace.json` metadata: `1.2.1` → `1.3.0`
+- `voicenter-mcp` plugin: `1.1.2` → `1.1.3` (no content change; bumped for cache refresh)
+- `voicenter-api` plugin: `1.1.2` → `1.1.3` (no content change; bumped for cache refresh)
+- `voicenter-bot-builder` plugin: `1.0.1` → `1.1.0` (Skill 1 interactive UX + optional §3.5.5; Skill 3 §4.7 pass-through)
+
 ## [1.2.1] - 2026-05-03
 
 ### Fixed (`voicenter-bot-builder` 1.0.0 → 1.0.1) — Skill 3 alignment with `ImportBotFromJSON` stored procedure
