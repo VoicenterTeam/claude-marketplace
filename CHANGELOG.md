@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.4.0] - 2026-05-03
+
+### Added (`voicenter-bot-builder` 1.1.0 → 1.2.0) — Skill 1 intent flow diagram + refinement loop
+
+Skill 1 now generates a **Mermaid `flowchart TD`** of the bot's intent graph as the final structural artifact, embedded in the spec under new section 6.6, and offers a **refinement loop** before final emission. Same diagram regenerates after every patch, so the user can see the structural impact visually before finalizing.
+
+- **Mermaid diagram (spec section 6.6)** — Skill 1 §3.6.1. One node per intent in section 4 (label: `<identifier><br/>RT=<n> · slots: <count>`, plus ` ⚑` if hard-intent). Node shapes encode response type: stadium for RT=1 transfer, rounded rectangle for RT=2 API, default rectangle for RT=3 conversational, subroutine shape for RT=4 outbound dial. One labeled edge per transition (`success` / `fallback` / `escalation`). If section 4.7 (advanced overrides) declares `dtmf_list:` for a transition, digits append to the edge label. Skill 3 ignores section 6.6 — it's for human comprehension only, not the import contract.
+- **Refinement loop at greenfield close-out** — Skill 1 §3.6 step 5. After section 6 + 6.6 are generated and soft-cap warnings surface, Skill 1 renders the diagram and prompts via `AskUserQuestion` (header: "Diagram review", 4 options: "Looks good — finalize *(Recommended)*" / "Adjust an intent" / "Adjust a transition" / "Adjust persona / opening behavior"). Any "Adjust" pick routes back to the relevant phase, applies the change, regenerates section 6 (including 6.6), re-runs the self-validation checklist, and re-prompts. Capped at 5 iterations to prevent endless cycles — beyond 5, Skill 1 logs the iteration count to section 7.3 and proceeds.
+- **Patch-mode regeneration** — Skill 1 §4.6 + §4.7. Section 6.6 regenerates after every applied patch, alongside the cascade summary, and the same refinement loop is offered before final emission.
+
+### Changed
+
+- **Skill 1 output contract** updated to list section 6.6 as a greenfield/patch artifact (and to clarify it's not consumed by Skill 3 or the import proc).
+- **Docs lockstep:** `docs/skills/voicenter-bot-spec-designer/README.md` mirrors the diagram + refinement-loop additions, with a new "Intent flow diagram + refinement loop" section under Output contract.
+
+### Plugin version bumps (lockstep per CLAUDE.md)
+
+- `marketplace.json` metadata: `1.3.0` → `1.4.0`
+- `voicenter-mcp` plugin: `1.1.3` → `1.1.4` (no content change; bumped for cache refresh)
+- `voicenter-api` plugin: `1.1.3` → `1.1.4` (no content change; bumped for cache refresh)
+- `voicenter-bot-builder` plugin: `1.1.0` → `1.2.0` (Skill 1 diagram + refinement loop)
+
 ## [1.3.0] - 2026-05-03
 
 ### Added (`voicenter-bot-builder` 1.0.1 → 1.1.0) — Skill 1 interactive UX + optional advanced features
