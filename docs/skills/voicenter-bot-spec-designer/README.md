@@ -216,13 +216,15 @@ Blocking failures pause the close-out until the user resolves them. Advisory che
 - Sections 1, 2, 3, 4, 4.5 fully filled
 - Section 5: stub entries per intent, all marked `[structural]`
 - Section 6: initial cross-references (subsections 6.1–6.5)
+- **Section 6.6: Mermaid `flowchart TD` of the intent graph** — generated at close-out, shown to the user with a refinement loop, and embedded in the spec for human comprehension. Skill 3 ignores this section.
 - Section 7: spec version, schema reference, generation log entry, unknowns aggregation, pending work
+- Optional section 4.7: present iff the user opted in via §3.5.5 (advanced features)
 
 **On patch completion:**
 
 - The modified spec
 - Affected intents marked `[detailed-revisit]` (or stay `[structural]`)
-- Section 6 regenerated
+- Section 6 regenerated (including 6.6 — the diagram refreshes after every patch)
 - Section 7.3 has a new log entry summarizing the patch
 - Sections 7.4 and 7.5 updated
 
@@ -232,6 +234,23 @@ Blocking failures pause the close-out until the user resolves them. Advisory che
 |---|---|
 | **Single-conversation** | Full spec returned as the assistant message; handoff hint recommends Skill 2 next |
 | **Claude Code** | Spec written to `agent-spec.md` in the workspace; handoff hint recommends Skill 2 |
+
+### Intent flow diagram + refinement loop
+
+Before final emission (and again after every patch), Skill 1 renders the bot as a **Mermaid `flowchart TD`** under spec section 6.6. Each intent is one node; transitions are labeled edges (`success` / `fallback` / `escalation`). Node shapes encode response type:
+
+| RT | Mermaid shape |
+|---|---|
+| 1 (transfer) | stadium `([ ... ])` |
+| 2 (API) | rounded rectangle `( ... )` |
+| 3 (conversational) | default rectangle `[ ... ]` |
+| 4 (outbound dial) | subroutine `[[ ... ]]` |
+
+Hard intents get a ` ⚑` flag in the label. If section 4.7 declares `dtmf_list:` for a transition, the digits are appended to the edge label.
+
+After rendering, Skill 1 prompts via `AskUserQuestion` (4 options: "Looks good — finalize *(Recommended)*" / "Adjust an intent" / "Adjust a transition" / "Adjust persona / opening behavior"). Any "Adjust" pick routes back to the relevant phase, applies the change, regenerates section 6 (including 6.6), re-runs validation, and re-prompts. The loop is capped at 5 iterations to prevent accidental endless cycles.
+
+Section 6.6 is **for human comprehension only** — Skill 3 ignores it when projecting to JSON. The diagram refreshes automatically after every patch so the user can see the structural impact visually before finalizing.
 
 ---
 
