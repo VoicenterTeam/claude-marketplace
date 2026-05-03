@@ -1,6 +1,6 @@
 {
   "name": "voicenter-api",
   "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
 }

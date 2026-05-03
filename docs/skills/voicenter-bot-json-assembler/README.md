@@ -110,6 +110,14 @@ Skill 3 emits the Configuration shape per Response Type, populating language fie
 | 3 | `announcement`, `intentInstructions`, `response_success: ""` |
 | 4 | `phone1`, `phone2`, `phone3`, `parameter_phone` (when slot-driven), `selectdial_option`, `NEXT_VO_ID`, `MAX_DIAL_DURATION`, `record`, `announcement`, `intentLoadingAnnouncement`, `intentInstructions`, `response_success` (object with `instructions` key) |
 
+### Optional `ConditionGroupList` and `DTMFList` pass-through
+
+Both fields default to safe values (`ConditionGroupList: []` on `botIntents[]` / `intentRelations[]`; `DTMFList` omitted entirely). The import proc handles missing/empty values cleanly via NULL-guards (`CreateConditionGroups`, `IntentRelatedDTMF`).
+
+If spec section **4.7 Advanced overrides** is present (Skill 1 §3.5.5 opt-in), Skill 3 lifts each `### Intent: <identifier>` and `### Transition: <origin> → <next>` block's `condition_groups:` and `dtmf_list:` bodies verbatim into the corresponding JSON fields. Skill 3 does **not** validate the contents — it's pass-through. The user is responsible for the inner schema matching the DB enums (`IntentConditionGroupType`, `IntentConditionRelationType`).
+
+If §4.7 is absent or empty (the default), Skill 3 emits the safe defaults and the bot imports normally.
+
 ### Quirk preservation
 
 Skill 3 walks Appendix A (the §16 schema-quirks list) after assembly and verifies every quirk is correctly emitted: `IntentResponces` typo, RT=2 case-bug pair, `HandlingInstructions: null` per intent, `SystemPrompt: ""`, dual `AiModelConfig` / `AIModelConfig`, `tools: []`, `instructions: ""`, `IntentScripts: {}`, `ValidationRules: {}` and `ValidationPattern: null` per param, `silenceRelations: []`, `BotLanguages: []`, `llmDescription: ""`, `response_success: ""` on RT=2/RT=3, `Priority: 1` / `MaxAttempts: 3` / `ValidationTimeout: 30` per intent, `silence_behaviour` key omission when section 3 is `[not configured]`. Mis-emission is a Skill 3 internal bug — halt and report.
