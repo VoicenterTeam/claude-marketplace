@@ -28,7 +28,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §6 — The two `AIModelConfig` objects | Top-level vs version-level + `created` payload duplication |
 | Doc 1 §7 — Crosswalk: training-doc → JSON paths | Field-name reconciliation reference |
 | Doc 1 §8 — `intentList` six parallel collections | The bulk of assembly |
-| Doc 1 §9 — `intents[]` 16-field skeleton | Per-intent shape |
+| Doc 1 §9 — `intents[]` 14-field skeleton | Per-intent shape |
 | Doc 1 §10 — `IntentParameters` slot definitions | Per-slot shape |
 | Doc 1 §11 — `ResponseTypeId` reference (RT=1/2/3/4) | RT-specific Configuration assembly (§4.4) |
 | Doc 1 §11.2 — RT=2 pairing rule | Cross-reference check 5 + 6 |
@@ -294,7 +294,7 @@ Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. S
 
 #### 4.3.1 `intents[]`
 
-For each section 4 intent (in order), build a 16-field entry per Doc 1 §9.0:
+For each section 4 intent (in order), build a 14-field entry per Doc 1 §9.0:
 
 | Wire-format field | Spec source (or default) |
 |---|---|
@@ -488,7 +488,7 @@ Walk Appendix A. For every quirk in the table, ensure the assembled wire structu
 
 In normal operation, §4.2-4.4 already produce all quirks correctly. §4.5 is the verification gate that catches drift between the emission code and the §16 contract.
 
-The full 14-row checklist is in Appendix A.
+The full 15-row checklist is in Appendix A.
 
 ### 4.6 Sentinel emission for unknowns
 
@@ -734,7 +734,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Validate content quality.** Whether the persona is good, whether the `validationPrompt` is well-styled, whether the slot collection logic makes sense — none of these are Skill 3's concern. Skills 1 and 2 own content quality. Skill 3 only validates structural/cross-reference correctness.
 - **Test the bot at runtime.** No simulation, no behavior check, no deployment, no end-to-end flow. v1 lifecycle ends at "JSON ready for the user to import manually" per locked decision G.
 - **Query the Voicenter platform.** No MCP in v1 (per architecture §9). The model catalog is hardcoded in `model-catalog.md`; the user's account-specific call-context variables come from spec section 4.5.1 (the user's claim, trusted at face value).
-- **Modify quirk preservation.** Doc 1 §16 lists 14 quirks; Skill 3 emits exactly what they prescribe. Any "this looks redundant, I'll skip it" reasoning is forbidden — the platform's import endpoint may strictly require these keys. When in doubt, emit what production samples emit.
+- **Modify quirk preservation.** Doc 1 §16 lists 15 quirks; Skill 3 emits exactly what they prescribe. Any "this looks redundant, I'll skip it" reasoning is forbidden — the platform's import endpoint may strictly require these keys. When in doubt, emit what production samples emit.
 - **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
 - **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.
 - **Tolerate intent identifier collisions.** If two intents share an identifier across section 4 (which shouldn't happen post Skill 1 validation but could from a hand-edit), Skill 3 reports a parse error rather than silently reusing the cached ID. Identifier uniqueness is structurally required.
@@ -764,7 +764,7 @@ All 15 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the middle key between `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **Anti-quirk:** do **not** emit `IsActive` or `IsDeleted` at the intent root (sibling of `IntentResponces`). Earlier Skill 3 versions did; the platform tolerated but ignored those values. The current shape is platform-validated (see regression fixture `docs/json-bag/good.json` intent -10). |
 | (extra) | `response_success: ""` | RT=2 + RT=3 `Configuration` | Emit empty string. Observed in samples though purpose unclear. |
 
-The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 14 numbered quirks.
+The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 15 numbered quirks.
 
 **Rule for Skill 3:** when in doubt, emit what production samples emit, even if it looks redundant or empty. The platform's import endpoint may strictly require these keys to be present. Cleaning up the schema is a v3 concern (per Doc 1 §17 v2 Roadmap), not Skill 3's call.
 
