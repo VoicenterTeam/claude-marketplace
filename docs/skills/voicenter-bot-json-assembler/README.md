@@ -101,6 +101,8 @@ Section 1 fields map to top-level root keys. The two `AIModelConfig` objects (to
 
 ### Per-RT Configuration assembly
 
+Every `IntentResponces` object wraps the per-RT Configuration with three top-level keys in this order: `ResponseTypeId`, `IsActive` (always `1` in v1), then `Configuration`. The table below lists only what's inside `Configuration` for each RT — the outer `ResponseTypeId` / `IsActive` wrappers are invariant across all RTs.
+
 Skill 3 emits the Configuration shape per Response Type, populating language fields verbatim from section 5:
 
 | RT | Configuration keys |
@@ -120,7 +122,7 @@ If §4.7 is absent or empty (the default), Skill 3 emits the safe defaults and t
 
 ### Quirk preservation
 
-Skill 3 walks Appendix A (the §16 schema-quirks list) after assembly and verifies every quirk is correctly emitted: `IntentResponces` typo, RT=2 case-bug pair, `HandlingInstructions: null` per intent, `SystemPrompt: ""`, dual `AiModelConfig` / `AIModelConfig`, `tools: []`, `instructions: ""`, `IntentScripts: {}`, `ValidationRules: {}` and `ValidationPattern: null` per param, `silenceRelations: []`, `BotLanguages: []`, `llmDescription: ""`, `response_success: ""` on RT=2/RT=3, `Priority: 1` / `MaxAttempts: 3` / `ValidationTimeout: 30` per intent, `silence_behaviour` key omission when section 3 is `[not configured]`. Mis-emission is a Skill 3 internal bug — halt and report.
+Skill 3 walks Appendix A (the §16 schema-quirks list) after assembly and verifies every quirk is correctly emitted: `IntentResponces` typo, `IntentResponces.IsActive: 1` (emitted inside the wrapper, NOT at the intent root — see Skill 3 SKILL.md Appendix A quirk #15 and the anti-quirk note), RT=2 case-bug pair, `HandlingInstructions: null` per intent, `SystemPrompt: ""`, dual `AiModelConfig` / `AIModelConfig`, `tools: []`, `instructions: ""`, `IntentScripts: []`, `ValidationRules: {}` and `ValidationPattern: null` per param, `silenceRelations: []`, `BotLanguages: []`, `llmDescription: ""`, `response_success: ""` on RT=2/RT=3, `Priority: 1` / `MaxAttempts: 3` / `ValidationTimeout: 30` per intent, `silence_behaviour` key omission when section 3 is `[not configured]`. Mis-emission is a Skill 3 internal bug — halt and report.
 
 ### Sentinel emission for unknowns
 

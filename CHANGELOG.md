@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.4.1] - 2026-05-11
+
+### Fixed (`voicenter-bot-builder` 1.2.0 → 1.2.1) — Skill 3 `IntentResponces.IsActive` structural correction
+
+Skill 3 (`voicenter-bot-json-assembler`) now emits the per-intent active flag **inside** `IntentResponces` (as the middle key between `ResponseTypeId` and `Configuration`) and no longer emits `IsActive` or `IsDeleted` at the intent root. The corrected shape matches the platform-validated bot JSON (`docs/json-bag/good.json` intent -10). The `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag; the prior intent-root location was silently ignored, so the bot's runtime active state was unchanged by the fix — this is a wire-format correctness fix, not a behavior change.
+
+- **SKILL.md §4.3.1** — removed the two intent-root rows (`IsActive: 1`, `IsDeleted: 0`); added an inline note pointing readers to §4.4 for the corrected location.
+- **SKILL.md §4.4** — added `IsActive: 1` row to all four RT-specific tables (RT=1, RT=2, RT=3, RT=4) immediately below the `ResponseTypeId` row. Added an invariant-shape header note documenting that every `IntentResponces` has the same three-key outer shape regardless of RT.
+- **SKILL.md Appendix A** — added quirk #15 (`IntentResponces.IsActive: 1` emission rule + anti-quirk note explicitly forbidding intent-root `IsActive`/`IsDeleted`). Preamble updated from "14 quirks" to "15 quirks". Skill 3's §4.5 quirk-preservation verification pass now covers the new quirk.
+- **Companion docs (`docs/skills/voicenter-bot-json-assembler/README.md`)** — per-RT keys preamble and the quirk-preservation walk paragraph mirror the SKILL.md changes. (Drive-by fix: `IntentScripts: {}` corrected to `IntentScripts: []` to match the v1.2.1 SKILL.md Appendix A quirk #8 amendment.)
+- **Schema audit (`references/docs/voicenter-bot-json-schema-audit-v1.md`)** — §9.0 renamed "16-Field Skeleton" → "14-Field Skeleton" (intent-root `IsActive`/`IsDeleted` rows removed); §9.2 `IntentResponces` tree updated from two fields to three with `IsActive` between `ResponseTypeId` and `Configuration`. Inline "Schema correction (2026-05-11)" addenda explain the rationale.
+
+### Test artifacts
+
+`references/test-artifacts/test-emitted-json-{yuval,refua}.json` predate this fix and may show the pre-v1.4.1 shape. Regeneration is deferred — these files are reference samples, not consumed by any runtime. The next genuine Skill 3 invocation against either spec will produce the corrected shape.
+
+### Plugin version bumps (lockstep per CLAUDE.md)
+
+- `marketplace.json` metadata: `1.4.0` → `1.4.1`
+- `voicenter-mcp` plugin: `1.1.4` → `1.1.5` (no content change; bumped for cache refresh)
+- `voicenter-api` plugin: `1.1.4` → `1.1.5` (no content change; bumped for cache refresh)
+- `voicenter-bot-builder` plugin: `1.2.0` → `1.2.1` (Skill 3 wire-format correction)
+
 ## [1.4.0] - 2026-05-03
 
 ### Added (`voicenter-bot-builder` 1.1.0 → 1.2.0) — Skill 1 intent flow diagram + refinement loop

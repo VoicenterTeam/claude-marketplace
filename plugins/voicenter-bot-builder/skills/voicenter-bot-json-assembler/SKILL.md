@@ -314,8 +314,8 @@ For each section 4 intent (in order), build a 16-field entry per Doc 1 §9.0:
 | `IntentScripts` | `[]` *(amended per §16 quirk #8 revision; was `{}` — see Appendix A)* |
 | **`IntentSources`** | **Per-channel array derived from spec section 1 `Channels Active`. See Appendix D §D.7. Voice-only bot → `[{ "SourceID": 1 }]`.** |
 | `IntentResponces` | §4.4 below |
-| `IsActive` | `1` |
-| `IsDeleted` | `0` |
+
+> **Note (v1.4.1 wire-format correction):** `IsActive` is emitted **inside** `IntentResponces` (see §4.4), not at the intent root. Intent-root `IsActive` and `IsDeleted` are not emitted in v1 wire format. The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag; the prior intent-root location was silently ignored.
 
 #### 4.3.2 `IntentParameters[]` (per intent, slot list)
 
@@ -414,11 +414,14 @@ If a non-RT=2 intent has API silence behavior in its section 5 entry, that's a S
 
 Per intent, branch on `Response Type` (section 4) to assemble the correct `Configuration` shape. Doc 1 §11 has the per-RT field tables; the rules below codify Skill 3's behavior including unknowns.
 
+**`IntentResponces` outer shape — invariant across all RTs.** Every `IntentResponces` object has the same three top-level keys in this order: `ResponseTypeId`, `IsActive`, `Configuration`. The per-RT tables below define `Configuration`'s contents only — the `ResponseTypeId` and `IsActive` rows are repeated in each RT table as a reminder, but they are the same in every RT (`IsActive` is always `1` in v1).
+
 #### RT=1 — Layer Transfer (terminal)
 
 | Wire-format field | Source |
 |---|---|
 | `ResponseTypeId` | `1` |
+| `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.layer` | Section 5 "Layer" — integer if specified; `-999` sentinel if `<UNKNOWN: layer ID>` |
 | `Configuration.announcement` | Section 5 "Announcement" verbatim |
 | `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
@@ -430,6 +433,7 @@ RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a 
 | Wire-format field | Source |
 |---|---|
 | `ResponseTypeId` | `2` |
+| `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.url` | Section 5 "URL"; `<USER_TO_FILL: webhook_url>` if `<UNKNOWN>` |
 | `Configuration.method` | Section 5 "Method" (`"POST"` or `"GET"`) |
 | `Configuration.headers` | Section 5 "Headers" object; `{}` if not specified |
@@ -450,6 +454,7 @@ The `api_silence_behaviour` and the corresponding `apiSilenceRelations[]` regist
 | Wire-format field | Source |
 |---|---|
 | `ResponseTypeId` | `3` |
+| `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.announcement` | Section 5 "Announcement" verbatim |
 | `Configuration.intentInstructions` | Section 5 "Post-Execution Intent Instructions" verbatim |
 | `Configuration.response_success` | `""` (preserved per §16) |
@@ -461,6 +466,7 @@ RT=4 has two operating modes selected by section 4 `**Dial source:**`. Both mode
 | Wire-format field | Source |
 |---|---|
 | `ResponseTypeId` | `4` |
+| `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.phone1` | Section 4 `**Phone1:**` (E.164 with leading `+`) when dial-source=static; `""` when dial-source=parameter |
 | `Configuration.phone2` | Section 4 `**Phone2:**` when dial-source=static; `""` when dial-source=parameter |
 | `Configuration.phone3` | Section 4 `**Phone3:**` when dial-source=static; `""` when dial-source=parameter; `<USER_TO_FILL: phone3>` if static and `<UNKNOWN>` |
@@ -737,7 +743,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 
 ## Appendix A — Doc 1 §16 quirks: complete preservation checklist
 
-All 14 quirks must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
+All 15 quirks must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
 
 | # | Quirk | Wire-format location | Action |
 |---|---|---|---|
@@ -755,6 +761,7 @@ All 14 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 12 | `silenceRelations: []` | Top of `intentList` | Emit empty array. v1 always empty. |
 | 13 | `BotLanguages: []` | Bot top-level | Emit empty array. |
 | 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
+| 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the middle key between `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **Anti-quirk:** do **not** emit `IsActive` or `IsDeleted` at the intent root (sibling of `IntentResponces`). Earlier Skill 3 versions did; the platform tolerated but ignored those values. The current shape is platform-validated (see regression fixture `docs/json-bag/good.json` intent -10). |
 | (extra) | `response_success: ""` | RT=2 + RT=3 `Configuration` | Emit empty string. Observed in samples though purpose unclear. |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 14 numbered quirks.
