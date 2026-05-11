@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Official Voicenter Claude Code plugins — live MCP access, API integration skills for all 14 Voicenter APIs, and a 3-skill bot-builder authoring pipeline",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -14,7 +14,7 @@
       "name": "voicenter-mcp",
       "source": "./plugins/voicenter-mcp",
       "description": "Live access to all Voicenter APIs directly from Claude Code via the MCP server at mcp01.voicenter.co. Authenticated via OAuth — no manual token setup required.",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "author": { "name": "Voicenter" },
       "homepage": "https://mcp01.voicenter.co/mcp",
       "license": "MIT",
@@ -25,7 +25,7 @@
       "name": "voicenter-api",
       "source": "./plugins/voicenter-api",
       "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls.",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "author": { "name": "Voicenter" },
       "homepage": "https://www.voicenter.com/API",
       "license": "MIT",
@@ -36,7 +36,7 @@
       "name": "voicenter-bot-builder",
       "source": "./plugins/voicenter-bot-builder",
       "description": "Three-skill pipeline for designing and generating Voicenter Bot JSON: Agent Spec Designer (interview), Intent Detail Author (per-intent language), JSON Assembler (wire-format projection). Produces a deployable bot-<name>-<date>.json.",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "author": { "name": "Voicenter" },
       "homepage": "https://www.voicenter.com/API",
       "license": "MIT",

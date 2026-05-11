@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.2] - 2026-05-11
+
+### Changed
+
+Cache-refresh bump across all three plugins to force `/reload-plugins` to resync SKILL.md content on existing installs. No behavior or surface-area change since 1.4.1.
+
+### Plugin version bumps (lockstep per CLAUDE.md)
+
+- `marketplace.json` metadata: `1.4.1` → `1.4.2`
+- `voicenter-mcp` plugin: `1.1.5` → `1.1.6` (no content change; bumped for cache refresh)
+- `voicenter-api` plugin: `1.1.5` → `1.1.6` (no content change; bumped for cache refresh)
+- `voicenter-bot-builder` plugin: `1.2.1` → `1.2.2` (no content change; bumped for cache refresh)
+
 ## [1.4.1] - 2026-05-11
 
 ### Fixed (`voicenter-bot-builder` 1.2.0 → 1.2.1) — Skill 3 `IntentResponces.IsActive` structural correction
