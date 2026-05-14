@@ -265,7 +265,7 @@ If any of these fail at end-of-step, return to authoring; do not advance to step
 
 For each `validationPrompt` field on a voice-active intent (section 1 `Channels Active` includes `voice`), run three detections:
 
-1. **Markdown formatting** — regex `^\s*[-*+]\s` (bullets), `^\s*#+\s` (headers), or `\[.*\]\(.*\)` (markdown links). If matched: **blocking** — voice will read these aloud literally ("dash space hello"). Surface:
+1. **Markdown formatting** — regex `(?m)^\s*[-*+]\s` (bullets), `(?m)^\s*#+\s` (headers), or `\[.*\]\(.*\)` (markdown links). If matched: **blocking** — voice will read these aloud literally ("dash space hello"). Surface:
    > Line `[N]` of `validationPrompt` in `[intent]` contains markdown formatting (`[matched pattern]`). Per Compass §5 anti-pattern "Chat-agent boilerplate copied to voice", TTS reads markdown literally. Rewrite as natural-language prose before proceeding.
 
 2. **URLs** — regex `https?://\S+`. If matched: **blocking** — TTS would read the URL aloud. Surface:
@@ -294,7 +294,7 @@ Log per-intent: `Compass rule 9 advisory fired on [intent].validationPrompt — 
 
 In each `validationPrompt`, count transcript-style example pairs. A pair is matched by:
 - A line matching `(?im)^\s*(user|caller|פונה|לקוח)\s*:` followed within 10 lines by
-- A line matching `(?im)^\s*(agent|bot|נציג|בוט|נועה)\s*:`.
+- A line matching `(?im)^\s*(agent|bot|נציג|בוט)\s*:`.
 
 If more than 2 pairs are found in a single `validationPrompt`: advisory — surface:
 > `validationPrompt` of `[intent]` contains `[N]` transcript-style few-shot examples. Per Compass §4 "Examples vs rules", each transcript example is 80–200 tokens in English and 250–500 in Hebrew — three Hebrew few-shots can blow the entire prompt budget. The doctrine recommendation is zero examples by default; add one or two only to fix specific recurring failures (brand-name pronunciation, Hebrew date register, a misclassified tool trigger). Two paths:
