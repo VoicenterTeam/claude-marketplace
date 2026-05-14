@@ -35,7 +35,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §12 — `ParameterTypeId` catalog | Slot type emission |
 | Doc 1 §13 — Mustache + variable categories | Cross-reference check 7 |
 | Doc 1 §15.3 — ID placeholder strategy (Option A) | §4.1 allocation |
-| Doc 1 §15.4 — Cross-reference pass spec | §6 — the seven checks |
+| Doc 1 §15.4 — Cross-reference pass spec | §6 — the ten checks |
 | Doc 1 §16 — Schema quirks summary | §4.5 + Appendix A |
 | Doc 2 §3.7 — Strict-template enforcement | §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | Everything in this file implements this |
@@ -549,9 +549,9 @@ After §4 assembly and §5 sanity check: run all ten checks (seven per Doc 1 §1
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
-### 6.2 The seven checks
+### 6.2 The ten checks
 
 | # | Check | What it validates | Detection |
 |---|---|---|---|
@@ -636,14 +636,14 @@ Appendix B has the consolidated routing table.
 
 ### 6.4 Pass/fail behavior
 
-**On all seven checks passing:** proceed to §7 emission.
+**On all ten checks passing:** proceed to §7 emission.
 
 **On any check failing:** emit a structured error report:
 
 ```
 Skill 3 cross-reference pass failed.
 
-Checks failed: <count> of 7
+Checks failed: <count> of 10
 Checks passed: <count>
 
 [For each failure:]
@@ -724,7 +724,7 @@ The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not au
 # - Rule <N> (<rule name>): <human-readable summary of the violation in context> — see references/voice-prompt-doctrine.md rule <N> for fix recipe
 ```
 
-Rule names are sourced from the reference catalog (`references\voice-prompt-doctrine.md` §1 headings). Example lines:
+Rule names are sourced from the reference catalog (`references/voice-prompt-doctrine.md` §1 headings). Example lines:
 
 ```
 # - Rule 3 (English operational, target-language utterances): prompts.persona is 87% Hebrew on a he-IL bot; user kept original — see references/voice-prompt-doctrine.md rule 3 for fix recipe
@@ -769,7 +769,7 @@ If the file already exists in the workspace (Claude Code), append `-<counter>` b
 Append one entry to spec section 7.3:
 
 ```
-[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 7/7 passed.
+[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 10/10 passed.
 ```
 
 In single-conv: this entry appears in the regenerated spec, which is part of Skill 3's chat output below the JSON code block.
@@ -800,7 +800,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Modify the spec beyond appending to section 7.3.** No edits to sections 1-6. No changes to status markers. No regeneration of section 4.5.3 (Skill 2's job) or section 6 (Skill 1/2's job; Skill 3 only compares as a sanity check).
 - **Skip the cross-reference pass.** Under any circumstance. Even if the user explicitly asks ("just give me the JSON, I'll fix it later") — the pass is non-negotiable per locked decision C. The cross-reference pass is the difference between a JSON that the platform can import but the runtime can't execute, and a JSON the runtime actually runs.
 - **Suppress fail-loud sentinels.** They are the entire point of the unknown-value model (decision B). The banner makes them visible at import time so the user catches them before deploying. Quiet defaults (empty string, 0, null) would import successfully and break at runtime, which is much harder to diagnose.
-- **Emit JSON if any of the 7 cross-reference checks fail.** Partial emission is worse than no emission — a partial JSON looks deployable, the user might import it and find out at runtime that it's broken. Hard halt is the correct behavior.
+- **Emit JSON if any of the 10 cross-reference checks fail.** Partial emission is worse than no emission — a partial JSON looks deployable, the user might import it and find out at runtime that it's broken. Hard halt is the correct behavior.
 - **Run iteratively or repeatedly within a single invocation.** One parse, one assembly, one sanity check, one cross-reference pass, one emission. If something fails, halt and report. The user re-invokes after fixing.
 - **Invoke Skill 1 or Skill 2.** Skill 3 reports routing recommendations; the user invokes the relevant skill manually (per architecture §9.1; skill-to-skill direct invocation is v3).
 - **Validate content quality.** Whether the persona is good, whether the `validationPrompt` is well-styled, whether the slot collection logic makes sense — none of these are Skill 3's concern. Skills 1 and 2 own content quality. Skill 3 only validates structural/cross-reference correctness.
