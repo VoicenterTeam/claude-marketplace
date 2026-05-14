@@ -42,6 +42,7 @@ Before touching the spec, load context from these references.
 | Doc 2 §7.5 — Routing failures back | Appendix B |
 | `locked-decisions.md` decision B | Sentinel strategy |
 | `locked-decisions.md` decision M | Section 4.5 inventory drives Mustache check |
+| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 3 owns checks 8 (token budget — rule 1), 9 (session resumption — rule 2), 10 (model-config doctrine — rule 12), and the banner sentinels (rule 13) |
 
 Also load this file from Skill 1's package:
 
@@ -542,13 +543,13 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all seven checks per Doc 1 §15.4. **All blocking.** Failure of any check halts emission. Per locked decision C.
+After §4 assembly and §5 sanity check: run all ten checks (seven per Doc 1 §15.4 plus three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`). Checks 1–7 are blocking per locked decision C. Checks 8–10: check 8 is advisory at 1,500–2,499 tok and blocking at ≥ 2,500 tok; check 9 is advisory; check 10 is blocking on any mismatch. Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7. All seven run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time.
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
 ### 6.2 The seven checks
 
@@ -561,6 +562,9 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7. All seven run unconditionally 
 | 5 | RT=2 has `apiSilenceRelations[]` pairing | Every intent with `IntentResponces.ResponseTypeId = 2` has a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`. | Walk RT=2 intents; for each, verify a row exists. |
 | 6 | `api_silence_behaviour` matches `apiSilenceRelations[].Configuration` | For each RT=2 intent, the `IntentResponces.Configuration.api_silence_behaviour` content equals the corresponding `apiSilenceRelations[].Configuration` content. | Field-by-field deep equality on the 6 fields (`silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions`, `intent`). |
 | 7 | Mustache resolvability | Every Mustache reference (in any text field across the assembled structure) resolves: (a) collected by the same intent that uses it, OR (b) in 4.5.1+4.5.2 whitelist (call-context or env), OR (c) in 4.5.3 collected by an intent that is upstream of the using intent in the transition graph, OR (d) in 4.5.4 declared for the same RT=2 intent or an upstream RT=2 intent. | Walk every text field; extract Mustache tokens; for each, classify against (a)-(d). |
+| 8 | Assembled-prompt token budget (Compass rule 1) | Estimated token count of the assembled systemInstruction-equivalent text (bot-level prompts + per-intent validationPrompt + per-intent post-exec intentInstructions, excluding openingAnnouncement) is below the doctrine thresholds. Advisory at 1,500–2,499; **blocking** at ≥ 2,500. Applies only when `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview` (gating per Compass rule 1). | Run the char-based token estimate per `references/voice-prompt-doctrine.md` §2. Banner-report the count and band. Halt on ≥ 2,500. |
+| 9 | Session-resumption ceiling (Compass rule 2) | If spec section 1 declares cross-session continuity is required, the assembled systemInstruction is under 200 tok. Advisory. Same gating as check 8. | Same token estimate as check 8. Banner-only if continuity not required. |
+| 10 | Model-config doctrine (Compass rule 12) | When `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview`: `thinkingConfig.thinkingLevel` is `"minimal"` or absent; `affectiveDialog` is absent or `false`; `proactiveAudio` is absent or empty `{}`; if section 1 has voice active, `responseModalities` contains `"AUDIO"`. **Blocking** on any mismatch. | Inspect the in-memory `AiModelConfig.created.generationConfig` after §4 assembly. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -571,6 +575,47 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7. All seven run unconditionally 
 | `{{ENV.SOMETHING}}` | Match against 4.5.2. |
 
 **Upstream determination (v1 simplification per Conv 4 decision):** intent A is upstream of intent B if there is a path A → ... → B in the transition graph (`intentRelations[]`). Cousins (no path either direction) and downstream intents (path B → ... → A) are not upstream. Check 7 uses simple reachability, not full dataflow analysis. False negatives are possible (a runtime path may exist that the static graph doesn't capture); false positives are unlikely.
+
+**Check 8 specifics — token estimate method:**
+
+Apply the char-based estimate from `../../references/voice-prompt-doctrine.md` §2:
+
+1. Concatenate, in this order, the text content of: `prompts.persona` + `prompts.voiceInstructions` (only if section 1's voice channel is active) + `prompts.chatInstructions` (only if chat channel is active) + `prompts.intentInstructions` (bot-level) + for each intent in section 4 order: that intent's `validationPrompt` + that intent's post-execution `intentInstructions`. **Exclude** `prompts.openingAnnouncement` (platform-rendered per Compass §6).
+2. Count characters per class: Latin/ASCII/digit/punctuation at 1/4 token; Hebrew/Arabic/CJK at 1/1.5 token; whitespace at 1/4 token.
+3. Sum and round up. The result has ±15% accuracy.
+
+Thresholds (from Compass §4):
+- < 1,500 tok: no banner entry.
+- 1,500 – 2,499 tok: advisory — emit banner line `# - Token estimate: <N> tok (advisory threshold 1,500-2,499; expect noticeable barge-in lag and instruction-drop risk). See references/voice-prompt-doctrine.md rule 1.`
+- ≥ 2,500 tok: blocking — halt assembly. The structured error includes:
+  ```
+  Check 8: Assembled-prompt token budget (Compass rule 1)
+    Violation: estimated <N> tok exceeds the 2,500 doctrine ceiling
+    Route to: Skill 1 patch mode — trim prompts.persona / voiceInstructions / intentInstructions, OR split this bot into orchestrator + specialist bots.
+    Suggested fix: review per-intent validationPrompt for redundant guidance duplicated across persona and voiceInstructions; remove duplicates from the per-intent fields.
+  ```
+
+**Check 9 specifics — session-resumption ceiling:**
+
+Fires only when spec section 1 (or an extension subsection) declares `**Cross-session continuity:** required`. If the field is absent or `**Cross-session continuity:** not required` (default for v1 specs): silently skip.
+
+When fires: reuse the same char-based estimate from check 8 and compare against 200 tok. Threshold:
+- < 200 tok: no banner entry.
+- ≥ 200 tok: advisory — banner line `# - Session-resumption ceiling (Compass rule 2): assembled prompt is <N> tok; sessionResumption.handle is known to silently break above 200 tok on Gemini Live 3.1 native-audio. Mitigation: stateless prompt + per-session summary injection (out of scope for v1 bot-builder).`
+
+**Check 10 specifics — model-config doctrine:**
+
+Inspect the in-memory `AiModelConfig.created` block after §4 assembly. For each sub-check, halt on mismatch:
+
+| Sub-check | Expected | Failure message |
+|---|---|---|
+| `model` string | `"models/gemini-3.1-flash-live-preview"` | `AiModelConfig.created.model is "<actual>", expected "models/gemini-3.1-flash-live-preview". Per Compass rule 12, the model string is pinned for Gemini Live 3.1 bots. Route to Skill 1 patch mode — fix spec section 1 AI Model Config.` |
+| `generationConfig.thinkingConfig.thinkingLevel` | `"minimal"` OR absent | `thinkingLevel is "<actual>", expected "minimal" (or absent — defaults to minimal). Per Compass §1, medium and high produce noticeable conversational pauses; minimal is the telephony-optimized default. Route to Skill 1 patch mode.` |
+| `generationConfig.affectiveDialog` | absent OR `false` | `affectiveDialog is enabled. Per Compass §1, this is unsupported in 3.1 (regression from 2.5) and contributes to premature turnComplete truncation. Route to Skill 1 patch mode.` |
+| `generationConfig.proactiveAudio` | absent OR `{}` | `proactiveAudio has content. Per Compass §1, this is unsupported in 3.1. Route to Skill 1 patch mode.` |
+| `generationConfig.responseModalities` includes `"AUDIO"` (if section 1 has voice active) | `["AUDIO"]` (or contains AUDIO) | `responseModalities does not include "AUDIO" but section 1 declares an active voice channel. Route to Skill 1 patch mode.` |
+
+The blocking error report aggregates all check 10 sub-failures into a single check 10 entry (do not emit one entry per sub-check).
 
 ### 6.3 Failure routing per Doc 2 §7.5
 
@@ -583,6 +628,9 @@ For each failing check, the structured error includes a "route to" recommendatio
 | Check 5 — RT=2 missing `apiSilenceRelations` pairing | **Skill 1 patch mode** — RT=2 structural authoring incomplete. |
 | Check 6 — `api_silence_behaviour` mismatch | **Skill 3 internal bug** — Skill 3 emits both from the same source; a mismatch means an emission bug. Report and halt; user files a skill-level issue. |
 | Check 7 — Mustache unresolvable | **Skill 1 patch mode** if the missing variable should exist (e.g., add to 4.5.1 or 4.5.4), OR **Skill 2 reactivation** if the reference is wrong (e.g., typo in `validationPrompt`). The error message identifies the field and suggests both paths. |
+| Check 8 — token budget exceeded (blocking) | **Skill 1 patch mode** to trim bot-level prompts, OR **Skill 2 reactivation** to trim per-intent `validationPrompt` and post-exec `intentInstructions`. Above 4,000 tok, also recommend splitting into orchestrator + specialist bots. |
+| Check 9 — session-resumption ceiling (advisory only) | Informational — no route. The user either drops the cross-session continuity requirement or accepts the known limitation per Compass §1 cookbook #1197 Issue 11. |
+| Check 10 — model-config doctrine violation (blocking) | **Skill 1 patch mode** — model config is set in spec section 1. Skill 1 needs to update the AI Model Config selection or apply per-field corrections (the typical fix: drop `affectiveDialog`/`proactiveAudio` overrides; reset `thinkingLevel` to minimal). |
 
 Appendix B has the consolidated routing table.
 
@@ -653,6 +701,12 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   [or:]
 #   - 7.4 and emitted sentinels in agreement.
 #
+# DOCTRINE SENTINELS (Compass advisories not resolved during authoring):
+#   - Rule <N> (<name>): <one-line summary> — see references/voice-prompt-doctrine.md rule <N> for fix recipe
+#   [...]
+#   [or:]
+#   - No doctrine sentinels.
+#
 # DEFAULTS APPLIED:
 #   - generationConfig.temperature = 1.5 (v1 default)
 #   - generationConfig.topP = 0.95 (v1 default)
@@ -663,6 +717,24 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.
 
 The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not authored in the spec — generation params, the constants per Doc 1 §16 (e.g., `Priority: 1`, `MaxAttempts: 3`), and the catalog-derived `created` payload defaults. This makes Skill 3's contributions auditable: anything not in the banner came from the spec.
+
+**DOCTRINE SENTINELS population (Compass rule 13).** Walk section 7.3 of the spec. For each log entry of the form `Compass rule <N> advisory fired on [<context>] — user kept original` (or any variant where the user opted not to fix), emit one banner line under DOCTRINE SENTINELS. The line format is:
+
+```
+# - Rule <N> (<rule name>): <human-readable summary of the violation in context> — see references/voice-prompt-doctrine.md rule <N> for fix recipe
+```
+
+Rule names are sourced from the reference catalog (`references\voice-prompt-doctrine.md` §1 headings). Example lines:
+
+```
+# - Rule 3 (English operational, target-language utterances): prompts.persona is 87% Hebrew on a he-IL bot; user kept original — see references/voice-prompt-doctrine.md rule 3 for fix recipe
+# - Rule 7 (Generic-policy boilerplate): "GDPR" appears in prompts.persona; user kept (declared domain-appropriate) — see references/voice-prompt-doctrine.md rule 7 for fix recipe
+# - Rule 10 (Few-shot example cap): collect_inquiry_details.validationPrompt has 3 transcript pairs (Hebrew bot — ~750 tok cost); user kept — see references/voice-prompt-doctrine.md rule 10 for fix recipe
+```
+
+If no Compass advisories fired or all were resolved, emit `# - No doctrine sentinels.` (matching the established pattern of the other banner sections).
+
+The DOCTRINE SENTINELS section is **structural** per the doctrine catalog (rule 13) — auto-applied based on the spec's section 7.3 trail; no user prompt and no opt-out at emission time. If a user wants a clean banner, they fix the advisories during Skill 1 / Skill 2 authoring.
 
 ### 7.3 Filename convention
 
@@ -738,6 +810,8 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
 - **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.
 - **Tolerate intent identifier collisions.** If two intents share an identifier across section 4 (which shouldn't happen post Skill 1 validation but could from a hand-edit), Skill 3 reports a parse error rather than silently reusing the cached ID. Identifier uniqueness is structurally required.
+- **Rewrite or compress prompt text to meet the Compass rule 1 token budget.** When check 8 (token budget) fires at the blocking threshold (≥ 2,500 tok), Skill 3 halts and routes to Skill 1 / Skill 2 patch — it does not auto-trim, summarize, paraphrase, or re-section the user's prompt content. The user owns the prose; Skill 3's job is to measure and refuse, never to author.
+- **Resolve Compass advisories without user input.** Rules 3, 4, 5, 6, 7, 9, 10 are all advisory-only at their owning skill. If a spec arrives at Skill 3 with unresolved advisories in section 7.3, Skill 3 emits the corresponding DOCTRINE SENTINELS banner lines (per rule 13) — it does not silently apply fixes. The user decides at authoring time; Skill 3 only reports.
 
 ---
 
