@@ -36,6 +36,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §14.3.14 — Field-purpose cheat sheet | Disambiguating misplacement |
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
+| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
 
 Also load this file from this skill's package:
 
@@ -259,6 +260,63 @@ Free prose is forbidden. See `conversation-routines-style-guide.md` for template
    - Every Mustache reference resolves (see section 5 — Mustache resolvability mechanics)
 
 If any of these fail at end-of-step, return to authoring; do not advance to step 3.
+
+**Iron rule (Compass rule 8 — TTS-safe formatting; fires during step 2, blocking on markdown/URLs and advisory on long digit runs):**
+
+For each `validationPrompt` field on a voice-active intent (section 1 `Channels Active` includes `voice`), run three detections:
+
+1. **Markdown formatting** — regex `^\s*[-*+]\s` (bullets), `^\s*#+\s` (headers), or `\[.*\]\(.*\)` (markdown links). If matched: **blocking** — voice will read these aloud literally ("dash space hello"). Surface:
+   > Line `[N]` of `validationPrompt` in `[intent]` contains markdown formatting (`[matched pattern]`). Per Compass §5 anti-pattern "Chat-agent boilerplate copied to voice", TTS reads markdown literally. Rewrite as natural-language prose before proceeding.
+
+2. **URLs** — regex `https?://\S+`. If matched: **blocking** — TTS would read the URL aloud. Surface:
+   > Line `[N]` of `validationPrompt` in `[intent]` contains a URL (`[matched URL]`). Voice agents should not vocalize URLs. Replace with a description ("our website") or move the URL out of the prompt entirely.
+
+3. **Long digit runs without spell-out instruction** — regex `\d{6,}` AND no `(?i)(digit by digit|spell|ספרה ספרה|חזרי ספרה)` instruction within 100 surrounding characters. If matched: **advisory** — surface:
+   > A long digit sequence (`[matched]`) appears in `validationPrompt` of `[intent]` without a nearby "spell digit-by-digit" instruction. Per Compass §6 voice output rules, long digit runs read awkwardly. Consider adding an explicit spell-out instruction (e.g., "חזרי ספרה ספרה" for Hebrew; "Read digit by digit" for English). Continue without fix, or pause to add?
+
+Log per-intent resolution to section 7.3: `Compass rule 8 advisory/blocking fired on [intent].validationPrompt — [resolved: yes/no]`.
+
+**Iron rule (Compass rule 9 — date math in prompt; fires during step 2, advisory):**
+
+In each `validationPrompt`, search for date-math patterns:
+- `(?i)\bnot\s+(in\s+)?(the\s+)?future\b`
+- `(?i)\b(year|שנה)\s*[≥>=]+\s*\d{4}\b`
+- `(?i)\b(today|tomorrow|yesterday)\b` AND no surrounding `{{TimeNow}}` or equivalent Mustache reference within 200 characters.
+
+If matched: advisory — surface:
+> `validationPrompt` of `[intent]` contains date-math instructions (`[matched pattern]`). Per Compass §2 anti-list "Date and time math" and §8 operating rule 8, LLMs are notoriously bad at calendar arithmetic, especially under latency pressure. The doctrine recommends computing dates server-side and injecting them as pre-rendered Mustache variables in section 4.5.1 (e.g., `{{TimeNow}}` for current ISO, `{{TodayHumanHe}}` for a localized human form). Two paths:
+>   (a) Replace the date-math instruction with a Mustache reference to a pre-rendered variable. Skill 2 cannot add to 4.5.1 (that's Skill 1's territory) — pause and invoke Skill 1 patch mode to declare the new call-context variable, then return.
+>   (b) Keep the date-math instruction and accept the runtime risk.
+
+Log per-intent: `Compass rule 9 advisory fired on [intent].validationPrompt — [resolved: yes/no]`.
+
+**Iron rule (Compass rule 10 — few-shot example cap; fires during step 2, advisory):**
+
+In each `validationPrompt`, count transcript-style example pairs. A pair is matched by:
+- A line matching `(?im)^\s*(user|caller|פונה|לקוח)\s*:` followed within 10 lines by
+- A line matching `(?im)^\s*(agent|bot|נציג|בוט|נועה)\s*:`.
+
+If more than 2 pairs are found in a single `validationPrompt`: advisory — surface:
+> `validationPrompt` of `[intent]` contains `[N]` transcript-style few-shot examples. Per Compass §4 "Examples vs rules", each transcript example is 80–200 tokens in English and 250–500 in Hebrew — three Hebrew few-shots can blow the entire prompt budget. The doctrine recommendation is zero examples by default; add one or two only to fix specific recurring failures (brand-name pronunciation, Hebrew date register, a misclassified tool trigger). Two paths:
+>   (a) Trim to the single most calibration-relevant pair.
+>   (b) Keep as-is and accept the token cost (will surface in Skill 3's rule 1 token-budget check at assembly time).
+
+If the bot's primary language is non-English, prepend to the message: *"This bot is `[language]`, so the per-example cost is roughly 3× the English baseline — trimming has higher ROI here."*
+
+Log per-intent: `Compass rule 10 advisory fired on [intent].validationPrompt with [N] examples — [resolved: yes/no]`.
+
+**Iron rule (Compass rule 11 — Hebrew-utterance isolation; fires during steps 2, 3, and 4; blocking):**
+
+For each text field Skill 2 authors (`validationPrompt`, RT-specific `announcement`/`apiResponseAnnouncement`/`fail_output`/`function_output`/`intentLoadingAnnouncement`, post-execution `intentInstructions`), run per-line:
+
+Detection regex: a line contains `[֐-׿؀-ۿ一-鿿぀-ゟ゠-ヿ]+` AND the line's remaining non-whitespace content is ≥50% ASCII alphanumerics. (A line that is entirely Hebrew, or entirely English, passes. A line that mixes inline fails.)
+
+If matched: blocking — surface:
+> Line `[N]` of `[field]` in `[intent]` mixes inline RTL (`[matched text]`) with LTR English text. Per Compass §4 "Sanity rule: never inject RTL Hebrew strings into the middle of an LTR English instruction line" — terminal display lies and Unicode bidi marks tokenize to garbage. Move the RTL content to its own line, wrap it in quotes, or rewrite the line entirely. Then re-check.
+
+Block authoring of this field until the user provides a compliant revision.
+
+Log per-intent on resolution: `Compass rule 11 blocking fired on [intent].[field] line [N] — resolved`.
 
 ### 4.3 Step 3 — RT-specific configuration
 

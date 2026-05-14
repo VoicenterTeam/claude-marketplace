@@ -418,3 +418,58 @@ Pass on every line → safe to mark `[detailed]`.
 ---
 
 *End of Conversation Routines Style Guide.*
+
+---
+
+## TTS-safety addendum (Compass rule 8 + rule 11)
+
+These rules apply to all language fields Skill 2 authors when the bot has an active voice channel.
+
+### No markdown formatting in voice fields
+
+Markdown bullets (`-`, `*`, `+`), headers (`#`), and links (`[text](url)`) are read aloud literally by TTS. Forbidden in `validationPrompt`, `announcement`, `apiResponseAnnouncement`, `fail_output`, `function_output`, post-execution `intentInstructions` of voice-active intents.
+
+**Don't:**
+
+```
+- שלום, איך אני יכולה לעזור?
+- אנא ספק את פרטיך
+```
+
+**Do:**
+
+```
+שלום, איך אני יכולה לעזור?
+אנא ספק את פרטיך.
+```
+
+### No URLs spoken aloud
+
+Voice agents should not vocalize URLs. Replace with descriptions ("our website", "the support page") or remove from the prompt entirely.
+
+### Long digit runs need spell-out instructions
+
+Sequences of 6+ digits read awkwardly without an explicit "digit by digit" instruction nearby. Use `חזרי ספרה ספרה` (Hebrew), `Read digit by digit` (English), or the equivalent in the bot's primary language.
+
+### RTL isolation — Hebrew/Arabic/CJK on its own line or inside quotes
+
+Per Compass §4 "Sanity rule": Unicode bidirectional marks tokenize to garbage when RTL content is mixed inline with LTR. Terminal display will look correct; the tokens will not be.
+
+**Don't:**
+
+```
+IRON: say שלום to the caller when they arrive.
+```
+
+**Do:**
+
+```
+IRON: greet the caller when they arrive. Say exactly: "שלום".
+```
+
+Or:
+
+```
+IRON: greet the caller when they arrive. Say:
+שלום
+```
