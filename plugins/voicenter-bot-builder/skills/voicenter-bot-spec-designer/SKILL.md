@@ -28,6 +28,7 @@ Before any user interaction, load context from these references. Path convention
 | Doc 1 §14.3 — Anti-patterns | Iron rules Skill 1 enforces (Appendix A) |
 | Doc 2 §3 — Agent Spec template | What Skill 1 writes |
 | Doc 2 §4 — Skill 1 architecture | What Skill 1 does |
+| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 1 owns checks 11–15 (rules 3–7) and the rule 11 mirror |
 
 Also load these files from this skill's package:
 
@@ -152,6 +153,8 @@ Draft a `persona` from the user's answer. Show it, then prompt via `AskUserQuest
 | No per-intent procedural logic in persona. | §14.3.10 | Catch "when validating address, repeat back..." or "after getting available slots, present in order..." — these are per-intent. Offer to move to per-intent `intentInstructions` (Skill 2 will write the actual text). |
 | No persistent policy embedded in single intents. | §14.3.13 | Defer this check to Phase 3 boundary, where intents exist to compare against. But ask now: "Are there any policies that apply call-wide (privacy, GDPR, retention, escalation policy)?" — capture into persona directly. |
 
+**Compass doctrine note (rules 3 and 7).** For non-English bots, the doctrine recommends writing operational prose in English (~3× token savings on the static prompt; preserves function-calling and instruction-following accuracy that degrades in Hebrew/Arabic/CJK). Verbatim utterances the agent must speak stay in the target language. Skill 1's self-validation check 11 fires advisory if a bot-level prompt field is ≥30% non-Latin characters. Independently, check 15 flags generic GDPR/HIPAA/PII boilerplate that isn't derived from the bot's domain — these belong in the data plane (Presidio, dialplan, etc.), not the persona. See `../../references/voice-prompt-doctrine.md` rules 3, 4, 7 for fix recipes.
+
 #### 3.2.2 Elicit channel-specific behavior
 
 For each **active** channel:
@@ -189,6 +192,8 @@ IRON RULE: Stay in scope. For pricing/billing/technical, route to transfer_to_hu
 ```
 
 Show the draft, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening behavior", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text and re-prompt until accepted.
+
+**Compass doctrine note (rule 5 — recency-slot language-lock).** The bot-level `intentInstructions` is the recency slot of the assembled systemInstruction (per "Lost in the Middle" + "Found in the Middle" U-shaped attention bias). For non-English bots, a known production bug (Gemini cookbook #1197) causes the model to code-switch based on the caller's name or accent even with English-only instructions. The doctrine's mitigation is to place an extreme negative constraint — equivalent to `"NEVER infer language from caller's name, accent, or tone."` — in the final third of `prompts.intentInstructions`. Skill 1's self-validation check 13 detects whether this constraint is present in the recency slot and, if not, offers to inject the standard line. See `../../references/voice-prompt-doctrine.md` rule 5 for the detection pattern and fix recipe.
 
 #### 3.2.4 Draft `prompts.openingAnnouncement`
 
@@ -691,6 +696,82 @@ Execute in the order below.
 
 No user prompt required.
 
+### Check 11 — English operational prose for non-English bots (Compass rule 3) — advisory
+
+**Trigger:** Skill 1 inspects each of `prompts.persona`, `prompts.voiceInstructions` (if voice active), `prompts.intentInstructions`. For each field, count non-Latin script characters (Hebrew U+0590–U+05FF, Arabic U+0600–U+06FF, CJK ranges). If a field is ≥30% non-Latin AND section 1's `Primary Language` ≠ `en-US` / `en-GB` / `en-AU` / similar: fire.
+
+**Failure message:**
+> The `[field name]` is ≥30% Hebrew/Arabic/CJK characters. Per Compass rule 3, non-Latin scripts tokenize ~3× more densely than English — operational instructions written in English save substantial tokens (the assembled prompt is paid in full on every Gemini Live 3.1 session start; there is no context caching). The model handles English-instruction / target-language-utterance as a stable cross-lingual generation task. Would you like to:
+>   (a) Rewrite the operational prose in English while preserving the target-language utterances on their own lines? *(Recommended)*
+>   (b) Keep as-is and continue.
+
+**Remediation:** if (a): draft an English rewrite, show to user, capture revisions, replace the field on confirmation. Then trigger check 11-mirror (rule 11) on the rewritten field. If (b): record the decision in section 7.3 — `Compass rule 3 (English operational) advisory fired on [field]; user kept original.`
+
+**Gating:** applies when section 1's `Channels Active` includes `voice`. Skips silently otherwise (with a one-time 7.3 log entry per spec — see §4.2 of the spec doc).
+
+**Mirror — Hebrew-utterance isolation on rewritten fields (Compass rule 11):** when the user accepts an English rewrite per (a) above, Skill 1 immediately re-scans the rewritten text using the same regex Skill 2 applies for rule 11: `[֐-׿؀-ۿ一-鿿぀-ゟ゠-ヿ]+` inside a line whose remaining non-whitespace content is ≥50% ASCII alphanumerics. If a line contains inline RTL Hebrew/target-language characters next to ASCII English (rather than on its own line or inside quotes), block the rewrite and surface: *"The rewritten `[field]` has inline RTL content on line `[N]`. Per Compass rule 11, RTL must live on its own line or inside quotes — Unicode bidi marks tokenize to garbage when mixed inline with LTR. Adjust the line and confirm again."* User edits; Skill 1 re-checks. This mirror is **blocking** for the rewrite step only — if the user picks (b) and keeps the original (non-rewritten) content, the mirror does not fire.
+
+### Check 12 — Intent description in English (Compass rule 4) — advisory
+
+**Trigger:** for each intent in section 4, inspect the `Description` field. If ≥30% of `Description` characters are non-Latin: fire.
+
+**Failure message:**
+> Intent `[identifier]`'s Description is ≥30% non-Latin characters. Per Compass rule 4, the Gemini function-calling layer is English-trained, and non-English tool descriptions degrade intent selection accuracy at runtime. The Display Name can stay in the target language (it's user-facing); the Description is consumed by the LLM. Would you like to:
+>   (a) Rewrite the Description in English? *(Recommended)*
+>   (b) Keep as-is and continue.
+
+**Remediation:** if (a): draft and replace on confirmation. If (b): log to 7.3.
+
+**Gating:** `[any voice]`.
+
+### Check 13 — Recency-slot language-lock guardrail (Compass rule 5) — advisory
+
+**Trigger:** apply only when section 1's `Primary Language` is not English. Inspect `prompts.intentInstructions` text. Apply the regex pattern `(?i)(infer|switch|change).*(language|לשון|לעבור)` OR `(?i)(name|accent|tone).*(language|לשון)`.
+
+- If a match exists and is located in the final third (≥66% of total character offset) of the text: pass; no warning.
+- If a match exists earlier in the text: warn — "the guardrail is present but not in the recency slot."
+- If no match: warn — "no language-lock guardrail detected."
+
+**Failure message (no match case):**
+> The bot-level `prompts.intentInstructions` has no language-lock guardrail. Per Compass rule 5 and the cookbook #1197 production bug, Gemini Live can code-switch based on caller name/accent even with English-only instructions elsewhere in the prompt. The mitigation is a recency-slot constraint such as:
+>
+>   `IRON: NEVER infer language from caller's name, accent, or tone. Speak only the bot's primary language.`
+>
+> (For a Hebrew bot, equivalent Hebrew text in its own line.) Would you like to:
+>   (a) Append the standard guardrail at the end of `prompts.intentInstructions`? *(Recommended)*
+>   (b) Skip and continue.
+
+**Failure message (match-but-not-in-recency case):**
+> The language-lock guardrail in `prompts.intentInstructions` is present but located at character offset `[N]` of `[total]` ([percent]%). Per Compass §4 "Found in the Middle" + Gemini prompting guidance, negative constraints belong at the end of the instruction. Would you like to move it to the recency slot? *(Recommended yes)*
+
+**Remediation:** on user opt-in: inject the standard line or move the existing match to the end. Log resolution to 7.3.
+
+**Gating:** `[any voice; especially recommended for non-English bots]`.
+
+### Check 14 — Contradictory pacing/length (Compass rule 6) — advisory
+
+**Trigger:** concatenate `prompts.persona` and `prompts.voiceInstructions`. Apply both patterns: tone descriptor regex `(?i)\b(warm|conversational|friendly|relaxed|easy-going|patient)\b` AND length-constraint regex `(?i)\b(\d+|one|two)\s*(sentence|sentences|words|line|lines)\s*(max|maximum|or less|or fewer|at most)\b`. Fire if both match within the same field or across fields.
+
+**Failure message:**
+> The persona/voice instructions combine a tone descriptor ("[matched tone]") with a strict length constraint ("[matched length]"). Per Compass §5 anti-pattern "Contradictory pacing/tone" and the ConInstruct benchmark (arXiv 2511.14342), this produces friendly preambles that consume the length budget before answering, and response length variance balloons across turns. Pick one primary tone and define an explicit, non-conflicting length bound — e.g., "Default: 1–2 sentences. Use brief affirmations like 'יהי' for soft acknowledgment within longer turns."
+
+**Remediation:** advise rewrite; do not auto-resolve. User confirms with revised text or accepts the warning and continues. Log resolution to 7.3.
+
+**Gating:** `[any voice]`.
+
+### Check 15 — Generic-policy boilerplate (Compass rule 7) — advisory
+
+**Trigger:** case-insensitive substring search across `prompts.persona`, `prompts.voiceInstructions`, `prompts.intentInstructions`, and all per-intent `validationPrompt` fields. v1 stem list: `gdpr`, `hipaa`, `pii`, `personally identifiable`, `medical advice`, `legal advice`, `financial advice`, `we do not store`, `we do not retain`, `data retention`, `do not provide professional`. Fire if any stem matches.
+
+**Failure message:**
+> Detected generic-policy boilerplate `"[matched stem]"` in `[field]`. Per Compass §2 anti-list ("generic content-policy lists"), the prompt cannot enforce GDPR/HIPAA/PII compliance — these belong in the data plane (Presidio redaction, dialplan recording-consent gating, SIEM audit). Putting them in the prompt is "a liability waiting to surface in your next HIPAA audit" (Prediction Guard analysis cited in Compass). Two paths:
+>   (a) Confirm the boilerplate is appropriate to this bot's domain (e.g., medical-domain bot rightly mentions HIPAA) and keep it.
+>   (b) Remove the boilerplate and rely on platform-side controls (or accept that prompt-side enforcement is probabilistic).
+
+**Remediation:** record user's decision per match in 7.3 — `Compass rule 7 advisory: stem "[X]" in [field] — user kept|removed`. Do not auto-remove.
+
+**Gating:** `[any]`.
+
 ---
 
 ### Severity-handling rules
@@ -804,6 +885,25 @@ For ENUM, capture options as `{ Value: "snake_case", Label: "user's display stri
 - > 20 intents: warning — "Consider splitting this bot into multiple smaller bots. v1 hasn't been tested at this scale; expect Skill 2 batching to need close attention."
 
 These warnings are emitted at greenfield close-out, after intent count is final. No hard refusal at any size — user decides.
+
+---
+
+## Appendix D — Compass doctrine cross-reference (rules Skill 1 enforces)
+
+The doctrine catalog lives in [`../../references/voice-prompt-doctrine.md`](../../references/voice-prompt-doctrine.md). Skill 1 owns the rules below; Skills 2 and 3 own the remainder.
+
+| Compass rule | Name | Skill 1 hook | Severity | Model gating |
+|---|---|---|---|---|
+| 3 | English operational, target-language utterances | §5 check 11 | advisory; opt-in rewrite | `[any voice]` |
+| 4 | Intent description in English | §5 check 12 | advisory; opt-in rewrite | `[any voice]` |
+| 5 | Recency-slot language-lock guardrail | §5 check 13 | advisory; opt-in injection/move | `[any voice]` |
+| 6 | Contradictory pacing/length | §5 check 14 | advisory | `[any voice]` |
+| 7 | Generic-policy boilerplate | §5 check 15 | advisory | `[any]` |
+| 11 (mirror) | Hebrew-utterance isolation on rewritten fields | §5 check 11 mirror | blocking on rewrite step | `[any]` |
+
+Skills 2 and 3 own the remaining 7 rules of the 13 (Skill 2: rules 8, 9, 10, 11 primary; Skill 3: rules 1, 2, 12, 13).
+
+Skill 1 does NOT enforce: rule 1 (token budget — final assembly concern), rule 2 (session resumption ceiling), rule 8 (TTS-safe formatting — per-intent text), rule 9 (date math in prompt — per-intent), rule 10 (few-shot count — per-intent), rule 12 (model-config doctrine — assembled JSON), rule 13 (banner sentinels — Skill 3 emission).
 
 ---
 
