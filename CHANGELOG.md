@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.5.0] - 2026-05-14
+
+### Added
+- **Compass doctrine integration in `voicenter-bot-builder`.** New shared reference `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md` distilled from the Gemini Live 3.1 voice agent engineering guideline. The reference catalogs 13 enforceable rules and is loaded by all three skills.
+  - **Skill 1 (Agent Spec Designer)** gains 5 new self-validation checks (11–15) covering rules 3 (English operational), 4 (intent description in English), 5 (recency-slot language-lock guardrail), 6 (contradictory pacing/length), 7 (generic-policy boilerplate), plus a rule-11 mirror on rewritten fields. New Appendix D documents the mapping.
+  - **Skill 2 (Intent Detail Author)** gains 4 new per-intent iron rules covering rules 8 (TTS-safe formatting; blocking on markdown/URLs), 9 (date math in prompt), 10 (few-shot example cap), 11 (Hebrew-utterance isolation; blocking). The `conversation-routines-style-guide.md` gets a TTS-safety addendum.
+  - **Skill 3 (JSON Assembler)** gains 3 new cross-reference checks (8, 9, 10) plus a DOCTRINE SENTINELS banner section (rule 13). Check 8 (token budget) is advisory at 1,500–2,499 tok and blocking at ≥ 2,500. Check 10 (model-config doctrine) is blocking on any mismatch. All three are gated on `AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`.
+  - Token-counting uses a char-based estimate (Latin 1/4 tok, Hebrew/Arabic/CJK 1/1.5 tok) — ±15% accuracy, sufficient for the doctrine thresholds.
+
+### Notes
+- Rules 1, 2, 12 apply only when `AIModelConfigID=139` (Gemini Live 3.1). Rules 3, 4, 5, 6, 8, 10, 11 apply to any active voice channel. Rules 7, 9, 13 apply universally.
+- Non-goal: this release does not retroactively fix existing bot artifacts (e.g., `bot-noa-2026-05-12.json`). To apply the doctrine to an existing bot, re-run Skill 1 → 2 → 3 on its spec.
+- Non-goal: platform-side concerns the Compass flags as out-of-prompt (PII redaction, prompt-injection classifier, rate limiting, recording consent) are not enforced by the bot-builder. The doctrine reference §3 notes which concerns belong to which plane.
+
+### Plugin version bumps
+- `marketplace.json` metadata: `1.4.2` → `1.5.0`
+- `voicenter-bot-builder` plugin: `1.2.2` → `1.3.0` (Compass doctrine integration across all three skills)
+- `voicenter-mcp` plugin: `1.1.6` (unchanged)
+- `voicenter-api` plugin: `1.1.6` (unchanged)
+
 ## [1.4.2] - 2026-05-11
 
 ### Changed
