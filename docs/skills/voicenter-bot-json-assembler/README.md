@@ -142,9 +142,9 @@ The sentinel value carries the field role inside the placeholder text, so the ba
 
 ---
 
-## §15.4 cross-reference pass — seven blocking checks
+## §15.4 cross-reference pass — ten checks
 
-After assembly + section 6 sanity check, run all seven §15.4 checks against the in-memory wire structure. **All blocking.** All seven run unconditionally so the user gets a complete failure report rather than fixing one issue at a time.
+After assembly + section 6 sanity check, run all ten §15.4 checks against the in-memory wire structure. Checks 1–7 are always blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Checks 8–10 are gated on Gemini Live 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`) with mixed severity: check 8 is advisory/blocking, check 9 is advisory, and check 10 is blocking.
 
 | # | Check | Validates |
 |---|---|---|

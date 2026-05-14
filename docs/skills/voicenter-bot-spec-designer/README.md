@@ -297,9 +297,9 @@ Checks 11–15 extend the self-validation checklist (see table above) and run at
 
 | # | Check | Doctrine rule | Severity |
 |---|---|---|---|
-| 11 | Bot-level prompt fields (`persona`, `voiceInstructions`, `intentInstructions`) authored in English only, even for non-English bots | Rule 3 — English operational | Blocking |
-| 12 | Intent `description` fields authored in English | Rule 4 — Intent description in English | Blocking |
-| 13 | Recency-slot `validationPrompt` stubs do not impose a fixed recency window (e.g., "in the last 30 days") without a {{TimeNow}} anchor | Rule 5 — Recency-slot language-lock guardrail | Advisory |
+| 11 | Bot-level prompt fields (`persona`, `voiceInstructions`, `intentInstructions`) authored in English only, even for non-English bots | Rule 3 — English operational | Advisory |
+| 12 | Intent `description` fields authored in English | Rule 4 — Intent description in English | Advisory |
+| 13 | Bot-level `prompts.intentInstructions` contains a language-lock guardrail (`NEVER infer language from caller name/accent/tone`) located in the final third (recency slot) of the field. | Rule 5 — Recency-slot language-lock guardrail | Advisory |
 | 14 | `voiceInstructions` pacing/length directives do not contradict each other (e.g., "speak slowly" + "be concise and fast") | Rule 6 — Contradictory pacing/length | Advisory |
 | 15 | `persona` and `intentInstructions` do not contain generic compliance boilerplate copied from policy documents | Rule 7 — Generic-policy boilerplate | Advisory |
 
