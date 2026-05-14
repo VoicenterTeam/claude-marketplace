@@ -253,6 +253,19 @@ If the gate fails, Skill 2 returns to authoring. The status flip only happens on
 
 ---
 
+## Compass doctrine integration
+
+The bot-builder plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`, derived from the Gemini Live 3.1 voice agent engineering guideline. Skill 2 owns the primary enforcement of four per-intent rules from that catalog:
+
+- **Rule 8 — TTS-safe formatting.** Blocking on markdown bullets/headers/URLs in voice-active intent fields. Advisory on raw long digit runs without a "spell digit-by-digit" instruction nearby. Fires during step 2 (validationPrompt) and step 3 (RT-specific config).
+- **Rule 9 — Date math in prompt.** Advisory. Detects "not future", "year ≥ 1900", "today/tomorrow without {{TimeNow}}" patterns. Recommends pre-rendered Mustache variables via Skill 1 patch mode.
+- **Rule 10 — Few-shot example cap.** Advisory when a single `validationPrompt` contains more than 2 transcript-style example pairs. Hebrew/non-English bots get a harsher message reflecting the ~3× per-example token cost.
+- **Rule 11 — Hebrew-utterance isolation.** Blocking. Forbids inline RTL Hebrew/Arabic/CJK content mixed with LTR English on the same line. Required on its own line or wrapped in quotes.
+
+See the reference doc for detection methods and fix recipes.
+
+---
+
 ## Related skills
 
 - [voicenter-bot-spec-designer](../voicenter-bot-spec-designer/README.md) — Skill 1; provides the structural skeleton Skill 2 fills.

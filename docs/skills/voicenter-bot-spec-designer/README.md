@@ -289,6 +289,26 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 
 ---
 
+## Compass doctrine integration
+
+The bot-builder plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`, derived from the Gemini Live 3.1 voice agent engineering guideline. Skill 1 owns the structural self-validation checks for five doctrine rules from that catalog.
+
+Checks 11–15 extend the self-validation checklist (see table above) and run at greenfield close-out and after every patch:
+
+| # | Check | Doctrine rule | Severity |
+|---|---|---|---|
+| 11 | Bot-level prompt fields (`persona`, `voiceInstructions`, `intentInstructions`) authored in English only, even for non-English bots | Rule 3 — English operational | Blocking |
+| 12 | Intent `description` fields authored in English | Rule 4 — Intent description in English | Blocking |
+| 13 | Recency-slot `validationPrompt` stubs do not impose a fixed recency window (e.g., "in the last 30 days") without a {{TimeNow}} anchor | Rule 5 — Recency-slot language-lock guardrail | Advisory |
+| 14 | `voiceInstructions` pacing/length directives do not contradict each other (e.g., "speak slowly" + "be concise and fast") | Rule 6 — Contradictory pacing/length | Advisory |
+| 15 | `persona` and `intentInstructions` do not contain generic compliance boilerplate copied from policy documents | Rule 7 — Generic-policy boilerplate | Advisory |
+
+**Rule-11 mirror on rewritten fields.** When Skill 1 patch mode rewrites any of `persona`, `voiceInstructions`, `chatInstructions`, or `intentInstructions`, it re-runs check 11 (English operational) on the rewritten content before accepting the change. This prevents a patch from accidentally introducing non-English bot-level prompt text.
+
+New Appendix D in the SKILL.md documents the full mapping between self-validation checks 11–15 and their corresponding doctrine rules. See the reference doc for detection methods and fix recipes.
+
+---
+
 ## Related skills
 
 - [voicenter-bot-intent-detail-author](../voicenter-bot-intent-detail-author/README.md) — Skill 2; runs after Skill 1 with the section 5 stubs as input.

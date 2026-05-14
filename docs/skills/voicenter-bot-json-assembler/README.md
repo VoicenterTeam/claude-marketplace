@@ -274,6 +274,21 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 ---
 
+## Compass doctrine integration
+
+The bot-builder plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`. Skill 3 owns three new cross-reference checks plus a banner extension:
+
+- **Check 8 — Assembled-prompt token budget (Compass rule 1).** Advisory at 1,500–2,499 tok; blocking at ≥ 2,500 tok. Estimated via a char-based method (Latin at 1/4 tok per char, Hebrew/Arabic/CJK at 1/1.5). Excludes `prompts.openingAnnouncement` (platform-rendered). Gated on `AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`.
+- **Check 9 — Session-resumption ceiling (Compass rule 2).** Advisory. Fires only when the spec declares cross-session continuity is required. Warns if the assembled prompt exceeds 200 tok.
+- **Check 10 — Model-config doctrine (Compass rule 12).** Blocking on any of: wrong model string, `thinkingLevel` ≠ minimal/absent, `affectiveDialog` enabled, `proactiveAudio` populated, missing `responseModalities: ["AUDIO"]` on voice-active bots.
+- **DOCTRINE SENTINELS banner section (Compass rule 13).** Auto-applied at emission. One banner line per Compass advisory (rules 3, 4, 5, 6, 7, 9, 10) that fired during authoring and was not resolved.
+
+Cross-references 1–7 (per Doc 1 §15.4) remain blocking; checks 8–10 are gated on Gemini Live 3.1 and skip silently with a one-time section 7.3 log entry for other models.
+
+Anti-list addition: Skill 3 **does not auto-trim prompt text** to satisfy the token budget. Above 2,500 tok, assembly halts and routes to Skill 1 / Skill 2 patch.
+
+---
+
 ## Related skills
 
 - [voicenter-bot-spec-designer](../voicenter-bot-spec-designer/README.md) — Skill 1; produces the structural skeleton Skill 3 reads.

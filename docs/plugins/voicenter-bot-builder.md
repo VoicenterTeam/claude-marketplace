@@ -67,6 +67,16 @@ The three skills hand off through one shared file: **`agent-spec.md`**. Each ski
 | `voicenter-bot-intent-detail-author` | 2 — Per-intent language content | [docs](../skills/voicenter-bot-intent-detail-author/README.md) |
 | `voicenter-bot-json-assembler` | 3 — Mechanical wire-format projection | [docs](../skills/voicenter-bot-json-assembler/README.md) |
 
+### Voice prompt doctrine
+
+The plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`, distilled from the Gemini Live 3.1 voice agent engineering guideline. Each of the three skills enforces a subset of the 13 doctrine rules at the right authoring phase:
+
+- **Skill 1** (rules 3, 4, 5, 6, 7, 11-mirror) — bot-level prompt content: language posture, intent description language, recency-slot guardrail, contradictory tone/length, generic-policy boilerplate.
+- **Skill 2** (rules 8, 9, 10, 11) — per-intent text: TTS-safe formatting, date math in prompt, few-shot example cap, Hebrew-utterance isolation.
+- **Skill 3** (rules 1, 2, 12, 13) — final assembly: token budget, session-resumption ceiling, model-config doctrine, doctrine banner sentinels.
+
+Gating on `AiModelConfigID=139` (Gemini Live 3.1) — rules tied to model-specific behavior skip silently on other models. Universal voice principles (language posture, TTS safety) apply broadly.
+
 ---
 
 ## When to use this plugin
