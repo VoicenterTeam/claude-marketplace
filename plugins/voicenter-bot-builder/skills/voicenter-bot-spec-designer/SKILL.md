@@ -599,7 +599,7 @@ Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Apply patch?", 2 o
 
 Run on **every greenfield close-out** and **after every patch**, before declaring the spec ready.
 
-10 checks total: 8 blocking, 1 advisory, 1 structural-correctness.
+15 checks total: 8 blocking, 6 advisory (Checks 8 + 11–15, of which Checks 11–15 are Compass doctrine), 1 structural-correctness.
 
 Execute in the order below.
 
@@ -750,7 +750,7 @@ No user prompt required.
 
 ### Check 14 — Contradictory pacing/length (Compass rule 6) — advisory
 
-**Trigger:** concatenate `prompts.persona` and `prompts.voiceInstructions`. Apply both patterns: tone descriptor regex `(?i)\b(warm|conversational|friendly|relaxed|easy-going|patient)\b` AND length-constraint regex `(?i)\b(\d+|one|two)\s*(sentence|sentences|words|line|lines)\s*(max|maximum|or less|or fewer|at most)\b`. Fire if both match within the same field or across fields.
+**Trigger:** concatenate `prompts.persona` and `prompts.voiceInstructions`. Apply both patterns: tone descriptor regex `(?i)\b(warm|conversational|friendly|relaxed|easygoing|easy-going|patient)\b` AND length-constraint regex `(?i)\b(\d+|one|two)\s*(sentence|sentences|words|line|lines)\s*(max|maximum|or less|or fewer|at most)\b`. Fire if both match within the same field or across fields.
 
 **Failure message:**
 > The persona/voice instructions combine a tone descriptor ("[matched tone]") with a strict length constraint ("[matched length]"). Per Compass §5 anti-pattern "Contradictory pacing/tone" and the ConInstruct benchmark (arXiv 2511.14342), this produces friendly preambles that consume the length budget before answering, and response length variance balloons across turns. Pick one primary tone and define an explicit, non-conflicting length bound — e.g., "Default: 1–2 sentences. Use brief affirmations like 'יהי' for soft acknowledgment within longer turns."
@@ -903,7 +903,7 @@ The doctrine catalog lives in [`../../references/voice-prompt-doctrine.md`](../.
 
 Skills 2 and 3 own the remaining 7 rules of the 13 (Skill 2: rules 8, 9, 10, 11 primary; Skill 3: rules 1, 2, 12, 13).
 
-Skill 1 does NOT enforce: rule 1 (token budget — final assembly concern), rule 2 (session resumption ceiling), rule 8 (TTS-safe formatting — per-intent text), rule 9 (date math in prompt — per-intent), rule 10 (few-shot count — per-intent), rule 12 (model-config doctrine — assembled JSON), rule 13 (banner sentinels — Skill 3 emission).
+Skill 1 does NOT enforce: rule 1 (token budget — final assembly concern), rule 2 (session resumption ceiling), rule 8 (TTS-safe formatting — per-intent text), rule 9 (date math in prompt — Skill 2 per-intent), rule 10 (few-shot count — per-intent), rule 12 (model-config doctrine — assembled JSON), rule 13 (banner sentinels — Skill 3 emission).
 
 ---
 
