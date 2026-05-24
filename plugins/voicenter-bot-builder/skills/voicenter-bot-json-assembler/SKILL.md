@@ -353,7 +353,7 @@ For each section 4 intent (in order), build a 17-field entry per the v1.5.0 prod
 | 7 | `MaxAttempts` | Section 4 explicit value if set; else `3` |
 | 8 | `IntentConfig` | `{ prompts: { llmDescription: "", validationPrompt: <section 5 verbatim> }, max_turns: <see below>, max_turns_sentence: <see below> }` |
 | 9 | `IntentScripts` | `[]` (empty array — per §16 quirk 8) |
-| 10 | `IntentSources` | **v1.5.0:** per spec section 1 `Channels Active`. Voice active → `[{ "SourceID": 1, "SourceName": "VOICE", "IntentSourceID": <placeholder from -4000 range> }]`. Chat-only → `[]`. Both channels → emit voice entry only for v1 (chat-only sample missing). |
+| 10 | `IntentSources` | **v1.5.0:** per spec section 1 `Channels Active`. Voice active → `[{ "SourceID": 1, "SourceName": "VOICE", "IntentSourceID": <placeholder from -4000 range> }]`. Chat-only → `[]`. Both channels → emit voice entry only for v1 (chat-only sample missing). Note: the production fixture shows mixed distribution — most intents in the transport-planner have `IntentSources: []` even though voice is active, while one intent has the populated voice entry. v1.5.0 design decision 14 standardizes to populated voice entry for every intent on voice-active bots (the design intent of "channel-per-intent" semantics). |
 | 11 | `IntentToolName` | Section 4 "Tool name" (= identifier) |
 | 12 | `IntentResponces` | §4.4 below — invariant outer shape `{ IsActive: 1, ResponseTypeId, Configuration }` |
 | 13 | `IsSilenceIntent` | **Integer 0/1**. `0` by default; `1` if spec section 4 marks `IsSilenceIntent` (rare) |
@@ -372,6 +372,8 @@ For each section 4 intent (in order), build a 17-field entry per the v1.5.0 prod
 | RT=4 | Default omitted | Default omitted |
 
 When both fields are emitted, they sit as siblings of `prompts` inside `IntentConfig`. When omitted, the keys are absent (not `null`).
+
+**Note on RT=2 production divergence (v1.5.0 design decision 6).** Production exports of Gemini 3.1 Voice driven bots show mixed `max_turns` distribution on RT=2 intents (the transport-planner has `max_turns: 15` on `plan_customer_travel_route` but omits the field on `send_sms_with_route_details`). v1.5.0 standardizes to always emit `max_turns: 15` for RT=2 intents, since this is the design intent of Skill 1's smart-default approach. Spec authors who need to suppress emission for a specific RT=2 intent can do so via spec section 4 (e.g., a `**Max turns:** [omit]` marker) — see `spec-skeleton.md` §4 for the spec-author override path.
 
 **v1.5.0 changes from prior 14-field baseline:** Reordered to match production. Added intent-root `IsActive` (always `1`). Added intent-root `AccountId`. `IsSilenceIntent` now integer (was boolean). `IntentSources` shape includes `SourceName` and `IntentSourceID` (was `[{ SourceID: 1 }]`). `max_turns` / `max_turns_sentence` added with RT-conditional defaults.
 
@@ -512,7 +514,7 @@ Single default category, all intents reference it. Emit fields in this order:
 
 | Order | Wire-format field | Value |
 |---|---|---|
-| 1 | `Name` | `"Default Category"` (matches production samples) |
+| 1 | `Name` | `"Default Category"` (v1 default — spec author may override) |
 | 2 | `IsActive` | `1` |
 | 3 | `AccountId` | Spec section 1 `**Account ID:**` value — same as `<root>.AccountID` (v1.5.0 added) |
 | 4 | `PriorityId` | `1` (v1.5.0 correction — was `2` in prior baseline; production has `1`) |
@@ -1091,7 +1093,7 @@ Path 2 (account-private new-config insert) is documented in §4.2.3 but not exer
 | Field | Value | Source |
 |---|---|---|
 | `IntentCategoryId` | `-3` | placeholder; resolved by procedure |
-| `PriorityId` | **`2`** (Medium) | `Priority` static table; matches DB DEFAULT |
+| `PriorityId` | **`1`** (production observation) | `Priority` static table. **v1.5.0 correction:** was documented as `2` (Medium) in prior baseline; production exports show `1`. |
 | `Name` | `"Default Category"` | matches production samples |
 
 ### D.6 `ResponseTypeId` (`intents[].IntentResponces.ResponseTypeId`)
