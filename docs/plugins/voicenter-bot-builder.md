@@ -132,7 +132,7 @@ You: assemble the JSON
 
 Claude: [invokes voicenter-bot-json-assembler]
         — parses the spec strictly
-        — runs §15.4 cross-reference (7 checks, all blocking)
+        — runs §15.4 cross-reference (10 checks, all blocking)
         — emits bot-<identifier>-2026-05-01.json + bot-<identifier>-2026-05-01.banner.md
 ```
 

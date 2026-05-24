@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-json-assembler
-description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 7 checks, all blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 10 checks (7 §15.4 + 3 Compass), all blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
 # Skill 3 — JSON Assembler & Publish
@@ -28,7 +28,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §6 — The two `AIModelConfig` objects | Top-level vs version-level + `created` payload duplication |
 | Doc 1 §7 — Crosswalk: training-doc → JSON paths | Field-name reconciliation reference |
 | Doc 1 §8 — `intentList` six parallel collections | The bulk of assembly |
-| Doc 1 §9 — `intents[]` 14-field skeleton | Per-intent shape |
+| Doc 1 §9 — `intents[]` 17-field skeleton | Per-intent shape |
 | Doc 1 §10 — `IntentParameters` slot definitions | Per-slot shape |
 | Doc 1 §11 — `ResponseTypeId` reference (RT=1/2/3/4) | RT-specific Configuration assembly (§4.4) |
 | Doc 1 §11.2 — RT=2 pairing rule | Cross-reference check 5 + 6 |
@@ -307,7 +307,7 @@ Just the model string. No generation config, no system instruction, no voice con
 
 **v1.5.0 wire-format correction.** Prior baseline emitted both `created` payloads as identical full Gemini Live setup objects (model + full generationConfig + systemInstruction + tools). Production exports show the two `created` payloads serve different purposes — the catalog reference carries only the model string; the runtime config carries only the realtime + voice. Both prior fields `temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools` are dropped from emission.
 
-**Note on Compass doctrine rule 12 / check 10 interaction:** the dropped fields are exactly the ones check 10 used to validate. Check 10 is rewritten in §6.2 to validate that *no removed fields are re-added*, rather than positively asserting them present. See §6.2 check 10 — note that the check is scheduled for v1.5.0 rewrite (pending Task 10 in the production-alignment plan); until then, the existing check 10 sub-checks for `responseModalities`/`thinkingConfig`/etc. are obsolete and Skill 3 should not emit those fields per the new §4.2.4 lean shape.
+**Note on Compass doctrine rule 12 / check 10 interaction:** the dropped fields are exactly the ones check 10 used to validate. Check 10 is rewritten in §6.2 to validate that *no removed fields are re-added*, rather than positively asserting them present. See §6.2 check 10 v1.5.0 description for the inverted regression-catching rule.
 
 **`prompts` bundle** (`ActiveVersionInfo.AIModelConfig.prompts`) — unchanged from prior:
 
@@ -547,7 +547,7 @@ If a non-RT=2 intent has API silence behavior in its section 5 entry, that's a S
 
 Per intent, branch on `Response Type` (section 4) to assemble the correct `Configuration` shape. Doc 1 §11 has the per-RT field tables; the rules below codify Skill 3's behavior including unknowns.
 
-**`IntentResponces` outer shape — invariant across all RTs.** Every `IntentResponces` object has the same three top-level keys in this order: `ResponseTypeId`, `IsActive`, `Configuration`. The per-RT tables below define `Configuration`'s contents only — the `ResponseTypeId` and `IsActive` rows are repeated in each RT table as a reminder, but they are the same in every RT (`IsActive` is always `1` in v1).
+**`IntentResponces` outer shape — invariant across all RTs.** Every `IntentResponces` object has the same three top-level keys in this order: `IsActive`, `ResponseTypeId`, `Configuration`. The per-RT tables below define `Configuration`'s contents only — the `IsActive` and `ResponseTypeId` rows are repeated in each RT table as a reminder, but they are the same in every RT (`IsActive` is always `1` in v1).
 
 #### RT=1 — Layer Transfer (terminal)
 
