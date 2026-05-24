@@ -37,6 +37,7 @@ Before touching the spec, load context from these references.
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
+| `../../../../references/docs/voicenter-bot-json-schema-audit-v1.md` §11.2, §11.3 | RT=2 / RT=3 Configuration field shapes — v1.5.0 production-aligned (announcement / function_output object / response_success object) |
 
 Also load this file from this skill's package:
 
@@ -307,7 +308,7 @@ Log per-intent: `Compass rule 10 advisory fired on [intent].validationPrompt wit
 
 **Iron rule (Compass rule 11 — Hebrew-utterance isolation; fires during steps 2, 3, and 4; blocking):**
 
-For each text field Skill 2 authors (`validationPrompt`, RT-specific `announcement`/`apiResponseAnnouncement`/`fail_output`/`function_output`/`intentLoadingAnnouncement`, post-execution `intentInstructions`), run per-line:
+For each text field Skill 2 authors (`validationPrompt`, RT-specific `announcement`/`fail_output`/`function_output`/`intentLoadingAnnouncement`, post-execution `intentInstructions`), run per-line:
 
 Detection regex: a line contains `[֐-׿؀-ۿ一-鿿぀-ゟ゠-ヿ]+` AND the line's remaining non-whitespace content is ≥50% ASCII alphanumerics. (A line that is entirely Hebrew, or entirely English, passes. A line that mixes inline fails.)
 
@@ -339,9 +340,10 @@ Required language fields:
 
 | Field | Meaning |
 |---|---|
-| `apiResponseAnnouncement` | What the bot says when the API succeeds. Almost always uses Mustache references against section 4.5.4 dotted paths declared by the user. |
+| **Announcement (after API success)** [JSON field: `announcement` — was `apiResponseAnnouncement` pre-v1.5.0] | What the bot says when the API succeeds. Almost always uses Mustache references against section 4.5.4 dotted paths declared by the user. |
 | `fail_output` | What the bot says when the API fails. **Default pattern (graceful):** "I couldn't reach the system right now. Let me transfer you to a human." Skill 2 drafts this default; user confirms or rewrites. |
-| `function_output` | LLM guidance for interpreting the API response in subsequent turns. Skill 2 drafts based on the response shape declared in section 4.5.4. |
+| `function_output` | **Fail-output fallback map** [JSON field: `function_output` — object shape `{ "default": "<fallback string>" }`, v1.5.0 shape change]. Skill 2 prompts the user for the fallback string the runtime should say when the API returns no usable response. The user supplies a single short Hebrew/English string (e.g., `"הייתה תקלה בחיפוש"` / `"Something went wrong, let me try again."`); Skill 2 wraps it as `{ "default": "<user's string>" }` in the spec. Skill 3 emits this object verbatim. If the user wants per-error-code fallbacks (e.g., `{ "default": "...", "503": "..." }`), they can extend the object via patch mode. v1 default capture is `default` key only. |
+| `response_success` | **Response success instructions** [JSON field: `response_success` — object shape `{ "instructions": "<text or empty>" }`, v1.5.0 shape change]. Skill 2 prompts the user for any instructional text the runtime should use after a successful API call (e.g., next-step guidance for the LLM). Empty string is the most common production shape (`{ "instructions": "" }`). User supplies the inner string; Skill 2 wraps it as the object. |
 | `intentLoadingAnnouncement` AND `IntentLoadingAnnouncement` | Same content, both populated. This is the case-bug pair per Doc 1 §16 — preserve both, identical content. |
 | `silence_sentence` | What the bot says during the API wait |
 | `silence_ending_sentence` | What the bot says after silence loops are exhausted |
@@ -349,9 +351,9 @@ Required language fields:
 
 **Iron rule (check 11 — fires during step 3, blocking):** every RT=2 intent must populate all six api_silence fields above (silence_sentence, silence_ending_sentence, silence_instructions, plus the durations and loops which are structural in section 4). Per Doc 1 §14.3.6, an RT=2 intent without complete silence behavior produces dead air at runtime when the API takes 8+ seconds.
 
-**Iron rule (check 10 — fires during step 3, blocking):** apiResponseAnnouncement, fail_output, function_output must all be non-empty. The fail_output graceful default qualifies as non-empty.
+**Iron rule (check 10 — fires during step 3, blocking):** `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output`, and `response_success` must all be non-empty. The `fail_output` graceful default qualifies as non-empty. For `function_output`, the object `{ "default": "<fallback>" }` qualifies as non-empty. For `response_success`, the object `{ "instructions": "" }` (empty inner string) qualifies as non-empty.
 
-**Mustache references in apiResponseAnnouncement:** must resolve against section 4.5.4 dotted paths declared for THIS intent, OR against slots collected by THIS intent or upstream intents (per section 5 mechanics). Verify at write-time.
+**Mustache references in `announcement` (RT=2 success field):** must resolve against section 4.5.4 dotted paths declared for THIS intent, OR against slots collected by THIS intent or upstream intents (per section 5 mechanics). Verify at write-time.
 
 #### RT=3 (Continue)
 
@@ -427,7 +429,7 @@ Doc 1 §14.3.5 iron rule: every Mustache slot variable must resolve against an a
 | `{{slot_name}}` | Section 4.5.3 (slot inventory) | The slot is collected by THIS intent OR by an upstream intent in the flow graph (see 5.2) |
 | `{{call_context_var}}` | Section 4.5.1 | The variable is listed in 4.5.1 |
 | `{{ENV.VAR_NAME}}` | Section 4.5.2 | The variable is listed in 4.5.2 |
-| `{{response.path.to.field}}` or `{{available_slots.N.field}}` | Section 4.5.4 (per-intent) | The dotted path is declared in 4.5.4 for THIS intent, AND the reference appears in an RT=2 field of THIS intent (apiResponseAnnouncement, function_output, etc.) |
+| `{{response.path.to.field}}` or `{{available_slots.N.field}}` | Section 4.5.4 (per-intent) | The dotted path is declared in 4.5.4 for THIS intent, AND the reference appears in an RT=2 field of THIS intent (`announcement`, `function_output`, etc.) |
 
 ### 5.2 Directional ordering check (v1)
 
@@ -479,7 +481,7 @@ Per intent, before flipping status to `[detailed]`. Each check has a timing clas
 | 7 | `intentInstructions` does not contain persistent policy | §14.3.13 | blocking | during step 4 |
 | 8 | `intentInstructions` does not contain bot-level disambiguation | §14.3.11 | blocking | during step 4 |
 | 9 | All Mustache references resolve against section 4.5 + upstream slots, with directional ordering | §14.3.5 / §15.4 #7 | blocking | during steps 2/3/4 + gate |
-| 10 | RT=2 only: `apiResponseAnnouncement`, `fail_output`, `function_output` all populated | §14.3.6 | blocking | during step 3 + gate |
+| 10 | RT=2 only: `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`) all populated | §14.3.6 | blocking | during step 3 + gate |
 | 11 | RT=2 only: API silence behavior fully populated (`silence_sentence`, `silence_ending_sentence`, `silence_instructions`, plus the structural duration and loops from section 4) | §14.3.6 | blocking | during step 3 + gate |
 
 **Behavior on blocking failure at gate:** do NOT mark the intent `[detailed]`. Surface the failure to the user with the specific check number and remediation suggestion. The user fixes the field; Skill 2 re-runs the gate; on pass, status flips.
@@ -533,7 +535,7 @@ Section 6.1 format from Skill 1's spec-skeleton:
 - resolves via: [section 4.5.X] or [section 5 slot of intent X]
 ```
 
-Each Mustache reference Skill 2 writes during steps 2/3/4 gets a 6.1 entry appended. Skill 1's initial 6.1 covers references in section 2 (persona, openingAnnouncement, bot-level intentInstructions) and section 4 (RT=2 body fields). Skill 2's additions cover validationPrompt, per-intent intentInstructions, RT-specific announcement/apiResponseAnnouncement/fail_output/function_output fields.
+Each Mustache reference Skill 2 writes during steps 2/3/4 gets a 6.1 entry appended. Skill 1's initial 6.1 covers references in section 2 (persona, openingAnnouncement, bot-level intentInstructions) and section 4 (RT=2 body fields). Skill 2's additions cover validationPrompt, per-intent intentInstructions, RT-specific announcement/fail_output/function_output fields.
 
 Skill 3 will regenerate section 6 entirely as a sanity check before §15.4. If Skill 3's regeneration differs from the spec's 6.1, that's a drift signal Skill 3 reports.
 
@@ -704,7 +706,7 @@ What Skill 2 must populate in step 3 per RT.
 | RT | Required fields (Skill 2) | Mustache scope |
 |---|---|---|
 | 1 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
-| 2 | `apiResponseAnnouncement`, `fail_output`, `function_output`, `intentLoadingAnnouncement`, `IntentLoadingAnnouncement` (case-bug pair, identical content), `silence_sentence`, `silence_ending_sentence`, `silence_instructions` | Above + 4.5.4 dotted paths declared for THIS intent |
+| 2 | `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`), `intentLoadingAnnouncement`, `IntentLoadingAnnouncement` (case-bug pair, identical content), `silence_sentence`, `silence_ending_sentence`, `silence_instructions` | Above + 4.5.4 dotted paths declared for THIS intent |
 | 3 | `announcement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 + 4.5.4 from upstream RT=2 intents |
 | 4 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
 
