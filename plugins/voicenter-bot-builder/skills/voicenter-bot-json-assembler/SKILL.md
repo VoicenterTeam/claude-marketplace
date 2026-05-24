@@ -628,7 +628,7 @@ Walk Appendix A. For every quirk in the table, ensure the assembled wire structu
 
 In normal operation, §4.2-4.4 already produce all quirks correctly. §4.5 is the verification gate that catches drift between the emission code and the §16 contract.
 
-The full 15-row checklist is in Appendix A.
+The full 18-row checklist is in Appendix A (rows 2, 5, 6, 7 marked REMOVED/CORRECTED; rows 16-19 added in v1.5.0).
 
 ### 4.6 Sentinel emission for unknowns
 
@@ -959,7 +959,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 
 ## Appendix A — Doc 1 §16 quirks: complete preservation checklist
 
-All 15 quirks must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
+All ~~15~~ 18 quirks (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0) must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
 
 | # | Quirk | Wire-format location | Action |
 |---|---|---|---|
@@ -967,9 +967,9 @@ All 15 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 2 | ~~`intentLoadingAnnouncement` + `IntentLoadingAnnouncement` (casing-bug pair)~~ | **REMOVED in v1.5.0** | Production exports of Gemini 3.1 Voice driven carry only the lowercase form. v1.5.0 emits the lowercase form only. Earlier samples that showed both are obsolete. |
 | 3 | `HandlingInstructions: null` | Per intent (root) | Emit `null`. Appears deprecated but required. |
 | 4 | `SystemPrompt: ""` | `ActiveVersionInfo` | Emit empty string. NOT the bot's actual system prompt — that lives in `prompts.persona`. |
-| 5 | Top-level `AiModelConfig` + `ActiveVersionInfo.AIModelConfig` | Root + version | Emit both as distinct objects with **identical** `created` payloads. |
-| 6 | `AIModelConfig.tools: []` | Inside `AIModelConfig` | Emit empty array. |
-| 7 | `AIModelConfig.instructions: ""` | Inside `AIModelConfig` | Emit empty string. |
+| 5 | ~~Top-level `AiModelConfig` + `ActiveVersionInfo.AIModelConfig` — identical `created` payloads~~ | **REMOVED in v1.5.0** | The two `created` payloads serve distinct purposes (catalog reference vs runtime config); they are NOT identical. The top-level carries only `{ "model": "<string>" }`; the version-level carries the realtime+voice runtime config. See §4.2.3 and §4.2.4. |
+| 6 | ~~`AIModelConfig.tools: []`~~ | **REMOVED in v1.5.0** | Production exports of Gemini 3.1 Voice driven do not include `tools` inside `AIModelConfig`. Field was removed per §4.2.4 lean shape. |
+| 7 | ~~`AIModelConfig.instructions: ""`~~ | **REMOVED in v1.5.0** | Production exports of Gemini 3.1 Voice driven do not include `instructions` inside `AIModelConfig`. Field was removed per §4.2.4 lean shape. |
 | 8 | `IntentScripts: []` *(amended; was `{}` in earlier Doc 1 §16)* | Per intent | Emit empty **array**. The `ImportBotFromJSON` procedure iterates with `JSON_LENGTH` + integer indexing — the object form would index `[0]` on a populated `{}` and break. Older production samples may show `{}`; functionally equivalent only while empty. Forward-compatible shape is `[]`. |
 | 9 | `ValidationRules: {}` | Per parameter | Emit empty object. |
 | 10 | `ValidationPattern: null` | Per parameter | Emit `null`. |
@@ -977,10 +977,14 @@ All 15 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 12 | `silenceRelations: []` | Top of `intentList` | Emit empty array. v1 always empty. |
 | 13 | `BotLanguages: []` | Bot top-level | Emit empty array. |
 | 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
-| 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the middle key between `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **v1.5.0 update:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation; the prior v1.4.1 "anti-quirk" wording was incomplete). Intent-root `IsDeleted` remains NOT emitted (production doesn't have it). The platform reads `IntentResponces.IsActive` for the per-intent active flag (unchanged); the intent-root `IsActive` is for audit/UI display. |
+| 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the **first** key inside `IntentResponces`, before `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **v1.5.0 update:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation; the prior v1.4.1 "anti-quirk" wording was incomplete). Intent-root `IsDeleted` remains NOT emitted (production doesn't have it). The platform reads `IntentResponces.IsActive` for the per-intent active flag (unchanged); the intent-root `IsActive` is for audit/UI display. |
+| 16 | Nested `AIModelConfig` (capital I) inside top-level `AiModelConfig` (lowercase i) | `<root>.AiModelConfig.AIModelConfig` | The top-level object is named `AiModelConfig` (lowercase `i`); it contains a nested object named `AIModelConfig` (capital `I`). These are two distinct fields at two levels — the outer wrapper and the inner config blob. Do not collapse them into one. See §4.2.3. |
+| 17 | `recordAgentCalls` emitted as **string** `"false"` / `"true"` | `ActiveVersionInfo.AIModelConfig.recordAgentCalls` | Not a JSON boolean — emitted as the string literal `"false"` or `"true"`. Source is spec section 1 `**Record agent calls:**`. Default is `"false"`. |
+| 18 | `realtimeInputConfig.automaticActivityDetection.disabled` emitted as **string** `"true"` | `ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled` | Not a JSON boolean — emitted as the string literal `"true"`. Production constant for Gemini 3.1 Voice driven. |
+| 19 | `IntentParameters[].ModifiedBy: " "` (single space literal) | Per parameter, `ModifiedBy` field | Emit a single space character `" "` — not `null`, not `""`, not `"SYSTEM"`. Production constant for every parameter row. |
 | (extra) | `response_success` → object `{ "instructions": "<string>" }` | RT=1 + RT=2 + RT=3 `Configuration` | **CORRECTED in v1.5.0** — was documented as bare empty string `""`. Production shows object shape across all RTs; see §4.4 RT-specific tables. Empty inner string (`{ "instructions": "" }`) is the common production value. |
 
-The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 15 numbered quirks.
+The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 18 numbered quirks.
 
 **Rule for Skill 3:** when in doubt, emit what production samples emit, even if it looks redundant or empty. The platform's import endpoint may strictly require these keys to be present. Cleaning up the schema is a v3 concern (per Doc 1 §17 v2 Roadmap), not Skill 3's call.
 
