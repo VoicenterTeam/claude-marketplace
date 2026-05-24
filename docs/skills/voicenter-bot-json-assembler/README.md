@@ -90,14 +90,28 @@ Sequential negative integers, range-coded so the kind of ID is identifiable at a
 | `BotVersionId` | `-2` | Single value |
 | `IntentCategoryId` | `-3` | Single default category |
 | `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering |
-| `BotIntentID` | `-100, -101, -102, ...` | One per intent, same ordering |
+| `BotIntentId` | `-100, -101, -102, ...` | One per intent, same ordering (note lowercase `d` per production casing) |
 | `ParameterId` | `-1000, -1001, ...` | One per slot, intent-by-intent then slot-by-slot |
+| `IntentRelatedID` | `-2000, -2001, ...` | **v1.5.0:** one per `intentRelations[]` row (unique row PK — no longer mirrors `NextIntentID`) |
+| `IntentConditionGroupID` | `-3000, -3001, ...` | **v1.5.0:** one per `botIntents[]` entry + one per `intentRelations[]` row |
+| `IntentSourceID` | `-4000, -4001, ...` | **v1.5.0:** one per intent when voice channel is active |
 
 Real platform-assigned IDs after import are positive integers, so there's no collision risk on re-export.
 
 ### Top-level wrapper and version envelope
 
-Section 1 fields map to top-level root keys. The two `AIModelConfig` objects (top-level `AiModelConfig` + version-level `AIModelConfig` per Doc 1 §6) are emitted with byte-identical `created` payload — this duplication is a §16 schema quirk preserved deliberately.
+Section 1 fields map to top-level root keys in production order: `Name`, `BotID`, `AccountID`, `intentList` (position #4 — v1.5.0 correction), `BotStatusId`, `CreatedDate`, `Description`, `BotLanguages`, `ModifiedDate`, `AiModelConfig`, `ActiveVersionInfo`.
+
+**`ActiveVersionInfo` field order (v1.5.0):** `IsActive` is first (was `BotVersionId` in prior baseline). Fields: `IsActive`, `CreatedDate`, `Description`, `BotVersionId`, `ModifiedDate`, `SystemPrompt`, `AIModelConfig`, `VersionNumber`, `AIModelConfigId`, `BotVersionStatusId`.
+
+**The two `AIModelConfig` objects** (top-level `AiModelConfig` + version-level `AIModelConfig` per Doc 1 §6) now carry **distinct** `created` payloads (v1.5.0):
+
+- **Top-level `AiModelConfig.AIModelConfig.created`** — lean: `{ "model": "<provider model string>" }` only.
+- **Version-level `ActiveVersionInfo.AIModelConfig.created`** — lean: `realtimeInputConfig` + voice `generationConfig` only (no temperature, topP, topK, responseModalities, systemInstruction, tools — all dropped in v1.5.0).
+
+**Version-level `ActiveVersionInfo.AIModelConfig` fields (v1.5.0):** `max_duration` (spec section 1 `**Max call duration:**`, default 1200), `prompts` (five-field bundle), `recordAgentCalls` (spec section 1 `**Record agent calls:**` emitted as STRING `"false"`/`"true"`), `silence_behaviour` (conditional on section 3), `created` (lean payload above). Fields `tools: []` and `instructions: ""` removed from this level.
+
+**Top-level `AiModelConfig` fields (v1.5.0):** `Name`, `ApiKey: {}`, `AIModel` (AIModelTypeId integer), `IsActive: 1`, `AccountId: 0`, `ModifiedBy: null`, `CreatedDate`, `ModifiedDate`, `AIModelConfig` (nested object with only `created: { "model": "..." }`), `AIModelConfigID`. Fields `Description`, `BaseUrl`, `Type`, `AIModelTypeId` (as separate field), full `created` payload removed.
 
 ### Per-RT Configuration assembly
 
@@ -107,14 +121,14 @@ Skill 3 emits the Configuration shape per Response Type, populating language fie
 
 | RT | Configuration keys |
 |---|---|
-| 1 | `layer`, `announcement`, `intentLoadingAnnouncement` |
-| 2 | `url`, `method`, `headers`, `body`, `apiResponseAnnouncement`, `fail_output`, `function_output`, `intentLoadingAnnouncement`, `IntentLoadingAnnouncement` (case-bug pair preserved), `intentInstructions`, `api_silence_behaviour`, `response_success: ""` |
-| 3 | `announcement`, `intentInstructions`, `response_success: ""` |
-| 4 | `phone1`, `phone2`, `phone3`, `parameter_phone` (when slot-driven), `selectdial_option`, `NEXT_VO_ID`, `MAX_DIAL_DURATION`, `record`, `announcement`, `intentLoadingAnnouncement`, `intentInstructions`, `response_success` (object with `instructions` key) |
+| 1 | `layer`, `announcement` (optional), `intentLoadingAnnouncement` |
+| 2 | `url`, `method`, `headers`, `body`, `announcement` (v1.5.0 — was `apiResponseAnnouncement`), `fail_output`, `function_output` (object `{ "default": "..." }` — v1.5.0), `response_success` (object `{ "instructions": "..." }` — v1.5.0), `intentLoadingAnnouncement` (lowercase only — capital-I `IntentLoadingAnnouncement` REMOVED), `intentInstructions`, `api_silence_behaviour` |
+| 3 | `announcement`, `intentInstructions`, `response_success` (object `{ "instructions": "..." }` — v1.5.0) |
+| 4 | `phone1`, `phone2`, `phone3`, `parameter_phone` (when slot-driven), `selectdial_option`, `NEXT_VO_ID`, `MAX_DIAL_DURATION`, `record`, `announcement`, `intentLoadingAnnouncement`, `intentInstructions`, `response_success` (object `{ "instructions": "..." }`) |
 
 ### Optional `ConditionGroupList` and `DTMFList` pass-through
 
-Both fields default to safe values (`ConditionGroupList: []` on `botIntents[]` / `intentRelations[]`; `DTMFList` omitted entirely). The import proc handles missing/empty values cleanly via NULL-guards (`CreateConditionGroups`, `IntentRelatedDTMF`).
+**v1.5.0:** `ConditionGroupList` is now **populated by default** on both `botIntents[]` and `intentRelations[]` with a single structural entry (the production default shape). `DTMFList: []` is also always emitted on both (never omitted). If spec section **4.7 Advanced overrides** is present, Skill 3 passes the user-authored blocks through verbatim.
 
 If spec section **4.7 Advanced overrides** is present (Skill 1 §3.5.5 opt-in), Skill 3 lifts each `### Intent: <identifier>` and `### Transition: <origin> → <next>` block's `condition_groups:` and `dtmf_list:` bodies verbatim into the corresponding JSON fields. Skill 3 does **not** validate the contents — it's pass-through. The user is responsible for the inner schema matching the DB enums (`IntentConditionGroupType`, `IntentConditionRelationType`).
 
@@ -122,7 +136,13 @@ If §4.7 is absent or empty (the default), Skill 3 emits the safe defaults and t
 
 ### Quirk preservation
 
-Skill 3 walks Appendix A (the §16 schema-quirks list) after assembly and verifies every quirk is correctly emitted: `IntentResponces` typo, `IntentResponces.IsActive: 1` (emitted inside the wrapper, NOT at the intent root — see Skill 3 SKILL.md Appendix A quirk #15 and the anti-quirk note), RT=2 case-bug pair, `HandlingInstructions: null` per intent, `SystemPrompt: ""`, dual `AiModelConfig` / `AIModelConfig`, `tools: []`, `instructions: ""`, `IntentScripts: []`, `ValidationRules: {}` and `ValidationPattern: null` per param, `silenceRelations: []`, `BotLanguages: []`, `llmDescription: ""`, `response_success: ""` on RT=2/RT=3, `Priority: 1` / `MaxAttempts: 3` / `ValidationTimeout: 30` per intent, `silence_behaviour` key omission when section 3 is `[not configured]`. Mis-emission is a Skill 3 internal bug — halt and report.
+Skill 3 walks Appendix A (the §16 schema-quirks list) after assembly and verifies every quirk is correctly emitted. Key v1.5.0 quirk updates:
+
+- **Row 2 REMOVED:** the `intentLoadingAnnouncement` + `IntentLoadingAnnouncement` casing-bug pair is obsolete for Gemini 3.1 Voice driven bots. Only the lowercase form is emitted.
+- **Row 15 updated:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation). `IntentResponces.IsActive: 1` is also emitted inside the wrapper. Intent-root `IsDeleted` remains NOT emitted.
+- **Extra row:** `response_success` is now an object `{ "instructions": "<string>" }` across RT=1 + RT=2 + RT=3 Configuration (was bare empty string in prior baseline).
+
+Other active quirks: `IntentResponces` typo, `HandlingInstructions: null` per intent, `SystemPrompt: ""`, dual `AiModelConfig` / `AIModelConfig` (now with distinct lean `created` payloads), `IntentScripts: []`, `ValidationRules: {}` and `ValidationPattern: null` per param (inside `ParameterType`), `silenceRelations: []`, `BotLanguages: []`, `llmDescription: ""`, `Priority: 1` / `MaxAttempts: 3` / `ValidationTimeout: 30` per intent, `silence_behaviour` key omission when section 3 is `[not configured]`, `DTMFList: []` always emitted on `botIntents[]` and `intentRelations[]`.
 
 ### Sentinel emission for unknowns
 
@@ -149,12 +169,13 @@ After assembly + section 6 sanity check, run all ten §15.4 checks against the i
 | # | Check | Validates |
 |---|---|---|
 | 1 | `botIntents[].IntentID` resolves | Every `botIntents[].IntentID` matches an `intents[].IntentId` |
-| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId` |
+| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. `IntentRelatedID` is not checked separately (it's a unique row PK from the `-2000` placeholder range — verified by the allocator). |
 | 3 | `apiSilenceRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `ApiSilenceIntentID` matches an `intents[].IntentId` |
 | 4 | `intents[].IntentCategoryId` resolves | Every `IntentCategoryId` matches an `intentCategories[].IntentCategoryId` |
 | 5 | RT=2 has `apiSilenceRelations[]` pairing | Every RT=2 intent has a corresponding `apiSilenceRelations[]` entry |
-| 6 | `api_silence_behaviour` matches `apiSilenceRelations[].Configuration` | Field-by-field deep equality on the 6 silence fields |
+| 6 | `IntentResponces.Configuration` matches `apiSilenceRelations[].Configuration` | **Full Configuration deep equality** (v1.5.0 — was just 6 silence fields). Every key in the parent intent's Configuration: `url`, `method`, `headers`, `body`, `fail_output`, `announcement`, `function_output`, `response_success`, `intentInstructions`, `intentLoadingAnnouncement`, and the nested `api_silence_behaviour` sub-object. |
 | 7 | Mustache resolvability | Every Mustache token resolves via 4.5.1 / 4.5.2 / 4.5.3 / 4.5.4 with directional ordering |
+| 10 | Model-config doctrine (v1.5.0 inverted) | **Blocking.** Validates that the version-level `AIModelConfig.created` does NOT contain dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`). The lean payload has none of these by construction; check 10 catches future regressions. |
 
 Failure routing:
 
@@ -260,6 +281,42 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 - Invoke other skills (recommends routing; the user invokes)
 - Emit a partial JSON when assembly fails midway
 - Modify the spec beyond the section 7.3 generation log entry
+
+---
+
+## v1.5.0 changes
+
+**ID placeholder ranges:** added `IntentRelatedID` (-2000+, unique row PK), `IntentConditionGroupID` (-3000+), `IntentSourceID` (-4000+). `BotIntentID` renamed to `BotIntentId` (lowercase `d`) per production casing.
+
+**Top-level wrapper:** `intentList` moved to position #4 (right after `AccountID`). `ActiveVersionInfo` field order — `IsActive` is now first.
+
+**Dual `AIModelConfig` — lean shapes:** the two `created` payloads now serve distinct roles. Top-level carries only `{ "model": "..." }`; version-level carries only `realtimeInputConfig` + voice `generationConfig`. Dropped from version-level: `tools`, `instructions`, `temperature`, `topP`, `topK`, `responseModalities`, `systemInstruction`, and all other generationConfig fields. Dropped from top-level: `Description`, `BaseUrl`, `Type`, `AIModelTypeId` (as separate field), full `created` payload.
+
+**`intents[]` — 17-field shape:** restored intent-root `IsActive: 1` and intent-root `AccountId`. `IsSilenceIntent` is now integer 0/1 (was boolean). `IntentSources` shape expanded to `{ SourceID, SourceName, IntentSourceID }` (was `{ SourceID: 1 }` only). `max_turns` / `max_turns_sentence` added with RT-conditional defaults (RT=2 defaults to `max_turns: 15`; other RTs omit).
+
+**`IntentParameters[]`:** audit fields added (`Schema: null`, `CreatedBy` from spec section 1, `ModifiedBy: " "` literal space, `CreatedDate`, `ModifiedDate`). `IsRequired` and `IsActive` are now integers. `OptionList` is `null` for non-ENUM (not `[]`). `DefaultValue` is `""` (not `null`). Full nested `ParameterType` object with frozen constants.
+
+**`botIntents[]`:** `BotId`/`IntentId` lowercase `d`. `DTMFList: []` always emitted. `BotVersionId: -2` added. `SortOrder` is 0-based. `ConditionGroupList` now populated by default with structural entry.
+
+**`intentRelations[]`:** `IntentRelatedID` is now a unique row PK (was mirror of `NextIntentID`). `Order` is 0-based. `DTMFList: []` always emitted. `ConditionGroupList` populated by default.
+
+**`intentCategories[]`:** `BotID` removed. `IsActive`, `AccountId`, `Description` added. `PriorityId` corrected from `2` to `1`.
+
+**`apiSilenceRelations[]`:** `Configuration` is now a full deep copy of the parent intent's `IntentResponces.Configuration` (not just the six silence fields). Check 6 validates full deep equality.
+
+**RT=2 Configuration:** `apiResponseAnnouncement` renamed `announcement`. `function_output` changed from bare string to object `{ "default": "..." }`. `response_success` changed from bare string to object `{ "instructions": "..." }`. Capital-I `IntentLoadingAnnouncement` removed (lowercase form only).
+
+**RT=3 Configuration:** `response_success` changed from bare string to object `{ "instructions": "..." }`.
+
+**Cross-reference check 2:** `IntentRelatedID` is a unique row PK — no longer checked as a mirror of `NextIntentID`.
+
+**Cross-reference check 6:** validates full Configuration deep equality (was 6 silence fields only).
+
+**Cross-reference check 10:** inverted — now catches regressions *to* dropped fields rather than asserting the old fields present.
+
+**Appendix A row 2:** casing-bug pair REMOVED. **Row 15:** intent-root `IsActive` + `AccountId` restored. **Extra row:** `response_success` object shape across RT=1 + RT=2 + RT=3.
+
+**Appendix D.5:** `PriorityId: 1` (corrected from `2`). **Appendix D.7:** `IntentSources` now emits `{ SourceID, SourceName, IntentSourceID }`.
 
 ---
 

@@ -13,7 +13,7 @@ Walks every intent in section 5 that is `[structural]` or `[detailed-revisit]` a
 
 - Slot descriptions (LLM-facing strings used at slot collection time)
 - `validationPrompt` (Conversation Routines style, ALL-CAPS headers, IRON RULES)
-- RT-specific Configuration text (`apiResponseAnnouncement`, `fail_output`, `function_output`, `announcement`, silence text, etc.)
+- RT-specific Configuration text (`announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`), silence text, etc.)
 - Post-execution `intentInstructions` (Conversation Routines style)
 
 After authoring, each completed intent is flipped to `[detailed]`. Section 4.5.3 (slot variable inventory) and section 6.1 (Mustache usage) are regenerated. Section 7.3 gets a generation log entry; sections 7.4 and 7.5 are updated.
@@ -122,19 +122,21 @@ Layer ID is structural (in section 4). If `<UNKNOWN: layer ID>`, leave as-is —
 
 | Field | Meaning |
 |---|---|
-| `apiResponseAnnouncement` | What the bot says when the API succeeds. Almost always uses Mustache references against section 4.5.4 dotted paths. |
+| `announcement` | What the bot says when the API succeeds (v1.5.0 — was `apiResponseAnnouncement` pre-v1.5.0). Almost always uses Mustache references against section 4.5.4 dotted paths. |
 | `fail_output` | Graceful default: "I couldn't reach the system right now. Let me transfer you to a human." |
-| `function_output` | LLM guidance for interpreting the API response in subsequent turns. |
-| `intentLoadingAnnouncement` AND `IntentLoadingAnnouncement` | Same content, both populated — the case-bug pair per Doc 1 §16. |
+| `function_output` | **Fail-output fallback map** — object shape `{ "default": "<fallback string>" }` (v1.5.0 — was a bare string of LLM guidance). User supplies a single fallback string; Skill 2 wraps it as the object. |
+| `response_success` | **Response success instructions** — object shape `{ "instructions": "<text or empty>" }` (v1.5.0). Empty string inner value is the most common production shape. |
+| `intentLoadingAnnouncement` | Latency-cover utterance while the API call is in flight. (v1.5.0: capital-I `IntentLoadingAnnouncement` REMOVED — only lowercase form is emitted.) |
 | `silence_sentence` / `silence_ending_sentence` / `silence_instructions` | Language for the API silence-handling block. |
 
-Iron rules: every RT=2 intent must populate all six api_silence fields and have non-empty `apiResponseAnnouncement` / `fail_output` / `function_output`. Per §14.3.6, missing silence behavior produces dead air at runtime when the API takes 8+ seconds.
+Iron rules: every RT=2 intent must populate all six api_silence fields and have non-empty `announcement` / `fail_output` / `function_output` / `response_success`. For `function_output`, the object `{ "default": "<fallback>" }` qualifies as non-empty. For `response_success`, the object `{ "instructions": "" }` (empty inner string) qualifies. Per §14.3.6, missing silence behavior produces dead air at runtime when the API takes 8+ seconds.
 
 #### RT=3 (Continue)
 
 | Field | Meaning |
 |---|---|
 | `announcement` | What the bot says after slot collection completes; typically uses Mustache references against own slots and/or upstream API response paths |
+| `response_success` | **Response success instructions** — object shape `{ "instructions": "<text or empty>" }` (v1.5.0). Empty string inner value is the most common production shape (`{ "instructions": "" }`). |
 
 #### RT=4 (Dial-Out)
 
@@ -198,7 +200,9 @@ After all four steps complete for an intent, Skill 2 runs the per-intent gate **
 1. All four steps have content (no empty fields).
 2. Every Mustache reference resolves per the rules above.
 3. Conversation Routines style is enforced on `validationPrompt` and `intentInstructions`.
-4. RT-specific iron rules pass (silence completeness for RT=2, etc.).
+4. RT-specific iron rules pass (silence completeness for RT=2, field shapes for RT=2 and RT=3, etc.).
+5. For RT=2: `announcement`, `fail_output`, `function_output` (object `{ "default": "..." }`), and `response_success` (object `{ "instructions": "..." }`) are all non-empty (structure, not content-fullness).
+6. For RT=3: `response_success` object `{ "instructions": "..." }` is populated.
 
 If the gate fails, Skill 2 returns to authoring. The status flip only happens on a clean gate.
 
@@ -241,6 +245,17 @@ If the gate fails, Skill 2 returns to authoring. The status flip only happens on
 - Auto-fix structural inconsistencies — those route to Skill 1 patch mode
 - Run the §15.4 cross-reference pass — that's Skill 3
 - Make creative decisions about persona / opening behavior — those are Skill 1 patches
+
+---
+
+## v1.5.0 changes
+
+- **`announcement` (RT=2)** — field renamed from `apiResponseAnnouncement`. The spec and JSON wire format now use the shorter name. Pre-v1.5.0 specs that used `apiResponseAnnouncement` should be patched via Skill 1 patch mode.
+- **`function_output` shape change** — was a bare string of LLM guidance; now an object `{ "default": "<fallback string>" }`. Skill 2 captures the user's fallback string and wraps it. The user can extend the object with per-error-code keys via patch mode.
+- **`response_success` shape change (RT=2 and RT=3)** — was a bare string; now an object `{ "instructions": "<text or empty>" }`. The empty inner string `{ "instructions": "" }` is the most common production shape.
+- **RT=3 now also has `response_success`** — Skill 2 must author the object for RT=3 intents as well as RT=2.
+- **`IntentLoadingAnnouncement` (capital I) REMOVED** — the prior "casing-bug pair" (`intentLoadingAnnouncement` + `IntentLoadingAnnouncement`) is obsolete for Gemini 3.1 Voice driven bots. Skill 2 authors only the lowercase form. Skill 3 emits only the lowercase form.
+- **New required-reading row:** schema audit `§11.2` and `§11.3` cover the RT=2 and RT=3 Configuration field shapes. Skill 2 should load this reference at invocation.
 
 ---
 

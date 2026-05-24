@@ -15,7 +15,7 @@ Skill 1 fills these spec sections:
 
 | Section | Content |
 |---|---|
-| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model |
+| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls |
 | 2. Persona Bundle | `persona`, voice/chat instructions, opening behavior, opening announcement |
 | 3. Caller Silence Behavior | The 4 silence fields, or `[not configured]` |
 | 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields |
@@ -96,6 +96,9 @@ Captures section 1 + section 3:
 7. **Voice name** — `AskUserQuestion` over the `model-catalog.md` voice list; `Other` allows any provider-supported string
 8. **AI model config** — `AskUserQuestion` over the `model-catalog.md` model list; `Other` allows raw `AIModelConfigID` + `AIModelTypeId`
 9. **Caller silence** — `AskUserQuestion` (Yes → 4 silence fields / No → `[not configured]`)
+10. **Created by** — bot author/owner name (free text). Optional; `AskUserQuestion` (header: "Created by", options: "Skip (default: empty)" / "Provide a name"). Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` (production-required audit field).
+11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
+12. **Record agent calls** — boolean, default `false`. `AskUserQuestion` (header: "Record calls", options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
 
 ### Phase 2 — Persona Bundle
 
@@ -146,6 +149,8 @@ Per-RT capture:
 | 2 (External API) | `URL:`, `Method:` (`AskUserQuestion` POST/GET), `Headers:`, `Body:`, `API silence behavior:` (six sub-fields) |
 | 3 (Conversational) | (none beyond slots — RT=3 fields are language-heavy, Skill 2 territory) |
 | 4 (Outbound dial) | `Dial source:` (`AskUserQuestion` parameter/static), then `Parameter phone:` OR `Phone1/2/3:`, plus `selectdial_option:`, `NEXT_VO_ID:`, `MAX_DIAL_DURATION:`, `Record:`, optional `Announcement:` / `Loading announcement:` / `Post-execution intent instructions:`, and `Response success:` |
+
+**Max turns / Max turns sentence (per-intent turn cap — v1.5.0):** Skill 1 does NOT ask about these in the interview. Skill 3 v1.5.0+ applies smart defaults at emission: RT=2 gets `max_turns: 15` and the standard Hebrew sentence; other RTs omit the fields. If a spec author needs to override a specific intent's cap, they can hand-edit spec section 4 with the optional `**Max turns:**` and `**Max turns sentence:**` fields documented in `spec-skeleton.md §4`.
 
 The RT-specific sub-labels are **bold** in the spec — Skill 3's strict-template parser depends on this exact form. See [Skill 3's parser](../voicenter-bot-json-assembler/README.md#strict-template-parser) for the full grammar.
 
@@ -277,6 +282,14 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 - Validate the bot at runtime — no testing, no simulation, no behavior check
 - Query live data for the model catalog or voice catalog — both remain hardcoded in `model-catalog.md`. (Accounts and layers ARE fetched live via `voicenter-mcp.list_resources` — see the *Tool conventions* section above.)
 - Capture `ConditionGroupList` or `DTMFList` as part of the default interview — these are **opt-in only** under spec §4.7. Default-skip emits the safe defaults that every existing bot uses; the proc imports cleanly without them.
+
+---
+
+## v1.5.0 changes
+
+- **Three new Phase 1 questions** added to the interview: `Created by` (optional, populates `IntentParameters[].CreatedBy` audit field), `Max call duration` (default 1200 seconds), `Record agent calls` (default `false`; emitted as a STRING in the JSON — not a JSON boolean).
+- **spec-skeleton.md §1** gains three matching new fields. `spec-skeleton.md §4` gains optional `**Max turns:**` and `**Max turns sentence:**` per-intent override fields.
+- **Skill 1 does NOT interview for max_turns / max_turns_sentence.** Skill 3 applies smart defaults (RT=2 → `max_turns: 15`, standard Hebrew sentence; other RTs → omit). Spec authors can hand-edit section 4 to override.
 
 ---
 
