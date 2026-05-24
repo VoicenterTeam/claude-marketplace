@@ -302,6 +302,7 @@ For unsupported types (number, integer, date, email — captured via the `Parame
 - Body structure with Mustache references (user-described)
 - API response shape declaration → already captured in 4.5.4
 - API silence behavior fields: `silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions` (text or empty), and **fallback intent reference** — pick from the existing intent set via `AskUserQuestion` per Section 2.4.B (header: "Fallback intent"; show the full intent list as a reference table first if it exceeds 4 items, then top candidates with Other for the long tail)
+- **Max turns / Max turns sentence (per-intent turn cap):** Skill 1 does NOT capture these in the interview. Skill 3 v1.5.0+ applies smart defaults at emission — RT=2 gets `max_turns: 15` and the standard Hebrew sentence; other RTs omit. If the spec author needs to override a specific intent's cap (e.g., set RT=1 unrelated-topic to `max_turns: 1` like the transport-planner production sample), they can hand-edit spec section 4 with the optional `**Max turns:**` field documented in `spec-skeleton.md` §4.
 
 **RT=3:** no structural fields beyond slots. Announcement and post-execution `intentInstructions` are language-heavy — Skill 2 territory.
 

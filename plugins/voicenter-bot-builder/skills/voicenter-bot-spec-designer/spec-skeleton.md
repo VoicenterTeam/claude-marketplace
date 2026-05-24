@@ -76,8 +76,8 @@
 - **Escalation target:** [identifier — typically `transfer_to_human`]
 - **Slots:**
   1. [slot_name] — `ParameterTypeId` [N], Required [`true`|`false`], Order [N], OptionList [if ENUM]
-- **Max turns:** [int; optional. RT=2 default 15; RT=1 only emit if set explicitly. Skipped fields are omitted from JSON.]
-- **Max turns sentence:** [string; optional. Default `"אני חייב לסיים את השיחה בשלב הזה."` for RT=2 if max_turns is set; omitted if max_turns isn't set.]
+- **Max turns:** [int; optional override. Skill 1 does NOT ask for this in the interview — Skill 3 applies smart defaults at emission time (RT=2 default `15`; RT=1/3/4 omit unless set). Spec authors hand-editing the spec may set this to override the Skill 3 default for a specific intent.]
+- **Max turns sentence:** [string; optional override. Skill 3 default for RT=2: `"אני חייב לסיים את השיחה בשלב הזה."` Spec authors may override here; otherwise Skill 3 emits the production default when `Max turns` is set.]
 - **RT-specific:**
   - **URL:** [full URL or `<UNKNOWN: API URL>`]   (RT=2 only)
   - **Method:** [POST | GET]   (RT=2 only)
