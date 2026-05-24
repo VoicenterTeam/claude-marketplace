@@ -42,10 +42,9 @@
 
 ### Plugin version bumps
 
-- `marketplace.json` metadata: `1.5.0` (unchanged — already set during Compass doctrine release)
-- `voicenter-bot-builder` plugin: `1.3.0` → `1.5.0` (production wire-format alignment)
-- `voicenter-mcp` plugin: `1.1.6` (unchanged)
-- `voicenter-api` plugin: `1.1.6` (unchanged)
+- `marketplace.json` `metadata.version`: `1.5.0` → `1.6.0` (renumbered to avoid collision with the May 14 1.5.0 Compass doctrine release)
+- `voicenter-bot-builder` plugin: `1.3.0` → `1.6.0` (production wire-format alignment)
+- `voicenter-mcp` and `voicenter-api` plugins: unchanged at `1.1.6`
 
 ## [1.5.0] - 2026-05-14
 
