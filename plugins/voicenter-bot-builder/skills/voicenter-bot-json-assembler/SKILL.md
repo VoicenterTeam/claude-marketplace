@@ -307,7 +307,7 @@ Just the model string. No generation config, no system instruction, no voice con
 
 **v1.5.0 wire-format correction.** Prior baseline emitted both `created` payloads as identical full Gemini Live setup objects (model + full generationConfig + systemInstruction + tools). Production exports show the two `created` payloads serve different purposes — the catalog reference carries only the model string; the runtime config carries only the realtime + voice. Both prior fields `temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools` are dropped from emission.
 
-**Note on Compass doctrine rule 12 / check 10 interaction:** the dropped fields are exactly the ones check 10 used to validate. Check 10 is rewritten in §6.2 to validate that *no removed fields are re-added*, rather than positively asserting them present. See §6.2 check 10 v1.5.0 description.
+**Note on Compass doctrine rule 12 / check 10 interaction:** the dropped fields are exactly the ones check 10 used to validate. Check 10 is rewritten in §6.2 to validate that *no removed fields are re-added*, rather than positively asserting them present. See §6.2 check 10 — note that the check is scheduled for v1.5.0 rewrite (pending Task 10 in the production-alignment plan); until then, the existing check 10 sub-checks for `responseModalities`/`thinkingConfig`/etc. are obsolete and Skill 3 should not emit those fields per the new §4.2.4 lean shape.
 
 **`prompts` bundle** (`ActiveVersionInfo.AIModelConfig.prompts`) — unchanged from prior:
 
