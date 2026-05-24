@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.5.0] — 2026-05-24
+
+### Changed (voicenter-bot-builder)
+
+- **BREAKING (wire format):** Skill 3 emission restructured to match the production Voicenter export shape for Gemini 3.1 Voice driven bots. Bots emitted by pre-1.5.0 Skill 3 will import successfully but won't round-trip cleanly through the platform's export UI. Re-emit any in-progress bots after upgrading.
+- **Skill 1 — Phase 1 interview:** added three new bot-identity questions: `Created by`, `Max call duration`, `Record agent calls`.
+- **Skill 1 — spec-skeleton.md §4:** added optional `Max turns` / `Max turns sentence` per-intent fields.
+- **Skill 2 — per-intent authoring:** field renamed and shape changes for `apiResponseAnnouncement` (→ `announcement`), `function_output` (→ object `{ "default": ... }`), `response_success` (→ object `{ "instructions": ... }`).
+- **Skill 3 — emission shape (largest change set):**
+  - Top-level wrapper field order: `intentList` moves to position #4.
+  - `AiModelConfig` (top-level catalog reference) restructured: new fields (`ApiKey`, `AIModel`, `IsActive`, `AccountId`, `ModifiedBy`, `CreatedDate`, `ModifiedDate`, nested `AIModelConfig` carrying only the model string). Removed: `Description`, `BaseUrl`, `Type`, `AIModelTypeId`, full `created` payload (lives in the version-level only).
+  - `ActiveVersionInfo.AIModelConfig` (version-level runtime config): added `max_duration`, `recordAgentCalls`. Removed: `tools: []`, `instructions: ""`.
+  - `created` payload reduced to lean shape: `realtimeInputConfig.automaticActivityDetection.disabled: "true"` + voice config only (version-level); model string only (top-level catalog reference). Dropped: `temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`.
+  - `intents[]` entry: 17-field skeleton (intent-root `IsActive` and `AccountId` restored from production observation, removed incorrectly in the v1.4.1 schema correction). `IsSilenceIntent` now integer 0/1. `IntentSources` shape includes `SourceName` and `IntentSourceID` (was `[{ SourceID: 1 }]`). Optional `IntentConfig.max_turns` / `max_turns_sentence` per-intent.
+  - `IntentParameters[]` entry: audit fields added (`Schema: null`, `CreatedBy`, `ModifiedBy: " "`, `CreatedDate`, `ModifiedDate`). Type fields now integers (`IsRequired: 0/1`). `OptionList: null` for non-ENUM (was `[]`). `DefaultValue: ""` for unset strings (was `null`). `ParameterType` fully nested with frozen type-catalog metadata.
+  - `botIntents[]`: `BotId`/`IntentId` lowercase-d casing. `DTMFList: []` always. `BotVersionId` added. `SortOrder` 0-based. `ConditionGroupList` populated by default.
+  - `intentRelations[]`: `Order` 0-based. `IntentRelatedID` is a unique row PK (placeholder range `-2000+`), no longer a `NextIntentID` mirror. `ConditionGroupList` populated by default.
+  - `intentCategories[]`: no `BotID`. Added `IsActive`, `AccountId`, `Description`. `PriorityId: 1` (was `2`).
+  - `apiSilenceRelations[].Configuration`: full mirror of parent `IntentResponces.Configuration` (was just the six `silence_*` fields).
+  - RT=2 `Configuration`: `announcement` (was `apiResponseAnnouncement`). `function_output` → object `{ "default": ... }`. `response_success` → object `{ "instructions": ... }`. `IntentLoadingAnnouncement` (capital I) dropped.
+  - RT=3 `Configuration`: `response_success` → object.
+- **Skill 3 — §6.2 cross-reference checks:** Check 6 now validates full Configuration deep equality between RT=2 intents and their `apiSilenceRelations[]` Configuration (was just `silence_*` six-field). Check 10 (Compass rule 12 model-config doctrine) inverted: instead of positively asserting present fields, now catches regressions to dropped fields under `generationConfig`.
+- **Skill 3 — Appendix A:** Quirk row 2 (the `intentLoadingAnnouncement` / `IntentLoadingAnnouncement` casing-bug pair) marked REMOVED in v1.5.0. Quirks 16–19 added (nested `AIModelConfig`, `recordAgentCalls` as string, `realtimeInputConfig.automaticActivityDetection.disabled` as string, `IntentParameters[].ModifiedBy` single-space literal).
+- **Skill 3 — new ID placeholder ranges:** `IntentRelatedID` (`-2000+`), `IntentConditionGroupID` (`-3000+`), `IntentSourceID` (`-4000+`).
+
+### Added (voicenter-bot-builder)
+
+- `references/test-artifacts/test-prod-bot-transport-planner.json`: production export of the user-supplied "סוכן תכנון מסלול - לקוח" v0.0.38 Gemini 3.1 Voice driven bot, serving as the third reference fixture and the ground-truth round-trip target for v1.5.0+ emission.
+
+### Documentation
+
+- `references/docs/voicenter-bot-json-schema-audit-v1.md`: ~12 subsections rewritten (§4, §5, §6.A, §6.B, §6.B.2, §8.2, §8.3, §8.4, §8.6, §9.0, §9.1, §10, §11.2, §11.3, §11.5, §16). The doc remains the canonical wire-format contract; this update aligns it to the production Gemini 3.1 Voice driven export.
+- `docs/skills/voicenter-bot-*/README.md`: all three plugin docs READMEs mirror the corresponding SKILL.md changes.
+
+### Internal
+
+- `references/test-artifacts/test-emitted-json-yuval.json` and `test-emitted-json-refua.json` regenerated to v1.5.0 shape. Placeholder IDs preserved.
+
+### Plugin version bumps
+
+- `marketplace.json` metadata: `1.5.0` (unchanged — already set during Compass doctrine release)
+- `voicenter-bot-builder` plugin: `1.3.0` → `1.5.0` (production wire-format alignment)
+- `voicenter-mcp` plugin: `1.1.6` (unchanged)
+- `voicenter-api` plugin: `1.1.6` (unchanged)
+
 ## [1.5.0] - 2026-05-14
 
 ### Added
