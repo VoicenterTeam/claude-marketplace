@@ -340,100 +340,186 @@ Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. S
 
 #### 4.3.1 `intents[]`
 
-For each section 4 intent (in order), build a 14-field entry per Doc 1 §9.0:
+For each section 4 intent (in order), build a 17-field entry per the v1.5.0 production-aligned shape. Emit fields in this order (matches production export):
 
-| Wire-format field | Spec source (or default) |
-|---|---|
-| `IntentId` | Cached `<identifier> → IntentId` placeholder |
-| `Name` | Section 4 "Display name" |
-| `Description` | Section 4 "Description" |
-| `IntentToolName` | Section 4 "Tool name" (= identifier) |
-| `HandlingInstructions` | `null` (preserved per §16) |
-| `IsSilenceIntent` | `false` (v1 doesn't generate silence-handler intents) |
-| `IntentCategoryId` | `-3` (the single default category) |
-| `Priority` | `1` (per Doc 1 §9.0) |
-| `MaxAttempts` | `3` (per Doc 1 §9.0) |
-| `ValidationTimeout` | `30` (per Doc 1 §9.0) |
-| `IntentParameters` | §4.3.2 below |
-| `IntentConfig.prompts.llmDescription` | `""` (preserved per §16) |
-| `IntentConfig.prompts.validationPrompt` | Section 5 "Validation Prompt" verbatim |
-| `IntentScripts` | `[]` *(amended per §16 quirk #8 revision; was `{}` — see Appendix A)* |
-| **`IntentSources`** | **Per-channel array derived from spec section 1 `Channels Active`. See Appendix D §D.7. Voice-only bot → `[{ "SourceID": 1 }]`.** |
-| `IntentResponces` | §4.4 below |
+| Order | Wire-format field | Spec source (or default) |
+|---|---|---|
+| 1 | `Name` | Section 4 "Display name" |
+| 2 | `IntentId` | Cached `<identifier> → IntentId` placeholder |
+| 3 | `IsActive` | `1` (always — v1.5.0 restored at intent root) |
+| 4 | `Priority` | `1` (per Doc 1 §9.0) |
+| 5 | `AccountId` | Spec section 1 `**Account ID:**` — same value as `<root>.AccountID` (v1.5.0 added) |
+| 6 | `Description` | Section 4 "Description" |
+| 7 | `MaxAttempts` | Section 4 explicit value if set; else `3` |
+| 8 | `IntentConfig` | `{ prompts: { llmDescription: "", validationPrompt: <section 5 verbatim> }, max_turns: <see below>, max_turns_sentence: <see below> }` |
+| 9 | `IntentScripts` | `[]` (empty array — per §16 quirk 8) |
+| 10 | `IntentSources` | **v1.5.0:** per spec section 1 `Channels Active`. Voice active → `[{ "SourceID": 1, "SourceName": "VOICE", "IntentSourceID": <placeholder from -4000 range> }]`. Chat-only → `[]`. Both channels → emit voice entry only for v1 (chat-only sample missing). |
+| 11 | `IntentToolName` | Section 4 "Tool name" (= identifier) |
+| 12 | `IntentResponces` | §4.4 below — invariant outer shape `{ IsActive: 1, ResponseTypeId, Configuration }` |
+| 13 | `IsSilenceIntent` | **Integer 0/1**. `0` by default; `1` if spec section 4 marks `IsSilenceIntent` (rare) |
+| 14 | `IntentCategoryId` | `-3` (the single default category placeholder) |
+| 15 | `IntentParameters` | §4.3.2 below |
+| 16 | `ValidationTimeout` | `30` (per Doc 1 §9.0) |
+| 17 | `HandlingInstructions` | `null` (preserved per §16) |
 
-> **Note (v1.4.1 wire-format correction):** `IsActive` is emitted **inside** `IntentResponces` (see §4.4), not at the intent root. Intent-root `IsActive` and `IsDeleted` are not emitted in v1 wire format. The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag; the prior intent-root location was silently ignored.
+**`IntentConfig.max_turns` and `max_turns_sentence` emission rules (v1.5.0):**
+
+| Response Type | `max_turns` | `max_turns_sentence` |
+|---|---|---|
+| RT=2 | Default `15`; spec section 4 may override | Default `"אני חייב לסיים את השיחה בשלב הזה."`; spec may override |
+| RT=1 | Default omitted; emit only if spec section 4 explicitly sets it | Default `""` if `max_turns` is set; spec may override |
+| RT=3 | Default omitted | Default omitted |
+| RT=4 | Default omitted | Default omitted |
+
+When both fields are emitted, they sit as siblings of `prompts` inside `IntentConfig`. When omitted, the keys are absent (not `null`).
+
+**v1.5.0 changes from prior 14-field baseline:** Reordered to match production. Added intent-root `IsActive` (always `1`). Added intent-root `AccountId`. `IsSilenceIntent` now integer (was boolean). `IntentSources` shape includes `SourceName` and `IntentSourceID` (was `[{ SourceID: 1 }]`). `max_turns` / `max_turns_sentence` added with RT-conditional defaults.
+
+**v1.5.0 fields removed from prior baseline:** intent-root `IsDeleted` (production never had it; the v1.4.1 correction removed it correctly — kept removed).
 
 #### 4.3.2 `IntentParameters[]` (per intent, slot list)
 
-For each slot in section 5 (or section 4 if section 5 didn't add details — but a `[detailed]` entry will have):
+For each slot in section 5, build a parameter entry. Emit fields in this order (matches production):
 
-| Wire-format field | Spec source (or default) |
-|---|---|
-| `ParameterId` | Cached `<intent>.<slot> → ParameterId` placeholder |
-| `IntentId` | Cached `<intent> → IntentId` placeholder (parent backreference) |
-| `Name` | Slot name |
-| `Description` | Section 5 slot description |
-| `IsRequired` | Slot required flag |
-| `DefaultValue` | Slot default value, or `null` |
-| `CollectionOrder` | Slot order |
-| `ParameterTypeId` | Slot type ID (1, 10, 16, or 19 per Doc 1 §12) |
-| `ParameterType` | `{ "ParameterTypeId": <id>, "Name": <type name> }` — denormalized echo per Doc 1 §10 |
-| `OptionList` | Slot option list (for ENUM); `[]` for other types |
-| `ValidationRules` | `{}` (preserved per §16) |
-| `ValidationPattern` | `null` (preserved per §16) |
-| `IsActive` | `1` |
-| `IsDeleted` | `0` |
+| Order | Wire-format field | Spec source (or default) |
+|---|---|---|
+| 1 | `Name` | Slot name |
+| 2 | `Schema` | `null` (preserved literal — production constant) |
+| 3 | `IntentId` | Cached `<intent> → IntentId` placeholder (parent backreference) |
+| 4 | `IsActive` | `1` (integer) |
+| 5 | `CreatedBy` | Spec section 1 `**Created by:**` value, or `""` if not set |
+| 6 | `IsRequired` | **Integer 0/1**. `1` if slot.IsRequired; else `0`. Production format — not boolean. |
+| 7 | `ModifiedBy` | `" "` (single literal space — production constant per parameter row) |
+| 8 | `OptionList` | For ENUM: array of `{ Value, Label }` pairs from spec. For non-ENUM: `null` (NOT `[]` — v1.5.0 correction) |
+| 9 | `CreatedDate` | ISO timestamp at assembly time |
+| 10 | `Description` | Section 5 slot description |
+| 11 | `ParameterId` | Cached `<intent>.<slot> → ParameterId` placeholder |
+| 12 | `DefaultValue` | Slot default if set; else `""` (NOT `null` — v1.5.0 correction) |
+| 13 | `ModifiedDate` | ISO timestamp at assembly time |
+| 14 | `ParameterType` | Full nested object — see table below |
+| 15 | `CollectionOrder` | Slot order (1-indexed) |
+| 16 | `ParameterTypeId` | `1` / `10` / `16` / `19` per Doc 1 §12 |
+| 17 | `ValidationRules` | `{}` (preserved per §16) |
+
+`ParameterType` nested object — frozen constants per `ParameterTypeId` (v1.5.0):
+
+```json
+{
+  "Name": "STRING",
+  "IsActive": 1,
+  "CreatedBy": "SYSTEM",
+  "ModifiedBy": null,
+  "CreatedDate": "2025-01-21 11:25:25",
+  "Description": "Basic text input",
+  "ModifiedDate": null,
+  "ParameterTypeId": 1,
+  "ValidationPattern": null,
+  "IsCustomValidationAllowed": 1
+}
+```
+
+Per-type frozen values:
+
+| ParameterTypeId | Name | Description (frozen) |
+|---|---|---|
+| 1 | `"STRING"` | `"Basic text input"` |
+| 10 | `"PHONE"` | `"Phone number"` |
+| 16 | `"BOOLEAN"` | `"Boolean true/false"` |
+| 19 | `"ENUM"` | `"Constrained choice from option list"` |
+
+All other ParameterType fields (`IsActive: 1`, `CreatedBy: "SYSTEM"`, `ModifiedBy: null`, `CreatedDate: "2025-01-21 11:25:25"`, `ModifiedDate: null`, `ValidationPattern: null`, `IsCustomValidationAllowed: 1`) are the same across all types. If production reveals other Descriptions for PHONE/BOOLEAN/ENUM later, update this table — for now these are reasonable defaults extrapolated from STRING.
+
+**v1.5.0 fields removed from prior baseline:** parameter-root `IsDeleted` (production doesn't carry it) and parameter-root `ValidationPattern` (it lives inside `ParameterType` now).
 
 #### 4.3.3 `botIntents[]`
 
-One entry per intent in section 4 ordering. Per Doc 1 §8.2:
+One entry per intent in section 4 ordering. Emit fields in this order (matches production):
 
-| Wire-format field | Value |
-|---|---|
-| **`BotIntentId`** | Cached `<identifier> → BotIntentId` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path read; intentional asymmetry with `intentRelations[]` capital-D casing — do not "fix")* |
-| `BotID` | `-1` (mirror of root; not read by the procedure but kept for wire-format parity) |
-| **`IntentId`** | Cached `<identifier> → IntentId` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path; without lowercase, the proc resolves NULL and the BotIntent INSERT fails on NOT NULL `IntentId`)* |
-| **`SortOrder`** | **1-based ordinal of the intent in section 4 (Intent 1 → 1, Intent 2 → 2, ...). Required — the column is `INT NOT NULL` and the procedure passes the extracted value explicitly, so a missing field becomes a NULL INSERT and fails.** |
-| **`IsActive`** | **`1` (explicit)** |
-| `BotIntentTypeID` | `1` (per Doc 1 §8.2 — v1 always emits 1 for every entry; capital `D` casing matches the procedure read) |
-| `ConditionGroupList` | **Default `[]` (preserved per §16).** **Optional opt-in:** if spec section 4.7 contains a `### Intent: <identifier>` block with a `condition_groups:` body, pass through verbatim (Skill 3 does not validate the contents — it's the user's responsibility to match the DB enum). |
-| `DTMFList` | **Not emitted by default.** **Optional opt-in:** if spec section 4.7 contains a `dtmf_list:` body for the intent, emit a sibling `DTMFList: [<digit strings>]` field; otherwise omit. |
+| Order | Wire-format field | Value |
+|---|---|---|
+| 1 | `BotId` | `-1` (mirror of root; lowercase `d` per production casing) |
+| 2 | `DTMFList` | `[]` (always emitted, never omitted) |
+| 3 | `IntentId` | Cached `<identifier> → IntentId` placeholder (lowercase `d` per production) |
+| 4 | `IsActive` | `1` (integer) |
+| 5 | `SortOrder` | **0-based** ordinal of the intent in section 4 (Intent 1 → 0, Intent 2 → 1, …) |
+| 6 | `BotIntentId` | Cached `<identifier> → BotIntentId` placeholder (lowercase `d`) |
+| 7 | `BotVersionId` | `-2` (mirror of `ActiveVersionInfo.BotVersionId`; v1.5.0 added) |
+| 8 | `BotIntentTypeID` | `1` (per Doc 1 §8.2) |
+| 9 | `ConditionGroupList` | **Populated by default** with single entry (see below). v1.5.0 default reversed from prior `[]`. |
+
+Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
+
+```json
+[
+  {
+    "Order": 1,
+    "IntentConditionList": [],
+    "IntentConditionName": "",
+    "IntentConditionGroupID": "<placeholder from -3000 range, allocated for this botIntents row>",
+    "IntentConditionGroupType": 1,
+    "IntentConditionRelationID": "<same as this row's BotIntentId — mirror>",
+    "IntentConditionRelationType": 1,
+    "IntentConditionGroupTypeName": "tool",
+    "IntentConditionRelationTypeName": "BotIntentID"
+  }
+]
+```
+
+**v1.5.0 changes from prior baseline:** `BotID`/`IntentID` capital-D casing changed to lowercase `BotId`/`IntentId` per production. `DTMFList: []` added. `BotVersionId: -2` added. `SortOrder` switched to 0-based. `ConditionGroupList` populated by default with the structural entry above.
 
 #### 4.3.4 `intentRelations[]`
 
-For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission, keeping the lowest `Order` value.** The DB unique key `UK_IntentRelated_Origin_Next` forbids duplicates; emitting two would fail import on the second row.
+For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates).
 
-When the spec lists the same target twice (e.g., success path AND fallback both → `transfer_to_human`), this is a structural redundancy: the runtime takes the first matching transition, so the second row never fires. Skill 3 silently de-dupes and notes the collapse in the banner under DEFAULTS APPLIED:
+Emit fields in this order (matches production):
 
+| Order | Wire-format field | Source |
+|---|---|---|
+| 1 | `Order` | **0-based** position in the transitions list (after dedup) |
+| 2 | `DTMFList` | `[]` (always emitted) |
+| 3 | `NextIntentID` | Cached `<target identifier> → IntentId` |
+| 4 | `OriginIntentID` | Cached `<origin identifier> → IntentId` (capital-D casing per production) |
+| 5 | `IntentRelatedID` | **Unique row PK** from placeholder range `-2000, -2001, …` (v1.5.0 — no longer mirrors `NextIntentID`) |
+| 6 | `ConditionGroupList` | **Populated by default** with single entry (see below) |
+
+Default `ConditionGroupList` content for `intentRelations[]`:
+
+```json
+[
+  {
+    "Order": 0,
+    "IntentConditionList": [],
+    "IntentConditionName": "",
+    "IntentConditionGroupID": "<placeholder from -3000 range, allocated for this intentRelations row>",
+    "IntentConditionGroupType": 1,
+    "IntentConditionRelationID": "<same as this row's IntentRelatedID — mirror>",
+    "IntentConditionRelationType": 2,
+    "IntentConditionGroupTypeName": "tool",
+    "IntentConditionRelationTypeName": "RelatedIntentID"
+  }
+]
 ```
-#   - intentRelations: collapsed duplicate (initiate_purchase → transfer_to_human) — success and fallback share the same target
-```
 
-| Wire-format field | Source |
-|---|---|
-| `OriginIntentID` | Cached `<origin identifier> → IntentId` *(capital-D `ID` — matches the procedure read; deliberate asymmetry with `botIntents[]` lowercase casing)* |
-| `NextIntentID` | Cached `<target identifier> → IntentId` |
-| `IntentRelatedID` | Same as `NextIntentID` (per Doc 1 §8.3 observation: junction ID often duplicates `NextIntentID`) |
-| `Order` | 1-based position in the transitions list (after dedup, the surviving row keeps its lowest pre-dedup `Order`) |
-| `ConditionGroupList` | **Default `[]` (preserved per §16).** **Optional opt-in:** if spec section 4.7 contains a `### Transition: <origin> → <next>` block with a `condition_groups:` body, pass through verbatim. |
-| `DTMFList` | **Not emitted by default.** **Optional opt-in:** if spec section 4.7 contains a `dtmf_list:` body for the transition, emit a sibling `DTMFList: [<digit strings>]` field; otherwise omit. |
+Note the differences from `botIntents[]` ConditionGroupList: `Order: 0` (vs `1`), `IntentConditionRelationType: 2` (vs `1`), `IntentConditionRelationTypeName: "RelatedIntentID"` (vs `"BotIntentID"`).
 
-A "terminal" intent (typically `transfer_to_human` with RT=1) has zero outgoing transitions in section 4 — Skill 3 emits zero `intentRelations[]` rows with that intent as `OriginIntentID`. The platform handles call termination.
+**v1.5.0 changes:** `IntentRelatedID` is now a unique row PK with its own placeholder range (was mirror of NextIntentID). `Order` is 0-based (was 1-based). `DTMFList: []` always emitted. `ConditionGroupList` populated by default.
 
-**Section 4.7 pass-through rule.** Skill 3 does not parse the freeform contents of section 4.7 — it lifts the YAML-style `condition_groups:` and `dtmf_list:` blocks verbatim into the corresponding JSON fields. The user is responsible for the schema of those blocks matching what `CreateConditionGroups` (the called proc) and `IntentRelatedDTMF` (the target table) expect. If section 4.7 is absent or empty, every `botIntents[]` and `intentRelations[]` entry uses the safe defaults above and the bot imports cleanly. **Section 4.7 is opt-in only — default skip is the recommended path.**
+**Section 4.7 pass-through rule (unchanged from prior).** Section 4.7 opt-in lets the spec author override the default `condition_groups` and `dtmf_list` content. If present, Skill 3 lifts the YAML-style blocks verbatim into the corresponding JSON fields. If absent, the v1.5.0 defaults above apply.
 
 #### 4.3.5 `intentCategories[]`
 
-Single default category, all intents reference it:
+Single default category, all intents reference it. Emit fields in this order:
 
-| Wire-format field | Value |
-|---|---|
-| `IntentCategoryId` | `-3` |
-| `BotID` | `-1` |
-| `Name` | `"Default Category"` (matches both production samples per Doc 1 §8.4) |
-| **`PriorityId`** | **`2`** *(Medium — from `Priority` static table; required because `IntentCategory.PriorityId` is `TINYINT NOT NULL` and the procedure passes the extracted value explicitly)* |
-| **`IsActive`** | **`1`** *(explicit)* |
-| **`Description`** | **`null`** *(explicit)* |
+| Order | Wire-format field | Value |
+|---|---|---|
+| 1 | `Name` | `"Default Category"` (matches production samples) |
+| 2 | `IsActive` | `1` |
+| 3 | `AccountId` | Spec section 1 `**Account ID:**` value — same as `<root>.AccountID` (v1.5.0 added) |
+| 4 | `PriorityId` | `1` (v1.5.0 correction — was `2` in prior baseline; production has `1`) |
+| 5 | `Description` | Same as `Name` (production observation — v1.5.0 added) |
+| 6 | `IntentCategoryId` | `-3` (placeholder) |
+
+**v1.5.0 changes:** `BotID` removed (production doesn't carry it). `IsActive`, `AccountId`, `Description` added. `PriorityId` corrected from `2` to `1`.
 
 #### 4.3.6 `silenceRelations[]`
 
@@ -441,20 +527,19 @@ Single default category, all intents reference it:
 
 #### 4.3.7 `apiSilenceRelations[]`
 
-For each RT=2 intent in section 4 ordering, emit one entry. The `Configuration` is **identical** to the same intent's `IntentResponces.Configuration.api_silence_behaviour` (the duplication rule per Doc 1 §11.2).
+For each RT=2 intent in section 4 ordering, emit one entry. The `Configuration` is **the full content of the parent intent's `IntentResponces.Configuration`** (v1.5.0 — was just the six `silence_*` fields in prior baseline).
 
 | Wire-format field | Source |
 |---|---|
+| `Configuration` | Deep copy of the parent RT=2 intent's `IntentResponces.Configuration` (every field: `url`, `method`, `headers`, `body` if any, `fail_output`, `announcement`, `function_output`, `response_success`, `intentInstructions`, `intentLoadingAnnouncement`, `api_silence_behaviour`) |
 | `OriginIntentID` | Cached `<RT=2 intent identifier> → IntentId` |
 | `ApiSilenceIntentID` | Cached `<fallback intent from spec section 5> → IntentId` |
-| `Configuration.silence_duration` | Section 5 "API silence behavior — silence_duration" |
-| `Configuration.silence_loops` | Section 5 "API silence behavior — silence_loops" |
-| `Configuration.silence_sentence` | Section 5 verbatim |
-| `Configuration.silence_ending_sentence` | Section 5 verbatim |
-| `Configuration.silence_instructions` | Section 5 verbatim (often empty `""`) |
-| `Configuration.intent` | Same value as `ApiSilenceIntentID` (mirror per Doc 1 §8.6) |
 
-If a non-RT=2 intent has API silence behavior in its section 5 entry, that's a Skill 2 bug — Skill 3 ignores it (RT determines whether the entry is emitted; non-RT=2 intents don't get `apiSilenceRelations[]` rows). The cross-reference pass §15.4 check 5 only fires the other way: RT=2 missing the pairing.
+**v1.5.0 wire-format correction.** Prior baseline emitted only the six `silence_*` fields here. Production shows the entire parent Configuration is copied — including `url`, `method`, `body`, the API-specific `announcement`, `function_output`, `response_success`, `intentInstructions`, etc. Skill 3 v1.5.0+ does a deep copy.
+
+Cross-reference check 6 (§6.2) now validates **full Configuration deep equality**, not just the six fields. Since Skill 3 emits both from the same spec source, they match by construction; check 6 catches emission bugs.
+
+If a non-RT=2 intent has API silence behavior in its section 5 entry, that's a Skill 2 bug — Skill 3 ignores it (RT determines whether the entry is emitted).
 
 ### 4.4 RT-specific `IntentResponces.Configuration`
 
@@ -601,7 +686,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run
 | # | Check | What it validates | Detection |
 |---|---|---|---|
 | 1 | `botIntents[].IntentID` resolves | Every `botIntents[].IntentID` matches an `intents[].IntentId`. | Build the set of `intents[].IntentId` values; for each `botIntents[i].IntentID`, verify membership. |
-| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. | Same set; verify membership for both endpoint fields. `IntentRelatedID` is not checked separately (it duplicates `NextIntentID` per Doc 1 §8.3). |
+| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. | Same set; verify membership for both endpoint fields. `IntentRelatedID` is not checked separately (it's a unique row PK from the `-2000` placeholder range per §4.1; verified by the placeholder allocator). |
 | 3 | `apiSilenceRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `ApiSilenceIntentID` matches an `intents[].IntentId`. | Same set; verify membership. |
 | 4 | `intents[].IntentCategoryId` resolves | Every `intents[].IntentCategoryId` matches an `intentCategories[].IntentCategoryId`. | v1 has a single category (`-3`); check is trivial but explicit. |
 | 5 | RT=2 has `apiSilenceRelations[]` pairing | Every intent with `IntentResponces.ResponseTypeId = 2` has a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`. | Walk RT=2 intents; for each, verify a row exists. |
