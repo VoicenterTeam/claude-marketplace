@@ -14,6 +14,9 @@
 **Channels Active:** [`voice` | `chat` | `voice+chat`]
 **Voice Name:** [voice name from catalog | raw string | omit if no voice channel]
 **AI Model Config:** [name from catalog | `raw: ID=X, TypeID=Y` | `<UNKNOWN: AI Model Config>`]
+**Created by:** [bot author/owner name | omit if not set; defaults to empty string at emission]
+**Max call duration:** [int seconds; default 1200]
+**Record agent calls:** [`true` | `false`; default false. Skill 3 emits the STRING form per production wire format.]
 
 ---
 
@@ -73,6 +76,8 @@
 - **Escalation target:** [identifier — typically `transfer_to_human`]
 - **Slots:**
   1. [slot_name] — `ParameterTypeId` [N], Required [`true`|`false`], Order [N], OptionList [if ENUM]
+- **Max turns:** [int; optional. RT=2 default 15; RT=1 only emit if set explicitly. Skipped fields are omitted from JSON.]
+- **Max turns sentence:** [string; optional. Default `"אני חייב לסיים את השיחה בשלב הזה."` for RT=2 if max_turns is set; omitted if max_turns isn't set.]
 - **RT-specific:**
   - **URL:** [full URL or `<UNKNOWN: API URL>`]   (RT=2 only)
   - **Method:** [POST | GET]   (RT=2 only)

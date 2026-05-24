@@ -131,6 +131,9 @@ Ask, in order:
 9. **Caller silence:** prompt via `AskUserQuestion` (Yes / No, header: "Silence handling").
    - If yes: walk the four fields — `silence_duration` (seconds, int), `silence_loops` (int), `silence_sentence` (text, Mustache OK), `silence_ending_sentence` (text). These are free-text, no menu.
    - If no: mark section 3 `[not configured]`.
+10. **Created by:** bot author/owner name (free text). Optional — Skill 1 prompts via `AskUserQuestion` per Section 2.4.B (header: "Created by", 2 options: "Skip (default: empty)" / "Provide a name"). If user picks "Provide a name", capture as free text. Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` in the emitted JSON (production-required audit field).
+11. **Max call duration (seconds):** integer. Default `1200`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Max call duration", 2 options: "Use default 1200 *(Recommended)*" / "Set a different value"). If different, capture as free-text integer. Written to spec section 1 as `**Max call duration:**`.
+12. **Record agent calls:** boolean. Default `false`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Record calls", 2 options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this in the JSON as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
 
 **Write at end of Phase 1:** spec sections 1 and 3.
 
