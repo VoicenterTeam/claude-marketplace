@@ -1,6 +1,8 @@
 # Changelog
 
-## [1.5.0] — 2026-05-24
+## [1.6.0] — 2026-05-24
+
+**Note:** this release was developed under the working version name "v1.5.0" (visible in inline references throughout the changelog entry below and in the SKILL.md / docs README v1.5.0 correction notes). The release was renumbered to 1.6.0 to avoid collision with the prior 1.5.0 Compass doctrine release (May 14). Skill 3 SKILL.md and docs may continue to use "v1.5.0" as the working label for these changes; the platform-facing release version is 1.6.0.
 
 ### Changed (voicenter-bot-builder)
 
