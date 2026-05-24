@@ -164,17 +164,22 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 | `BotID` | `-1` | Single value |
 | `BotVersionId` | `-2` | Single value |
 | `IntentCategoryId` | `-3` | Single default category |
-| `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering (Intent 1 → -10, Intent 2 → -11, ...) |
-| `BotIntentID` | `-100, -101, -102, ...` | One per intent, same ordering |
+| `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering |
+| `BotIntentId` | `-100, -101, -102, ...` | One per intent, same ordering (note lowercase `d` casing per production) |
 | `ParameterId` | `-1000, -1001, -1002, ...` | One per slot, walked intent-by-intent then slot-by-slot |
+| `IntentRelatedID` | `-2000, -2001, ...` | **v1.5.0:** one per `intentRelations[]` row (no longer mirrors `NextIntentID`) |
+| `IntentConditionGroupID` | `-3000, -3001, ...` | **v1.5.0:** one per `botIntents[]` entry + one per `intentRelations[]` row |
+| `IntentSourceID` | `-4000, -4001, ...` | **v1.5.0:** one per intent when voice channel is active |
 
-`AccountID` is **user-supplied** (spec section 1). If the spec marks `<UNKNOWN: Account ID>`, emit the sentinel `-999` per §4.6.
+**`IntentConditionRelationID` does not need a new range.** It mirrors `BotIntentId` (when inside `botIntents[]`) or `IntentRelatedID` (when inside `intentRelations[]`) — the production export pattern. Skill 3 fills it from the matching parent value.
 
-`AIModelConfigID` and `AIModelTypeId` come from spec section 1 + the model catalog (§4.2.3). If the catalog has TODO placeholders or the spec marks them unknown, emit `-999` sentinels.
+**`AccountID` is user-supplied** (spec section 1) or `-999` sentinel if `<UNKNOWN: Account ID>`. Used at the bot top-level wrapper AND echoed into each `intents[].AccountId` and `intentCategories[].AccountId` (production pattern — v1.5.0).
+
+**`AIModelConfigID` and `AIModel` (= `AIModelTypeId`) come from the model catalog** (`model-catalog.md`) per the spec section 1 entry. Skill 3 looks both up at emission time. `-999` sentinels if catalog has TODO or spec marks unknown.
 
 **Allocation procedure:**
 
-1. Walk section 4 in order. For each intent: assign `IntentId` from the `-10` series and `BotIntentID` from the `-100` series. Cache the mapping `<identifier> → (IntentId, BotIntentID)`.
+1. Walk section 4 in order. For each intent: assign `IntentId` from the `-10` series and `BotIntentId` from the `-100` series. Cache the mapping `<identifier> → (IntentId, BotIntentId)`.
 2. Within each intent's section 5 entry, walk slots in `Order` value. For each slot: assign `ParameterId` from the `-1000` series. Cache the mapping `<intent identifier>.<slot name> → ParameterId`.
 3. Emit `BotID = -1`, `BotVersionId = -2`, `IntentCategoryId = -3` as fixed values.
 
@@ -186,95 +191,135 @@ The numerical ranges are wide so a human reading the JSON can identify what kind
 
 #### 4.2.1 Top-level fields (spec section 1 → root)
 
-| Spec field | Wire-format path | Source |
-|---|---|---|
-| Bot Name | `<root>.Name` | Direct copy |
-| Description | `<root>.Description` | Direct copy |
-| (allocated) | `<root>.BotID` | `-1` |
-| Account ID | `<root>.AccountID` | Direct copy, or `-999` sentinel if `<UNKNOWN>` |
-| (constant) | `<root>.BotStatusId` | `1` (per Doc 1 §4) |
-| (constant) | `<root>.BotLanguages` | `[]` (preserved per §16, even though the bot has a language elsewhere) |
-| (generated) | `<root>.CreatedDate` | ISO timestamp at assembly time, format `"YYYY-MM-DD HH:MM:SS"` |
-| (constant) | `<root>.ModifiedDate` | `null` (no modifications yet) |
-| (resolved) | `<root>.AiModelConfig` | §4.2.3 below |
-| (assembled) | `<root>.ActiveVersionInfo` | §4.2.2 below |
-| (assembled) | `<root>.intentList` | §4.3 below |
+Emit fields in this order (matches production export — v1.5.0):
+
+| Order | Spec field | Wire-format path | Source |
+|---|---|---|---|
+| 1 | Bot Name | `<root>.Name` | Direct copy |
+| 2 | (allocated) | `<root>.BotID` | `-1` |
+| 3 | Account ID | `<root>.AccountID` | Direct copy, or `-999` sentinel if `<UNKNOWN>` |
+| 4 | (assembled) | `<root>.intentList` | §4.3 below |
+| 5 | (constant) | `<root>.BotStatusId` | `1` (per Doc 1 §4) |
+| 6 | (generated) | `<root>.CreatedDate` | ISO timestamp at assembly time, format `"YYYY-MM-DD HH:MM:SS"` |
+| 7 | Description | `<root>.Description` | Direct copy |
+| 8 | (constant) | `<root>.BotLanguages` | `[]` (preserved per §16) |
+| 9 | (constant) | `<root>.ModifiedDate` | `null` |
+| 10 | (resolved) | `<root>.AiModelConfig` | §4.2.3 below |
+| 11 | (assembled) | `<root>.ActiveVersionInfo` | §4.2.2 below |
+
+**v1.5.0 wire-format correction.** Prior baseline emitted `intentList` last and `Description` near the top. Production export places `intentList` at position #4 (right after `AccountID`). Skill 3 v1.5.0+ matches the production order.
 
 #### 4.2.2 `ActiveVersionInfo` envelope
 
-| Wire-format path | Value |
-|---|---|
-| `BotVersionId` | `-2` (placeholder) |
-| `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
-| `BotVersionStatusId` | `3` (per Doc 1 §5) |
-| `IsActive` | `1` |
-| `Description` | `""` (matches both production samples) |
-| `CreatedDate` | Same ISO timestamp as root |
-| `ModifiedDate` | `null` |
-| `SystemPrompt` | `""` (preserved per §16; NOT the same as the bot's system prompt, which lives in `AIModelConfig.prompts`) |
-| `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
-| `AIModelConfig` | §4.2.3 + 4.2.4 + 4.2.5 below |
+Emit fields in this order (matches production — v1.5.0):
+
+| Order | Wire-format path | Value |
+|---|---|---|
+| 1 | `IsActive` | `1` |
+| 2 | `CreatedDate` | Same ISO timestamp as root |
+| 3 | `Description` | `""` (matches production samples) |
+| 4 | `BotVersionId` | `-2` (placeholder) |
+| 5 | `ModifiedDate` | `null` |
+| 6 | `SystemPrompt` | `""` (preserved per §16; NOT the bot's actual system prompt, which lives in `AIModelConfig.prompts`) |
+| 7 | `AIModelConfig` | §4.2.3 + 4.2.4 + 4.2.5 below |
+| 8 | `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
+| 9 | `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
+| 10 | `BotVersionStatusId` | `3` (per Doc 1 §5) |
+
+**v1.5.0 wire-format correction.** Field order revised to match production. Prior baseline had `BotVersionId` first; production has `IsActive` first.
 
 #### 4.2.3 The two `AIModelConfig` objects
 
-Doc 1 §6 defines two distinct objects with confusingly similar names. Both must be emitted, and their `created` payloads must be **identical**.
+Doc 1 §6 defines two distinct objects with confusingly similar names. Both must be emitted. **v1.5.0 wire-format correction:** the prior "both `created` payloads must be identical" rule is replaced — production exports show the top-level catalog reference carries a **much leaner** `created` than the version-level. See below.
 
-**Top-level `<root>.AiModelConfig`** (catalog reference, Doc 1 §6.A):
+**Top-level `<root>.AiModelConfig`** (catalog reference; production export shape):
 
-| Field | Source |
+Emit fields in this order:
+
+| Order | Field | Source |
+|---|---|---|
+| 1 | `Name` | From `model-catalog.md` "Display name" (e.g., `"Gemini 3.1 - Voice driven"` for `AIModelConfigID=139`) |
+| 2 | `ApiKey` | `{}` (empty object, v1 default-public path) |
+| 3 | `AIModel` | From `model-catalog.md` entry's `AIModelTypeId` (e.g., `18` for Gemini 3.1) — production exports denormalize this here under the field name `AIModel` |
+| 4 | `IsActive` | `1` |
+| 5 | `AccountId` | `0` (the reuse-existing-config switch per Appendix D §D.1; v1 always emits `0`) |
+| 6 | `ModifiedBy` | `null` |
+| 7 | `CreatedDate` | ISO timestamp at assembly time |
+| 8 | `ModifiedDate` | ISO timestamp at assembly time |
+| 9 | `AIModelConfig` | **Nested object (capital I, distinct from the lowercase-i parent name)** containing only `{ "created": { "model": "<provider model string from model-catalog.md>" } }` |
+| 10 | `AIModelConfigID` | From `model-catalog.md` entry (e.g., `139`); `-999` sentinel if `<UNKNOWN>` |
+
+**v1.5.0 fields removed from the prior baseline:** `Description`, `BaseUrl`, `Type` object, `AIModelTypeId` (the integer was kept but renamed to `AIModel` per production), full `created` payload (lives in the version-level object now).
+
+**Version-level `<root>.ActiveVersionInfo.AIModelConfig`** (runtime config; production export shape):
+
+Emit fields in this order:
+
+| Order | Field | Source |
+|---|---|---|
+| 1 | `max_duration` | Spec section 1 `**Max call duration:**` (integer seconds; default `1200`) |
+| 2 | `prompts` | §4.2.4 below |
+| 3 | `recordAgentCalls` | Spec section 1 `**Record agent calls:**` emitted as the **STRING** `"false"` / `"true"` (production format — not a JSON boolean) |
+| 4 | `silence_behaviour` | §4.2.5 below; omitted entirely if spec section 3 is `[not configured]` |
+| 5 | `created` | §4.2.4 below (the lean payload — voice + realtime input only) |
+
+**v1.5.0 fields removed from the prior baseline:** `tools: []` and `instructions: ""` at this level (production does not carry them). Reorder to match production.
+
+#### 4.2.4 The `created` payload (lean) and `prompts` bundle
+
+**`created` payload at the version level** (`ActiveVersionInfo.AIModelConfig.created`) — v1.5.0 lean shape:
+
+```json
+{
+  "realtimeInputConfig": {
+    "automaticActivityDetection": {
+      "disabled": "true"
+    }
+  },
+  "generationConfig": {
+    "speechConfig": {
+      "voiceConfig": {
+        "prebuiltVoiceConfig": {
+          "voiceName": "<voice from spec section 1>"
+        }
+      }
+    }
+  }
+}
+```
+
+| Path | Source |
 |---|---|
-| `AIModelConfigID` | From `model-catalog.md` if spec section 1 names a catalog entry; from spec if `raw: ID=N, TypeID=M`; `-999` if unknown |
-| **`AccountId`** | **Always `0`** — flags the import procedure to reuse the existing default `AIModelConfig` row (see Appendix D §D.1). Without this, `ImportBotFromJSON` falls through to its INSERT branch and fails on NOT NULL columns. |
-| `Name` | From `model-catalog.md` "Display name"; `<USER_TO_FILL: model_config_name>` if raw override |
-| `Description` | From `model-catalog.md` "Notes" if available; `null` otherwise |
-| `BaseUrl` | `null` (matches both production samples) |
-| `AIModelTypeId` | Same source rule as `AIModelConfigID` (this is the `AIModel` FK in DB terms) |
-| `Type` | `{ "AIModelTypeId": <id>, "Name": <type name>, "Description": null }` — type name is the catalog entry's display name; `null` if unknown |
-| `created` | The runtime LLM API payload; see §4.2.4 below |
+| `realtimeInputConfig.automaticActivityDetection.disabled` | Always the literal string `"true"` (production format — not a JSON boolean) |
+| `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | Spec section 1 `**Voice Name:**` direct copy |
 
-**Account-private model config (future / Path 2).** When v2/v3 needs to insert a brand-new `AIModelConfig` per account, `AccountId` is set to any non-zero value (the procedure ignores it for account scoping — `p_new_account_id` is used instead). The wire-format then ALSO emits `AIModel` (BIGINT FK matching the `AIModelTypeId` value), `AIModelConfig` (the runtime payload, identical content to `created`), `IsActive: 1`, and `ApiKey: null`. v1 does not exercise this path — every emission goes through the `AccountId: 0` reuse branch.
+If no voice channel is active in section 1: omit the `voiceConfig` object entirely — keep only `realtimeInputConfig`. (No production sample for chat-only bots; this is the safest default.)
 
-**Version-level `<root>.ActiveVersionInfo.AIModelConfig`** (runtime config, Doc 1 §6.B):
+**`created` payload at the top level** (`AiModelConfig.AIModelConfig.created`) — even leaner:
 
-| Field | Source |
-|---|---|
-| `prompts` | §4.2.4 below |
-| `created` | **Identical** to `<root>.AiModelConfig.created` (same object; per §16 quirk, both are required) |
-| `silence_behaviour` | §4.2.5 below; omitted entirely if spec section 3 is `[not configured]` |
-| `tools` | `[]` (preserved per §16) |
-| `instructions` | `""` (preserved per §16) |
+```json
+{
+  "model": "<provider model string from model-catalog.md>"
+}
+```
 
-#### 4.2.4 The `created` payload (provider config) and `prompts` bundle
+Just the model string. No generation config, no system instruction, no voice config (the voice config lives in the version-level created).
 
-The `created` payload mirrors the Gemini Live setup format. v1 emits a known-good baseline with language code and voice name substituted from the spec; other generation params use defaults.
+**v1.5.0 wire-format correction.** Prior baseline emitted both `created` payloads as identical full Gemini Live setup objects (model + full generationConfig + systemInstruction + tools). Production exports show the two `created` payloads serve different purposes — the catalog reference carries only the model string; the runtime config carries only the realtime + voice. Both prior fields `temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools` are dropped from emission.
 
-| Wire-format path | Source |
-|---|---|
-| `model` | From `model-catalog.md` "Provider model string"; `<USER_TO_FILL: provider_model_string>` if raw override |
-| `generationConfig.temperature` | `1.5` (default; matches both production samples) |
-| `generationConfig.topP` | `0.95` (default) |
-| `generationConfig.topK` | `64` (default) |
-| `generationConfig.responseModalities` | `["AUDIO"]` |
-| `generationConfig.speechConfig.languageCode` | Direct copy from spec section 1 "Primary Language" |
-| `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | Direct copy from spec section 1 "Voice Name"; omit `voiceConfig` entirely if no voice channel |
-| `generationConfig.proactivity` | `{}` (default; provider-specific, leave empty unless spec extends) |
-| `generationConfig.thinkingConfig` | `{}` (default) |
-| `systemInstruction` | `{ "parts": [{ "text": "" }] }` (provider format wrapper, empty in production samples) |
-| `tools` | `[]` |
+**Note on Compass doctrine rule 12 / check 10 interaction:** the dropped fields are exactly the ones check 10 used to validate. Check 10 is rewritten in §6.2 to validate that *no removed fields are re-added*, rather than positively asserting them present. See §6.2 check 10 v1.5.0 description.
 
-The banner (§7.2) notes that the generation params (`temperature`, `topP`, `topK`, etc.) are v1 defaults and may need adjustment; Skill 3 does not invent custom values.
-
-The `prompts` bundle (§4.2.4 path: `ActiveVersionInfo.AIModelConfig.prompts`) maps from spec section 2 directly:
+**`prompts` bundle** (`ActiveVersionInfo.AIModelConfig.prompts`) — unchanged from prior:
 
 | Wire-format path | Spec source |
 |---|---|
 | `prompts.persona` | Section 2.1 verbatim |
-| `prompts.voiceInstructions` | Section 2.2 verbatim (whether user-authored or `[default — not user-authored]` template content) |
+| `prompts.voiceInstructions` | Section 2.2 verbatim |
 | `prompts.chatInstructions` | Section 2.3 verbatim |
-| `prompts.intentInstructions` | Section 2.4 verbatim (the **bot-level** opening/disambiguation instructions, NOT per-intent) |
+| `prompts.intentInstructions` | Section 2.4 verbatim (bot-level opening behavior — NOT per-intent) |
 | `prompts.openingAnnouncement` | Section 2.5 verbatim |
 
-If the spec marks any of these `<UNKNOWN>`, emit the empty string `""` and add the field path to the banner. (Empty `prompts.persona` is a known §14.3.1 anti-pattern — the banner makes it visible.)
+If the spec marks any prompts field `<UNKNOWN>`, emit `""` and add the field path to the banner.
 
 #### 4.2.5 `silence_behaviour` (spec section 3, conditional)
 
@@ -345,7 +390,7 @@ One entry per intent in section 4 ordering. Per Doc 1 §8.2:
 
 | Wire-format field | Value |
 |---|---|
-| **`BotIntentId`** | Cached `<identifier> → BotIntentID` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path read; intentional asymmetry with `intentRelations[]` capital-D casing — do not "fix")* |
+| **`BotIntentId`** | Cached `<identifier> → BotIntentId` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path read; intentional asymmetry with `intentRelations[]` capital-D casing — do not "fix")* |
 | `BotID` | `-1` (mirror of root; not read by the procedure but kept for wire-format parity) |
 | **`IntentId`** | Cached `<identifier> → IntentId` placeholder *(lowercase `d` — matches `ImportBotFromJSON` JSON path; without lowercase, the proc resolves NULL and the BotIntent INSERT fails on NOT NULL `IntentId`)* |
 | **`SortOrder`** | **1-based ordinal of the intent in section 4 (Intent 1 → 1, Intent 2 → 2, ...). Required — the column is `INT NOT NULL` and the procedure passes the extracted value explicitly, so a missing field becomes a NULL INSERT and fails.** |
