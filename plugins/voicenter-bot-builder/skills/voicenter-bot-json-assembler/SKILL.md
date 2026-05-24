@@ -850,9 +850,9 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   - No doctrine sentinels.
 #
 # DEFAULTS APPLIED:
-#   - generationConfig.temperature = 1.5 (v1 default)
-#   - generationConfig.topP = 0.95 (v1 default)
-#   - generationConfig.topK = 64 (v1 default)
+#   - ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled = "true" (v1.5.0 lean payload constant)
+#   - ActiveVersionInfo.AIModelConfig.max_duration = 1200 (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
 #   - [...]
 ```
 
@@ -1038,10 +1038,13 @@ Sample banner for a hypothetical bot with: 1 unknown layer ID, 1 unknown webhook
 # RECONCILIATION (section 7.4 vs emitted sentinels):
 #   - 7.4 and emitted sentinels in agreement.
 #
+# DOCTRINE SENTINELS (Compass advisories not resolved during authoring):
+#   - No doctrine sentinels.
+#
 # DEFAULTS APPLIED:
-#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.temperature = 1.5 (v1 default)
-#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.topP = 0.95 (v1 default)
-#   - ActiveVersionInfo.AIModelConfig.created.generationConfig.topK = 64 (v1 default)
+#   - ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled = "true" (v1.5.0 lean payload constant)
+#   - ActiveVersionInfo.AIModelConfig.max_duration = 1200 (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
 #   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
 #   - intentCategories: single default category, IntentCategoryId = -3
 #   - All §16 quirks emitted per Appendix A checklist

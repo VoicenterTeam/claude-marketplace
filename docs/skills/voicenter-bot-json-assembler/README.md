@@ -14,7 +14,7 @@ Mechanically projects a `[detailed]` Agent Spec into Bot JSON wire format. Produ
 - `bot-<identifier>-<YYYY-MM-DD>.json` — the deployable JSON
 - `bot-<identifier>-<YYYY-MM-DD>.banner.md` — a sidecar listing every fail-loud sentinel, drift note, and applied default
 
-**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of seven checks, Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of ten checks (seven §15.4 + three Compass), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
 
 The risk vector is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations. The skill's longest section (anti-list §8) is the explicit "do not" list.
 
@@ -228,10 +228,16 @@ The banner is rendered **above** the JSON (single-conversation runtime) or as a 
 #   [or:]
 #   - 7.4 and emitted sentinels in agreement.
 #
+# DOCTRINE SENTINELS (Compass advisories not resolved during authoring):
+#   - Rule <N> (<name>): <one-line summary> — see references/voice-prompt-doctrine.md rule <N> for fix recipe
+#   [...]
+#   [or:]
+#   - No doctrine sentinels.
+#
 # DEFAULTS APPLIED:
-#   - generationConfig.temperature = 1.5 (v1 default)
-#   - generationConfig.topP = 0.95 (v1 default)
-#   - generationConfig.topK = 64 (v1 default)
+#   - ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled = "true" (v1.5.0 lean payload constant)
+#   - ActiveVersionInfo.AIModelConfig.max_duration = 1200 (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
 #   - [...]
 ```
 
