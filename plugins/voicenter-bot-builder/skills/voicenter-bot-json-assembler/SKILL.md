@@ -556,8 +556,8 @@ Per intent, branch on `Response Type` (section 4) to assemble the correct `Confi
 | `ResponseTypeId` | `1` |
 | `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.layer` | Section 5 "Layer" — integer if specified; `-999` sentinel if `<UNKNOWN: layer ID>` |
-| `Configuration.announcement` | Section 5 "Announcement" verbatim |
-| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
+| `Configuration.announcement` | Section 5 "Announcement" verbatim. **Optional** — omit if not provided. (In production, the unrelated-topic and end-call layer-transfer intents have only `intentLoadingAnnouncement`, no `announcement`.) |
+| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim. **Always emitted** for RT=1. |
 
 RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a terminal intent has no meaning per Doc 1 §11.5).
 
@@ -570,17 +570,22 @@ RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a 
 | `Configuration.url` | Section 5 "URL"; `<USER_TO_FILL: webhook_url>` if `<UNKNOWN>` |
 | `Configuration.method` | Section 5 "Method" (`"POST"` or `"GET"`) |
 | `Configuration.headers` | Section 5 "Headers" object; `{}` if not specified |
-| `Configuration.body` | Section 5 "Body" object verbatim (Mustache references resolved at runtime by the platform, not by Skill 3) |
-| `Configuration.apiResponseAnnouncement` | Section 5 verbatim |
 | `Configuration.fail_output` | Section 5 verbatim |
-| `Configuration.function_output` | Section 5 verbatim |
-| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
-| `Configuration.IntentLoadingAnnouncement` | **Identical** content to `intentLoadingAnnouncement` (the casing-bug pair per §16) |
+| `Configuration.announcement` | Section 5 "Announcement (after API success)" verbatim. **v1.5.0 — renamed from `apiResponseAnnouncement` in prior baseline.** |
+| `Configuration.function_output` | Section 5 "Fail-output fallback map" — **object shape** `{ "default": "<fallback string>" }` (v1.5.0 — was a string of LLM guidance in prior baseline). User may extend with per-code keys; Skill 3 passes the object through verbatim. |
+| `Configuration.response_success` | Section 5 "Response success instructions" — **object shape** `{ "instructions": "<string>" }` (v1.5.0 — was bare string in prior baseline). |
 | `Configuration.intentInstructions` | Section 5 "Post-Execution Intent Instructions" verbatim |
-| `Configuration.api_silence_behaviour` | The same object emitted in `apiSilenceRelations[]` (§4.3.7) — the embedded copy |
-| `Configuration.response_success` | `""` (preserved per §16) |
+| `Configuration.api_silence_behaviour` | Spec section 5 "API silence behavior" — the six fields embedded inline. **Same content** as `apiSilenceRelations[].Configuration.api_silence_behaviour` (cross-reference check 6 validates). |
+| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim |
 
-The `api_silence_behaviour` and the corresponding `apiSilenceRelations[]` registry entry must be **content-identical** — cross-reference check 6 (§6.2) verifies this on the assembled structure. Since Skill 3 emits both from the same spec source, they should always match by construction. Check 6 catches Skill 3 implementation bugs, not spec content errors.
+**v1.5.0 wire-format corrections (RT=2):**
+
+1. `apiResponseAnnouncement` → renamed `announcement` (production field name).
+2. `function_output` → object `{ "default": "<string>" }` instead of bare string.
+3. `response_success` → object `{ "instructions": "<string>" }` instead of bare string.
+4. `IntentLoadingAnnouncement` (capital I) — **removed.** Prior baseline emitted both lowercase and capital-I as a "casing-bug pair." Production exports of Gemini 3.1 Voice driven bots carry only the lowercase form. v1.5.0 emits only `intentLoadingAnnouncement`.
+
+The `api_silence_behaviour` sub-object inside `Configuration` and the corresponding `apiSilenceRelations[].Configuration` (now a deep copy of the entire Configuration, not just the six fields) must be content-identical — Skill 3 emits both from the same spec source.
 
 #### RT=3 — Continue
 
@@ -590,7 +595,9 @@ The `api_silence_behaviour` and the corresponding `apiSilenceRelations[]` regist
 | `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
 | `Configuration.announcement` | Section 5 "Announcement" verbatim |
 | `Configuration.intentInstructions` | Section 5 "Post-Execution Intent Instructions" verbatim |
-| `Configuration.response_success` | `""` (preserved per §16) |
+| `Configuration.response_success` | Section 5 "Response success instructions" — **object shape** `{ "instructions": "<string>" }` (v1.5.0 — was bare string). |
+
+**v1.5.0 wire-format correction (RT=3):** `response_success` is now an object `{ "instructions": "<text>" }`, not a bare string.
 
 #### RT=4 — Dial-Out
 
@@ -692,11 +699,11 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run
 | 3 | `apiSilenceRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `ApiSilenceIntentID` matches an `intents[].IntentId`. | Same set; verify membership. |
 | 4 | `intents[].IntentCategoryId` resolves | Every `intents[].IntentCategoryId` matches an `intentCategories[].IntentCategoryId`. | v1 has a single category (`-3`); check is trivial but explicit. |
 | 5 | RT=2 has `apiSilenceRelations[]` pairing | Every intent with `IntentResponces.ResponseTypeId = 2` has a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`. | Walk RT=2 intents; for each, verify a row exists. |
-| 6 | `api_silence_behaviour` matches `apiSilenceRelations[].Configuration` | For each RT=2 intent, the `IntentResponces.Configuration.api_silence_behaviour` content equals the corresponding `apiSilenceRelations[].Configuration` content. | Field-by-field deep equality on the 6 fields (`silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions`, `intent`). |
+| 6 | `IntentResponces.Configuration` matches `apiSilenceRelations[].Configuration` | For each RT=2 intent, the **full content** of `IntentResponces.Configuration` equals the corresponding `apiSilenceRelations[].Configuration` content (v1.5.0 — was just the six `silence_*` sub-fields in prior baseline). | Deep equality across every key in the parent intent's Configuration: `url`, `method`, `headers`, `body` (if any), `fail_output`, `announcement`, `function_output`, `response_success`, `intentInstructions`, `intentLoadingAnnouncement`, AND the nested `api_silence_behaviour` sub-object (the six `silence_*` fields). |
 | 7 | Mustache resolvability | Every Mustache reference (in any text field across the assembled structure) resolves: (a) collected by the same intent that uses it, OR (b) in 4.5.1+4.5.2 whitelist (call-context or env), OR (c) in 4.5.3 collected by an intent that is upstream of the using intent in the transition graph, OR (d) in 4.5.4 declared for the same RT=2 intent or an upstream RT=2 intent. | Walk every text field; extract Mustache tokens; for each, classify against (a)-(d). |
 | 8 | Assembled-prompt token budget (Compass rule 1) | Estimated token count of the assembled systemInstruction-equivalent text (bot-level prompts + per-intent validationPrompt + per-intent post-exec intentInstructions, excluding openingAnnouncement) is below the doctrine thresholds. Advisory at 1,500–2,499; **blocking** at ≥ 2,500. Applies only when `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview` (gating per Compass rule 1). | Run the char-based token estimate per `references/voice-prompt-doctrine.md` §2. Banner-report the count and band. Halt on ≥ 2,500. |
 | 9 | Session-resumption ceiling (Compass rule 2) | If spec section 1 declares cross-session continuity is required, the assembled systemInstruction is under 200 tok. Advisory. Same gating as check 8. | Same token estimate as check 8. Banner-only if continuity not required. |
-| 10 | Model-config doctrine (Compass rule 12) | When `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview`: `thinkingConfig.thinkingLevel` is `"minimal"` or absent; `affectiveDialog` is absent or `false`; `proactiveAudio` is absent or empty `{}`; if section 1 has voice active, `responseModalities` contains `"AUDIO"`. **Blocking** on any mismatch. | Inspect the in-memory `AiModelConfig.created.generationConfig` after §4 assembly. |
+| 10 | Model-config doctrine (Compass rule 12 — v1.5.0 inversion) | When `<root>.AiModelConfig.AIModelConfig.created.model` is `models/gemini-3.1-flash-live-preview`: validate that the version-level `AIModelConfig.created` does **NOT** contain any of the dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`, `thinkingConfig.thinkingLevel != "minimal"`). The lean payload from §4.2.4 has none of these by construction; check 10 catches future regressions. **Blocking** on any presence. | Inspect the assembled in-memory `ActiveVersionInfo.AIModelConfig.created`. The expected keys are exactly `realtimeInputConfig` and (when voice active) `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`. Any other key under `generationConfig` is a failure. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -735,19 +742,22 @@ When fires: reuse the same char-based estimate from check 8 and compare against 
 - < 200 tok: no banner entry.
 - ≥ 200 tok: advisory — banner line `# - Session-resumption ceiling (Compass rule 2): assembled prompt is <N> tok; sessionResumption.handle is known to silently break above 200 tok on Gemini Live 3.1 native-audio. Mitigation: stateless prompt + per-session summary injection (out of scope for v1 bot-builder).`
 
-**Check 10 specifics — model-config doctrine:**
+**Check 10 specifics — v1.5.0 inverted (catch regressions to dropped fields):**
 
-Inspect the in-memory `AiModelConfig.created` block after §4 assembly. For each sub-check, halt on mismatch:
-
-| Sub-check | Expected | Failure message |
+| Failure | Expected | Failure message |
 |---|---|---|
-| `model` string | `"models/gemini-3.1-flash-live-preview"` | `AiModelConfig.created.model is "<actual>", expected "models/gemini-3.1-flash-live-preview". Per Compass rule 12, the model string is pinned for Gemini Live 3.1 bots. Route to Skill 1 patch mode — fix spec section 1 AI Model Config.` |
-| `generationConfig.thinkingConfig.thinkingLevel` | `"minimal"` OR absent | `thinkingLevel is "<actual>", expected "minimal" (or absent — defaults to minimal). Per Compass §1, medium and high produce noticeable conversational pauses; minimal is the telephony-optimized default. Route to Skill 1 patch mode.` |
-| `generationConfig.affectiveDialog` | absent OR `false` | `affectiveDialog is enabled. Per Compass §1, this is unsupported in 3.1 (regression from 2.5) and contributes to premature turnComplete truncation. Route to Skill 1 patch mode.` |
-| `generationConfig.proactiveAudio` | absent OR `{}` | `proactiveAudio has content. Per Compass §1, this is unsupported in 3.1. Route to Skill 1 patch mode.` |
-| `generationConfig.responseModalities` includes `"AUDIO"` (if section 1 has voice active) | `["AUDIO"]` (or contains AUDIO) | `responseModalities does not include "AUDIO" but section 1 declares an active voice channel. Route to Skill 1 patch mode.` |
+| `temperature` present in `generationConfig` | absent | `generationConfig.temperature is present (value: <actual>); per Compass §1 + v1.5.0 lean payload rule, this should be absent (platform server-side default). Route to: code fix in Skill 3 emission logic — production export of Gemini 3.1 Voice driven does not carry this field.` |
+| `topP` / `topK` present in `generationConfig` | absent | `generationConfig.<field> is present; v1.5.0 lean payload omits.` |
+| `responseModalities` present in `generationConfig` | absent | `generationConfig.responseModalities is present; v1.5.0 lean payload omits (platform infers from channel).` |
+| `proactivity` / `proactiveAudio` present in `generationConfig` | absent | `generationConfig.<field> is present; per Compass §1, this is unsupported in 3.1 and a regression risk. Route to Skill 1 patch mode or fix the spec.` |
+| `thinkingConfig` present with any keys | absent or `{}` | `generationConfig.thinkingConfig has content; v1.5.0 lean payload uses platform default (minimal).` |
+| `affectiveDialog` present in `generationConfig` | absent | `generationConfig.affectiveDialog is present; per Compass §1, unsupported in 3.1.` |
+| `systemInstruction` present | absent | `created.systemInstruction is present; v1.5.0 emits the systemInstruction-equivalent content via \`prompts\` bundle only.` |
+| `tools: [...]` present in `created` | absent | `created.tools is present; v1.5.0 emits tools via \`IntentToolName\` per intent, not here.` |
 
-The blocking error report aggregates all check 10 sub-failures into a single check 10 entry (do not emit one entry per sub-check).
+The blocking error report aggregates all check 10 sub-failures into a single check 10 entry.
+
+**Gating unchanged:** check 10 fires only when `<root>.AiModelConfig.AIModelConfig.created.model` is `models/gemini-3.1-flash-live-preview` (per Compass rule 12 gating). Other models (OpenAI realtime, Gemini 2.5) skip silently.
 
 ### 6.3 Failure routing per Doc 2 §7.5
 
@@ -954,7 +964,7 @@ All 15 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | # | Quirk | Wire-format location | Action |
 |---|---|---|---|
 | 1 | `IntentResponces` (typo) | Per intent | Emit as `IntentResponces` — never autocorrect to `IntentResponses`. The platform expects this typo; correcting it breaks import. |
-| 2 | `intentLoadingAnnouncement` + `IntentLoadingAnnouncement` (casing-bug pair) | RT=2 `Configuration` | Emit both, identical content. Both observed in production samples. |
+| 2 | ~~`intentLoadingAnnouncement` + `IntentLoadingAnnouncement` (casing-bug pair)~~ | **REMOVED in v1.5.0** | Production exports of Gemini 3.1 Voice driven carry only the lowercase form. v1.5.0 emits the lowercase form only. Earlier samples that showed both are obsolete. |
 | 3 | `HandlingInstructions: null` | Per intent (root) | Emit `null`. Appears deprecated but required. |
 | 4 | `SystemPrompt: ""` | `ActiveVersionInfo` | Emit empty string. NOT the bot's actual system prompt — that lives in `prompts.persona`. |
 | 5 | Top-level `AiModelConfig` + `ActiveVersionInfo.AIModelConfig` | Root + version | Emit both as distinct objects with **identical** `created` payloads. |
@@ -967,7 +977,7 @@ All 15 quirks must be present in the assembled JSON. Skill 3 verifies each befor
 | 12 | `silenceRelations: []` | Top of `intentList` | Emit empty array. v1 always empty. |
 | 13 | `BotLanguages: []` | Bot top-level | Emit empty array. |
 | 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
-| 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the middle key between `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **Anti-quirk:** do **not** emit `IsActive` or `IsDeleted` at the intent root (sibling of `IntentResponces`). Earlier Skill 3 versions did; the platform tolerated but ignored those values. The current shape is platform-validated (see regression fixture `docs/json-bag/good.json` intent -10). |
+| 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the middle key between `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **v1.5.0 update:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation; the prior v1.4.1 "anti-quirk" wording was incomplete). Intent-root `IsDeleted` remains NOT emitted (production doesn't have it). The platform reads `IntentResponces.IsActive` for the per-intent active flag (unchanged); the intent-root `IsActive` is for audit/UI display. |
 | (extra) | `response_success: ""` | RT=2 + RT=3 `Configuration` | Emit empty string. Observed in samples though purpose unclear. |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 15 numbered quirks.
@@ -1119,9 +1129,11 @@ The wire-format emits `IntentSources` per intent based on the spec section 1 `Ch
 
 | Spec `Channels Active` | Per-intent emission |
 |---|---|
-| `voice` | `[{ "SourceID": 1 }]` |
-| `chat` | `[{ "SourceID": 2 }]` |
-| `voice, chat` | `[{ "SourceID": 1 }, { "SourceID": 2 }]` |
+| `voice` | `[{ "SourceID": 1, "SourceName": "VOICE", "IntentSourceID": <placeholder from -4000 range> }]` |
+| `chat` | `[]` (no production sample for chat-only; emit empty array; flag in banner) |
+| `voice, chat` | `[{ "SourceID": 1, "SourceName": "VOICE", "IntentSourceID": <placeholder> }]` (v1: emit voice entry only; chat structural support deferred to v2) |
+
+**v1.5.0 wire-format correction.** Prior baseline emitted `[{ "SourceID": 1 }]` for voice (a shape derived from the database `IntentSource` table). Production exports of Gemini 3.1 Voice driven bots carry the fuller shape with `SourceName` and `IntentSourceID` (a row PK). v1.5.0 emits the production shape. Production also varies per-intent (some intents have `[]` even when voice is active) — Skill 3 v1.5.0 emits the populated shape uniformly per the spec's design decision; future versions may add per-intent opt-out via spec section 4.7.
 
 ### D.8 `ParameterTypeId` (`IntentParameters[]`)
 
