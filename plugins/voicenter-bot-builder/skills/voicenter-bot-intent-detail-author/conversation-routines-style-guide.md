@@ -427,7 +427,7 @@ These rules apply to all language fields Skill 2 authors when the bot has an act
 
 ### No markdown formatting in voice fields
 
-Markdown bullets (`-`, `*`, `+`), headers (`#`), and links (`[text](url)`) are read aloud literally by TTS. Forbidden in `validationPrompt`, `announcement`, `apiResponseAnnouncement`, `fail_output`, `function_output`, post-execution `intentInstructions` of voice-active intents.
+Markdown bullets (`-`, `*`, `+`), headers (`#`), and links (`[text](url)`) are read aloud literally by TTS. Forbidden in `validationPrompt`, `announcement`, `fail_output`, `function_output`, post-execution `intentInstructions` of voice-active intents.
 
 **Don't:**
 
