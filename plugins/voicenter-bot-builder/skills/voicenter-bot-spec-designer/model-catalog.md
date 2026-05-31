@@ -101,35 +101,37 @@ The `voiceName` field in `created.generationConfig.speechConfig.voiceConfig.preb
 
 Used with the GPT family (GPT-4 Realtime, GPT-5 Realtime, GPT Realtime Mini).
 
-| Voice | Wire-format value |
-|---|---|
-| Alloy | `alloy` |
-| Ash | `ash` |
-| Ballad | `ballad` |
-| Coral | `coral` |
-| Echo | `echo` |
-| Sage | `sage` |
-| Shimmer | `shimmer` |
-| Verse | `verse` |
-| Cedar | `Cedar` |
-| Marin | `Marin` |
+| Voice | Wire-format value | Gender |
+|---|---|---|
+| Alloy | `alloy` | Neutral |
+| Ash | `ash` | Male |
+| Ballad | `ballad` | Male |
+| Coral | `coral` | Female |
+| Echo | `echo` | Male |
+| Sage | `sage` | Female |
+| Shimmer | `shimmer` | Female |
+| Verse | `verse` | Male |
+| Cedar | `Cedar` | Male |
+| Marin | `Marin` | Female |
 
 ### Gemini voices
 
 Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemini 3.1 LLM Driven).
 
-| Voice | Wire-format value |
-|---|---|
-| Puck | `Puck` |
-| Charon | `Charon` |
-| Kore | `Kore` |
-| Fenrir | `Fenrir` |
-| Aoede | `Aoede` |
-| Leda | `Leda` |
-| Orus | `Orus` |
-| Zephyr | `Zephyr` |
+| Voice | Wire-format value | Gender |
+|---|---|---|
+| Puck | `Puck` | Male |
+| Charon | `Charon` | Male |
+| Kore | `Kore` | Female |
+| Fenrir | `Fenrir` | Male |
+| Aoede | `Aoede` | Female |
+| Leda | `Leda` | Female |
+| Orus | `Orus` | Male |
+| Zephyr | `Zephyr` | Female |
 
 Casing is preserved exactly as the platform UI presents it. Most OpenAI voices are lowercase; Cedar and Marin are capitalized. The full Gemini set is capitalized.
+
+**Gender is a selection aid, not a wire-format field.** Skill 1 asks the user whether the agent should sound female or male (an explicit question — never inferred from the bot name, which is often unisex) and presents only voices of that gender for the active model family. Neutral voices (e.g. `alloy`) may be offered under either choice. Only the chosen `voiceName` string is emitted by Skill 3; the gender label itself is spec metadata and is not written to the JSON.
 
 The user can supply any other string the provider supports — Skill 1 records it without validation (no live provider query in v1).
 

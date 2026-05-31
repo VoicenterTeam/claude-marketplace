@@ -2,13 +2,34 @@
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-05-31
+
+### Changed (voicenter-bot-builder)
+
+- **Skill 1 — Phase 1 interview: AI model config is no longer prompted.** The interview previously asked the user to pick an AI model config via `AskUserQuestion`. It now silently defaults to the canonical model — **Gemini Live (Voice driven 3.1)** (`AIModelConfigID=139`, `AIModelTypeId=18`) — and writes it to spec section 1 without asking. A different model is used only if the user volunteers one (by catalog name or raw `AIModelConfigID` + `AIModelTypeId`). The `<UNKNOWN: AI Model Config>` deferral path is unchanged.
+- **Skill 1 — Phase 1 interview: explicit agent-gender question added, with gender-filtered voice suggestions.** Phase 1 now asks whether the agent should sound **Female** or **Male** (header "Agent voice") before the voice-name prompt, and offers **only voices matching the chosen gender** for the active model family. The skill is instructed to **never infer gender from the bot name** (unisex names previously caused male-only suggestions like `Puck`/`Orus`). Written to spec section 1 as `**Agent Gender:**` — selection-aid metadata only; not emitted to the JSON.
+  - `model-catalog.md`: added a `Gender` column to both the Gemini and OpenAI voice tables (Gemini Female → Kore/Aoede/Leda/Zephyr, Male → Puck/Charon/Fenrir/Orus; OpenAI labelled per voice, `alloy` = Neutral).
+  - `spec-skeleton.md` §1: added the `Agent Gender` field after `Voice Name`.
+- **Skill 2 — Check 11 (RT=2 `api_silence_behaviour` completeness) now enforces the fallback intent.** Check 11 previously claimed "six fields" but enumerated only the five `silence_*` fields, never the failover. It now requires all six components (3 language fields authored by Skill 2 + 3 structural fields owned by Skill 1: `silence_duration`, `silence_loops`, and the **fallback intent**) and **halts/routes to Skill 1 patch mode if the fallback intent is missing or unresolved** in section 4.
+- **Skill 3 — RT=2 `api_silence_behaviour.intent` failover now explicitly specified and enforced.** The inline failover pointer (`Configuration.api_silence_behaviour.intent` = resolved fallback `IntentId`) was never spelled out — Skill 3 only said "the six fields embedded inline," so the failover could be dropped or emitted as a string. Fixes:
+  - New §4.4.1 documents the exact six-key `api_silence_behaviour` object; `intent` (resolved fallback `IntentId`, equal to `apiSilenceRelations[].ApiSilenceIntentID`) is marked **mandatory — never omit, never emit as a string**; `-999` sentinel if the fallback intent is `<UNKNOWN>`.
+  - Cross-reference **Check 5** is now blocking on the inline `intent` being a present, non-null integer equal to `ApiSilenceIntentID`.
+  - Cross-reference **Check 6** deep-equality description now names all six `api_silence_behaviour` keys (including `intent`).
+
 ### Documentation (voicenter-bot-builder)
 
+- All four SKILL.md changes above mirrored into the paired `docs/skills/voicenter-bot-*/README.md`.
 - **voice-agent-llm v1.0.3 runtime behavior documented in all three bot-builder skills.** No schema, validation rule, or plugin-version change — Skill 2's Check 10 still requires authored `announcement` for RT=2.
   - Empty `announcement` (or legacy `apiResponseAnnouncement`) at runtime is now substituted by the service with the sentinel `[START THE CONVERSATION]` as an LLM instruction — bot opens from persona; the literal string is **not** spoken aloud. Documented as a production safety net, not an authoring relaxation.
   - Voice-active text fields (`validationPrompt`, `announcement`, `fail_output`, `function_output`, post-execution `intentInstructions`) are now sanitized server-side before TTS. The existing Compass rule 8 authoring rule (write plain conversational prose; no Markdown/URLs in these fields) still applies.
   - Spec Designer SKILL.md: three remaining references to `apiResponseAnnouncement` updated to `announcement` (was `apiResponseAnnouncement` pre-v1.5.0).
 - **Internal voice-agent service traceability (informational only, no skill change):** Mastra library bumped 1.04 → 1.36.0; `mastra-voicenter` bumped 2.0.3 → 2.1.0.
+
+### Plugin version bumps
+
+- `marketplace.json` `metadata.version`: `1.6.0` → `1.7.0`
+- `voicenter-bot-builder` plugin: `1.6.0` → `1.7.0`
+- `voicenter-mcp` and `voicenter-api` plugins: unchanged at `1.1.6`
 
 ## [1.6.0] — 2026-05-24
 

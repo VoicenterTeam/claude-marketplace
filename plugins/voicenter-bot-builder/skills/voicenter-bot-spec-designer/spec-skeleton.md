@@ -13,6 +13,7 @@
 **Primary Language:** [BCP-47 code, e.g., `he-IL`, `en-US`]
 **Channels Active:** [`voice` | `chat` | `voice+chat`]
 **Voice Name:** [voice name from catalog | raw string | omit if no voice channel]
+**Agent Gender:** [`Female` | `Male`; selection aid for the voice choice — omit if no voice channel. Spec metadata only; not emitted to the JSON.]
 **AI Model Config:** [name from catalog | `raw: ID=X, TypeID=Y` | `<UNKNOWN: AI Model Config>`]
 **Created by:** [bot author/owner name | omit if not set; defaults to empty string at emission]
 **Max call duration:** [int seconds; default 1200]

@@ -68,7 +68,7 @@ The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they
 Concretely, this covers:
 
 - **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
-- **Phase 1** — channel scope, voice name, AI model config, caller-silence yes/no, identifier ASCII-default confirmation
+- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence yes/no, identifier ASCII-default confirmation (AI model config is **not** prompted — silent default)
 - **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
 - **Phase 2/3 boundary** — pause vs skip Deep Research
 - **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
@@ -93,8 +93,10 @@ Captures section 1 + section 3:
 4. **Customer Account ID** — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Accounts"]` to fetch the live account list, displays it, and prompts via `AskUserQuestion`. Falls back to free-text + `<UNKNOWN: Account ID>` if MCP is not connected.
 5. **Primary language** (BCP-47, e.g., `he-IL`)
 6. **Channel scope** — `AskUserQuestion` (voice / chat / voice+chat)
-7. **Voice name** — `AskUserQuestion` over the `model-catalog.md` voice list; `Other` allows any provider-supported string
-8. **AI model config** — `AskUserQuestion` over the `model-catalog.md` model list; `Other` allows raw `AIModelConfigID` + `AIModelTypeId`
+7. **Agent gender + voice name** (two prompts, voice only):
+   - **a. Agent gender** — `AskUserQuestion` (header: "Agent voice", options: Female / Male). **Always asked explicitly — never inferred from the bot name** (names are frequently unisex; guessing risks offering only male voices when the user wanted a female agent). Written to spec section 1 as `**Agent Gender:**` — a selection aid only, not emitted to the JSON.
+   - **b. Voice name** — `AskUserQuestion` presenting **only the voices whose `Gender` matches step (a)** for the active model family (default Gemini; e.g. Female → `Kore`, `Leda`, `Aoede`; Male → `Puck`, `Orus`, `Charon`). `Other` allows any provider-supported string.
+8. **AI model config** — **not prompted.** Silently defaults to the canonical model **Gemini Live (Voice driven 3.1)** (`AIModelConfigID=139`, `AIModelTypeId=18`) per `model-catalog.md`. Overridden only if the user volunteers a different model by name (mapped via the catalog) or supplies raw `AIModelConfigID` + `AIModelTypeId` directly.
 9. **Caller silence** — `AskUserQuestion` (Yes → 4 silence fields / No → `[not configured]`)
 10. **Created by** — bot author/owner name (free text). Optional; `AskUserQuestion` (header: "Created by", options: "Skip (default: empty)" / "Provide a name"). Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` (production-required audit field).
 11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
