@@ -277,9 +277,11 @@ Ask:
 
 - **4.5.1 Call-context variables:** "What platform-supplied variables does your account expose at call start? Common entries: `caller_phone`, `TimeNow`, `caller_name`, `account_id`." If the user can't enumerate: emit defaults `caller_phone` and `TimeNow`, mark section `<INCOMPLETE: user to verify with platform>`.
 - **4.5.2 Environment variables:** "Are there any deployment-time secrets you'll reference, like `{{ENV.API_TOKEN}}`?" Capture by name. v1 trusts the user's declaration; no validation that the secret exists.
-- **4.5.4 API response shapes:** for each RT=2 intent, ask: "What dotted paths will you reference in the API response announcement? E.g., `available_slots.0.display`, `response.order.status`." Capture per intent. v1 trusts the declared shape; Skill 3 validates `apiResponseAnnouncement` references against this allowlist.
+- **4.5.4 API response shapes:** for each RT=2 intent, ask: "What dotted paths will you reference in the API response announcement? E.g., `available_slots.0.display`, `response.order.status`." Capture per intent. v1 trusts the declared shape; Skill 3 validates `announcement` (was `apiResponseAnnouncement` pre-v1.5.0) references against this allowlist.
 
 (Section 4.5.3 is auto-derived from section 5 slots — generated in Phase 4 close-out.)
+
+**Runtime fallback (voice-agent-llm v1.0.3+):** if an emitted RT=2 `announcement` is empty at runtime, the service substitutes the sentinel `[START THE CONVERSATION]` as an LLM instruction telling the bot to open from persona — the literal string is **not** spoken aloud. Skill 2 still requires authored text for RT=2 (Check 10 remains blocking); the fallback is a production safety net, not an authoring choice.
 
 **Write at end of Phase 3:** spec section 4 (intent rows with all structural fields except the per-RT specifics, which Phase 4 fills) and spec section 4.5.1, 4.5.2, 4.5.4.
 
@@ -343,7 +345,7 @@ Verify the reference resolves against:
 - 4.5.1 (call-context vars)
 - 4.5.2 (environment vars)
 - 4.5.3 (slot vars)
-- 4.5.4 (API response paths, only inside the same RT=2 intent's `apiResponseAnnouncement`)
+- 4.5.4 (API response paths, only inside the same RT=2 intent's `announcement` — was `apiResponseAnnouncement` pre-v1.5.0)
 
 If a reference doesn't resolve: warn the user.
 
@@ -676,7 +678,7 @@ Execute in the order below.
 - 4.5.1 (call-context)
 - 4.5.2 (environment)
 - 4.5.3 (slots)
-- 4.5.4 (API response paths, scoped to the same RT=2 intent's `apiResponseAnnouncement`)
+- 4.5.4 (API response paths, scoped to the same RT=2 intent's `announcement` — was `apiResponseAnnouncement` pre-v1.5.0)
 
 **Warning message:**
 > Reference `{{[name]}}` in `[intent.field]` doesn't resolve against section 4.5. Possibilities: (a) it's collected upstream and I missed it, (b) it's a typo for an existing variable, (c) it's a different name. Which?

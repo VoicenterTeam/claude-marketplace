@@ -326,6 +326,12 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 ---
 
+## voice-agent-llm v1.0.3+ runtime notes
+
+**Empty `announcement` is runtime-tolerant.** RT=2 `announcement` may be empty at runtime — the voice-agent service substitutes `[START THE CONVERSATION]` as an LLM instruction (bot opens from persona; the literal string is **not** spoken aloud). Skill 3 emits whatever the spec contains verbatim. No new validation rule — Skill 2's Check 10 still requires authored text upstream.
+
+---
+
 ## Common pitfalls
 
 - **Spec has `[detailed-revisit]` intents.** Skill 3 refuses at Gate A. Run Skill 2 to redetail them.

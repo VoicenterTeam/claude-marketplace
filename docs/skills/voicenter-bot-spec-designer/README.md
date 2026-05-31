@@ -293,6 +293,12 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 
 ---
 
+## voice-agent-llm v1.0.3+ runtime notes
+
+**Empty `announcement` fallback.** If an emitted RT=2 `announcement` is empty at runtime, the voice-agent service substitutes the sentinel `[START THE CONVERSATION]` as an LLM instruction telling the bot to open from persona — the literal string is **not** spoken aloud. Skill 1 still asks for the field upstream and Skill 2's Check 10 is blocking on it; the runtime fallback is a production safety net, not an authoring relaxation.
+
+---
+
 ## Common pitfalls
 
 - **Hebrew bot names without an Identifier.** Skill 3's filename rule reads section 1 `**Identifier:**`. Pre-v1.0 specs that lack the field fall back to ASCII-folding `**Bot Name:**`, and for Hebrew names that fallback fails → filename becomes `bot-bot-<date>.json`. Skill 1 always asks for an identifier explicitly.

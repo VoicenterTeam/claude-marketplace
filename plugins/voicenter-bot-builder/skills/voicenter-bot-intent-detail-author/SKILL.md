@@ -319,6 +319,8 @@ Block authoring of this field until the user provides a compliant revision.
 
 Log per-intent on resolution: `Compass rule 11 blocking fired on [intent].[field] line [N] — resolved`.
 
+**TTS sanitization (voice-agent-llm v1.0.3+):** the service now sanitizes voice-active text before it reaches TTS, so unintended Markdown is no longer spoken literally. The existing authoring rule still applies: write plain conversational prose in `validationPrompt`, `announcement`, `fail_output`, `function_output`, and post-execution `intentInstructions`. The sanitizer is a belt-and-suspenders safeguard, not a substitute for clean authoring.
+
 ### 4.3 Step 3 — RT-specific configuration
 
 The Configuration shape and required language fields differ by Response Type. Section 4 declares the RT for each intent — read it and branch.
@@ -354,6 +356,8 @@ Required language fields:
 **Iron rule (check 10 — fires during step 3, blocking):** `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output`, and `response_success` must all be non-empty. The `fail_output` graceful default qualifies as non-empty. For `function_output`, the object `{ "default": "<fallback>" }` qualifies as non-empty. For `response_success`, the object `{ "instructions": "" }` (empty inner string) qualifies as non-empty. **Note:** for `function_output`, `{ "default": "" }` (empty inner string) also qualifies as non-empty for this check — only a missing `function_output` key fails. Production has RT=2 intents with empty inner strings (e.g., transport-planner `plan_customer_travel_route`); the check validates structure, not content fullness.
 
 **Mustache references in `announcement` (RT=2 success field):** must resolve against section 4.5.4 dotted paths declared for THIS intent, OR against slots collected by THIS intent or upstream intents (per section 5 mechanics). Verify at write-time.
+
+**Runtime fallback (voice-agent-llm v1.0.3+):** if `announcement` ships empty, the service substitutes the sentinel `[START THE CONVERSATION]` as an LLM instruction (bot opens from persona; the literal string is **not** spoken aloud). **Check 10 still requires `announcement` populated** — the fallback is a service-side safety net, not a license to ship empty.
 
 #### RT=3 (Continue)
 

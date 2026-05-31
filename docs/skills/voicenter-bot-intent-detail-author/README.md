@@ -259,6 +259,14 @@ If the gate fails, Skill 2 returns to authoring. The status flip only happens on
 
 ---
 
+## voice-agent-llm v1.0.3+ runtime notes
+
+**Empty `announcement` fallback.** If `announcement` ships empty in the emitted config, the voice-agent service substitutes the sentinel `[START THE CONVERSATION]` as an LLM instruction (bot opens from persona; the literal string is **not** spoken aloud). **Check 10 still requires `announcement` populated** — the fallback is a service-side safety net, not a license to ship empty.
+
+**TTS sanitization.** The service now sanitizes voice-active text before TTS, so unintended Markdown is no longer spoken literally. The existing Compass rule 8 authoring rule still applies — write plain conversational prose in `validationPrompt`, `announcement`, `fail_output`, `function_output`, and post-execution `intentInstructions`. The sanitizer is a belt-and-suspenders safeguard, not a substitute for clean authoring.
+
+---
+
 ## Common pitfalls
 
 - **Free-prose `validationPrompt`.** Skill 2 blocks. Conversation Routines style is mandatory; rewrite as ALL-CAPS / numbered / IRON RULE.

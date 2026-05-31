@@ -584,6 +584,7 @@ RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a 
 2. `function_output` → object `{ "default": "<string>" }` instead of bare string.
 3. `response_success` → object `{ "instructions": "<string>" }` instead of bare string.
 4. `IntentLoadingAnnouncement` (capital I) — **removed.** Prior baseline emitted both lowercase and capital-I as a "casing-bug pair." Production exports of Gemini 3.1 Voice driven bots carry only the lowercase form. v1.5.0 emits only `intentLoadingAnnouncement`.
+5. **Empty-string runtime tolerance (voice-agent-llm v1.0.3+):** `announcement` may be empty at runtime — the service substitutes `[START THE CONVERSATION]` as an LLM instruction (bot opens from persona; the literal string is **not** spoken aloud). Skill 3 emits whatever the spec contains verbatim. No new validation rule — Skill 2's Check 10 still requires authored text upstream.
 
 The `api_silence_behaviour` sub-object inside `Configuration` and the corresponding `apiSilenceRelations[].Configuration` (now a deep copy of the entire Configuration, not just the six fields) must be content-identical — Skill 3 emits both from the same spec source.
 
