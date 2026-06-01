@@ -1120,10 +1120,12 @@ Path 2 (account-private new-config insert) is documented in §4.2.3 but not exer
 
 ### D.4 `BotIntentTypeID` (`botIntents[]`)
 
+Acts as a discriminator controlling selective `botIntents[]` membership (see §4.3.3). Both values are emitted in v1.8.0; chained intents are omitted.
+
 | ID | Name | When |
 |---|---|---|
-| **1** | Normal | **v1 default — every botIntent row** |
-| 2 | Global | reserved for v2 (global intents) |
+| **1** | Entry | **entry (start) — directly triggerable from the bot's opening behaviour** |
+| **2** | Global | **global — triggerable from anywhere (transfer-to-human, WhatsApp)** |
 
 ### D.5 `IntentCategoryId` + `PriorityId` (`intentCategories[]`)
 
