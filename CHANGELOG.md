@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-06-01
+
+### Skills
+
+- **Skill 1 (Spec Designer):** new section-4 `**Bot-intent role:**` field (`entry`/`global`/`chained`, default `chained`). Approach-B role classification in close-out (propose from §2.4 opening targets + always-available intents, confirm in one batch, write explicit field). Section 6.2/6.4 now include auto global fan-out edges. Silence-ending defaults to a transfer-to-human failover when a `global` transfer intent exists. Check 7 noted as auto-satisfied by fan-out when a global exists.
+- **Skill 3 (JSON Assembler):** parses the role field (§3.1). `botIntents[]` is now a **selective** registry — only `entry` (`BotIntentTypeID 1`) and `global` (`2`) intents; chained intents omitted (§4.3.3). 0-based `SortOrder` over the subset. Global **fan-out** (§4.3.4): an edge from every non-global intent to each global, deduped. §5 6.2 regeneration is fan-out-aware. Four new blocking cross-reference checks 11–14 (global-is-type-2, fan-out completeness, no-chained-in-botIntents, start-point-exists); the pass is now fourteen checks.
+
+### Documentation
+
+- Doc 1 (`voicenter-bot-json-schema-audit-v1.md`): §8.2 + G-10 rewritten — `BotIntentTypeID` is a discriminator (1=entry, 2=global); `botIntents[]` is a selective subset.
+- Doc 2 (`voicenter-bot-skills-architecture-v1.md`): botIntents emission note corrected.
+- `validation-report.md` §3.3 marked RESOLVED with the Brimag/Noa production evidence.
+- `docs/skills/voicenter-bot-{spec-designer,json-assembler}/README.md` mirrors updated.
+
+### Test artifacts
+
+- Golden outputs `bot-ananit-2026-06-01.json` and `bot-noa-2026-06-01.json` (hand-applied v1.8.0; Noa Hebrew re-authored from a lossy source — see banners).
+- `validate-botintent-roles-v18.py` invariant guard.
+
+### Plugin version bumps
+
+- `marketplace.json` `metadata.version`: `1.7.0` → `1.8.0`
+- `voicenter-bot-builder` plugin: `1.7.0` → `1.8.0`
+- `voicenter-mcp` and `voicenter-api` plugins: unchanged at `1.1.6`
+
 ## [1.7.0] — 2026-05-31
 
 ### Changed (voicenter-bot-builder)
