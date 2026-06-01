@@ -131,7 +131,7 @@ Ask, in order:
    - **b. Voice name.** Read the `model-catalog.md` voice catalog and prompt via `AskUserQuestion` presenting **only voices whose `Gender` matches step (a)** for the active model family (default Gemini, since the default model is Gemini 3.1 Voice driven). E.g. Female → `Kore`, `Leda`, `Aoede`; Male → `Puck`, `Orus`, `Charon`. Neutral voices (e.g. `alloy`) may appear under either gender. `Other` lets the user supply any provider-supported string.
 8. **AI model config: do NOT prompt.** Silently default to the most relevant model — **Gemini Live (Voice driven 3.1)** → `AIModelConfigID=139`, `AIModelTypeId=18` (per `model-catalog.md` canonical default). Write it to spec section 1 without asking. **Override only if the user volunteers a different model** (e.g. "use the OpenAI realtime one" or supplies raw `AIModelConfigID` + `AIModelTypeId`): map by name via `model-catalog.md`, or accept the raw IDs directly. Only mark `<UNKNOWN: AI Model Config>` if the user explicitly defers the choice (e.g. "leave it blank, platform team will fill in").
 9. **Caller silence:** prompt via `AskUserQuestion` (Yes / No, header: "Silence handling").
-   - If yes: walk the four fields — `silence_duration` (seconds, int), `silence_loops` (int), `silence_sentence` (text, Mustache OK), `silence_ending_sentence` (text). These are free-text, no menu.
+   - If yes: walk the four fields — `silence_duration` (seconds, int), `silence_loops` (int), `silence_sentence` (text, Mustache OK), `silence_ending_sentence` (text). These are free-text, no menu. **Silence-exhaustion failover (D8):** if the bot will have a `global` transfer-to-human intent (decided in Phase 3 / §3.4), default `silence_ending_sentence` to a "transferring you to a representative" line rather than a hang-up — on exhaustion the caller lands on the always-available global. If no transfer-to-human global exists, keep a polite hang-up line. Since roles are finalised in §3.6, revisit this field there if the global set changed.
    - If no: mark section 3 `[not configured]`.
 10. **Created by:** bot author/owner name (free text). Optional — Skill 1 prompts via `AskUserQuestion` per Section 2.4.B (header: "Created by", 2 options: "Skip (default: empty)" / "Provide a name"). If user picks "Provide a name", capture as free text. Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` in the emitted JSON (production-required audit field).
 11. **Max call duration (seconds):** integer. Default `1200`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Max call duration", 2 options: "Use default 1200 *(Recommended)*" / "Set a different value"). If different, capture as free-text integer. Written to spec section 1 as `**Max call duration:**`.
@@ -255,7 +255,8 @@ For each intent in the list, capture:
 - **Tool name:** same as identifier.
 - **Response Type:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Response type", 4 options: "RT=1 — Transfer the call", "RT=2 — Call an external API", "RT=3 — Collect info and continue", "RT=4 — Initiate an outbound dial"). *(Note for cross-referencing the schema: RT=3 is stored as `ResponseTypeId=3` and the DB seed name is "Message" / "Update Bot Configuration" — but operationally, RT=3 is what every conversational data-collection intent uses. Match the operational semantic, not the seed label.)*
   - For RT=4: surface the rarity warning per Doc 1 §11.4: "RT=4 (outbound dial) is uncommon. Confirm you actually need to initiate an outbound call from this intent, not transfer the existing call."
-- **Transitions out:** ordered list of (target intent, role). Role is "success path" / "fallback" / "escalation".
+- **Transitions out:** ordered list of (target intent, role). Role is "success path" / "fallback" / "escalation". **Do NOT hand-author transitions to `global` intents** (e.g. transfer-to-human) — Skill 3 auto-generates those edges from every non-global intent (D6). List only flow transitions to entry/chained intents.
+- **Bot-intent role:** `entry` | `global` | `chained` (default `chained`). Captured here as a first pass; finalised and confirmed in §3.6. `entry` = the §2.4 opening behaviour routes to it directly; `global` = triggerable from anywhere (transfer-to-human, WhatsApp); `chained` = reached only via another intent's transition. `global` supersedes `entry`.
 - **Hard-intent flag:** Skill 1 evaluates per the four criteria below; mark `true` or `false`.
 
 **Hard-intent criteria (decision A — flag if any one applies):**
@@ -417,25 +418,31 @@ If section 4.7 is empty or missing (the default), Skill 3 emits the safe default
 
 ### 3.6 Greenfield close-out
 
-1. Run the **self-validation checklist** (Section 5 of this SKILL.md).
-2. Generate **spec section 6** initial pass:
+1. **Role classification (Approach B, D2/D7).** Propose a `**Bot-intent role:**` for every section-4 intent:
+   - `entry` for each intent named as a routing target in the §2.4 OPENING BEHAVIOR block.
+   - `global` for each intent the user described as always-available / triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`.
+   - `chained` for all others.
+   Present the full proposed classification in one `AskUserQuestion` (per §2.4 tool conventions) for confirmation; on approval, write the explicit `**Bot-intent role:**` field into every section-4 intent. The inference lives here in Skill 1 — Skill 3 only reads the written field.
+   Then revisit §3 `silence_ending_sentence` (D8): if a transfer-to-human `global` exists and the current ending is a hang-up, offer to switch it to a failover-to-representative line.
+2. Run the **self-validation checklist** (Section 5 of this SKILL.md).
+3. Generate **spec section 6** initial pass:
    - 6.1: Mustache variable usage (every `{{...}}` reference, where used, what it resolves via).
-   - 6.2: Intent transition graph (flat list of `origin → next` pairs derived from section 4).
+   - 6.2: Intent transition graph — list authored `(origin → next)` pairs AND the **auto-fan-out** edges `(every non-global intent → each global)` so section 6 matches what Skill 3 will emit (D4/D5). Mark fan-out rows with a trailing `[auto: global fan-out]`.
    - 6.3: RT=2 API silence pairings (per RT=2 intent: Skill 3 will pair its embedded `api_silence_behaviour` with an `apiSilenceRelations[]` registry entry; section 6.3 lists which RT=2 intents need pairing).
-   - 6.4: Escalation paths (per non-terminal intent: which transition row is the escalation).
+   - 6.4: Escalation paths — for every non-global intent, the fan-out edge to each `global` is its escalation path. (When a global exists, this also satisfies §5 Check 7 for every intent.)
    - 6.5: ID assignments — placeholders, sequential negative integers per Doc 1 §15.3 Option A. Per intent: `-1`, `-2`, `-3`, ...
    - 6.6: Intent flow diagram (Mermaid) — see §3.6.1 below.
-3. Initialize **spec section 7:**
+4. Initialize **spec section 7:**
    - 7.1: spec version `1.0.0`
    - 7.2: Doc 1 v1, Skill suite v1
    - 7.3: append the close-out log entry (see Section 6 of this SKILL.md for format)
    - 7.4: aggregate every `<UNKNOWN: ...>` and `<INCOMPLETE: ...>` marker in the spec into a single list
    - 7.5: pending work — count and list of intents in `[structural]` state; list of hard intents
-4. **Soft-cap warnings** (Appendix C):
+5. **Soft-cap warnings** (Appendix C):
    - Single-conversation: ≥7 intents triggers advisory; >8 triggers "consider Claude Code".
    - Claude Code: ≥12 intents triggers advisory; >20 triggers "consider splitting bot".
-5. **Show flow diagram + offer refinement loop** (per §3.6.1 below). Render section 6.6 to the user and prompt via `AskUserQuestion` per Section 2.4.B (header: "Diagram review", 4 options: "Looks good — finalize *(Recommended)*" / "Adjust an intent" / "Adjust a transition" / "Adjust persona / opening behavior"). On any "Adjust" pick: route back to the relevant phase (Phase 3 / Phase 2 / Phase 4), apply the change, **regenerate section 6 (including 6.6)**, re-run the self-validation checklist, and re-prompt the diagram. Loop until the user picks "Finalize" or until 5 iterations elapse (then surface the iteration count in section 7.3 and proceed regardless — avoids accidental infinite loops).
-6. **Emit per runtime:**
+6. **Show flow diagram + offer refinement loop** (per §3.6.1 below). Render section 6.6 to the user and prompt via `AskUserQuestion` per Section 2.4.B (header: "Diagram review", 4 options: "Looks good — finalize *(Recommended)*" / "Adjust an intent" / "Adjust a transition" / "Adjust persona / opening behavior"). On any "Adjust" pick: route back to the relevant phase (Phase 3 / Phase 2 / Phase 4), apply the change, **regenerate section 6 (including 6.6)**, re-run the self-validation checklist, and re-prompt the diagram. Loop until the user picks "Finalize" or until 5 iterations elapse (then surface the iteration count in section 7.3 and proceed regardless — avoids accidental infinite loops).
+7. **Emit per runtime:**
    - Single-conversation: produce the spec as the response message, plus the handoff hint (Section 6 of this SKILL.md).
    - Claude Code: write to `agent-spec.md` in the workspace, plus the handoff hint.
 
@@ -673,6 +680,8 @@ Execute in the order below.
 > Intent `[name]` has no escalation path. Per Doc 1 §14.3.4, every non-terminal intent must have a fallback (typically `transfer_to_human`). Add one?
 
 **Remediation:** user supplies escalation target; transition is added.
+
+**v1.8.0 interaction:** when the bot has a `global` intent, the auto-fan-out (every non-global intent → each global) provides each intent's escalation transition by construction, so Check 7 is satisfied automatically. Check 7 still fires for bots with **no** global intent — those must author explicit escalation transitions, or the user should designate a `global` transfer-to-human.
 
 ### Check 8 — Mustache references resolve against section 4.5 + section 5 slots (§14.3.5) — **advisory**
 
