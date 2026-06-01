@@ -167,10 +167,10 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 | `BotVersionId` | `-2` | Single value |
 | `IntentCategoryId` | `-3` | Single default category |
 | `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering |
-| `BotIntentId` | `-100, -101, -102, ...` | One per intent, same ordering (note lowercase `d` casing per production) |
+| `BotIntentId` | `-100, -101, -102, ...` | One per **emitted `botIntents[]` entry** (entry + global intents only — see §4.3.3), in section-4 order. Chained intents get no `BotIntentId`. |
 | `ParameterId` | `-1000, -1001, -1002, ...` | One per slot, walked intent-by-intent then slot-by-slot |
 | `IntentRelatedID` | `-2000, -2001, ...` | **v1.5.0:** one per `intentRelations[]` row (no longer mirrors `NextIntentID`) |
-| `IntentConditionGroupID` | `-3000, -3001, ...` | **v1.5.0:** one per `botIntents[]` entry + one per `intentRelations[]` row |
+| `IntentConditionGroupID` | `-3000, -3001, ...` | One per **emitted** `botIntents[]` entry (subset — §4.3.3) + one per `intentRelations[]` row **including the auto-fan-out rows from §4.3.4**. |
 | `IntentSourceID` | `-4000, -4001, ...` | **v1.5.0:** one per intent when voice channel is active |
 
 **`IntentConditionRelationID` does not need a new range.** It mirrors `BotIntentId` (when inside `botIntents[]`) or `IntentRelatedID` (when inside `intentRelations[]`) — the production export pattern. Skill 3 fills it from the matching parent value.
@@ -181,7 +181,7 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 
 **Allocation procedure:**
 
-1. Walk section 4 in order. For each intent: assign `IntentId` from the `-10` series and `BotIntentId` from the `-100` series. Cache the mapping `<identifier> → (IntentId, BotIntentId)`.
+1. Walk section 4 in order. For each intent: assign `IntentId` from the `-10` series (every intent gets one). Assign `BotIntentId` from the `-100` series **only to intents whose `**Bot-intent role:**` is `entry` or `global`** (the `botIntents[]` subset); chained intents get an `IntentId` but no `BotIntentId`. Cache `<identifier> → IntentId` for all, and `<identifier> → BotIntentId` for the subset.
 2. Within each intent's section 5 entry, walk slots in `Order` value. For each slot: assign `ParameterId` from the `-1000` series. Cache the mapping `<intent identifier>.<slot name> → ParameterId`.
 3. Emit `BotID = -1`, `BotVersionId = -2`, `IntentCategoryId = -3` as fixed values.
 
