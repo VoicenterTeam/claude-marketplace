@@ -475,7 +475,7 @@ Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
 
 #### 4.3.4 `intentRelations[]`
 
-For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates).
+For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Then apply global fan-out (v1.8.0, D4/D5):** for every intent whose role is **not** `global`, append an edge `(thatIntent → eachGlobalIntent)`. This applies to **all** non-global intents with no exceptions — including terminals (RT=1/RT=3 end-states); the extra edge on a terminal is inert at runtime (a terminal transfers/ends before evaluating transitions) but is emitted for uniformity. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates) — so an author who also listed a global hand-off collapses harmlessly into the fan-out edge (D6). Fan-out rows are appended after the intent's authored transitions; `Order` is the 0-based position in the final deduped list for that origin.
 
 Emit fields in this order (matches production):
 
@@ -509,6 +509,8 @@ Default `ConditionGroupList` content for `intentRelations[]`:
 Note the differences from `botIntents[]` ConditionGroupList: `Order: 0` (vs `1`), `IntentConditionRelationType: 2` (vs `1`), `IntentConditionRelationTypeName: "RelatedIntentID"` (vs `"BotIntentID"`).
 
 **v1.5.0 changes:** `IntentRelatedID` is now a unique row PK with its own placeholder range (was mirror of NextIntentID). `Order` is 0-based (was 1-based). `DTMFList: []` always emitted. `ConditionGroupList` populated by default.
+
+**v1.8.0:** auto-fan-out rows each get a fresh `IntentRelatedID` (`-2000` series) and `IntentConditionGroupID` (`-3000` series) like any other relation row. Authors never list global edges (D6); Skill 3 generates the complete set.
 
 **Section 4.7 pass-through rule (unchanged from prior).** Section 4.7 opt-in lets the spec author override the default `condition_groups` and `dtmf_list` content. If present, Skill 3 lifts the YAML-style blocks verbatim into the corresponding JSON fields. If absent, the v1.5.0 defaults above apply.
 
@@ -685,7 +687,7 @@ After §4 assembly completes and before §6 cross-reference pass: regenerate spe
 | Subsection | Regeneration source |
 |---|---|
 | 6.1 Mustache variable usage | Walk every text field across sections 2 and 5 + section 4 RT=2 body; for each Mustache reference, record `(reference, location, resolution source)`. |
-| 6.2 Intent transition graph | Flatten section 4 transitions out → list of `(origin → next)` pairs. |
+| 6.2 Intent transition graph | Flatten section 4 transitions out **plus the §4.3.4 global fan-out edges** → list of `(origin → next)` pairs, deduped. Including fan-out here keeps the regenerated 6.2 equal to the emitted `intentRelations[]` and to Skill 1's fan-out-aware section 6.2, so no spurious drift is reported. |
 | 6.3 RT=2 API silence pairings | For each RT=2 intent, the `apiSilenceRelations[]` registry entry that pairs with its embedded `api_silence_behaviour`. |
 | 6.4 Escalation paths | For each non-terminal intent, the transition row that points to escalation. |
 | 6.5 ID assignments | The `<identifier> → IntentId` mapping built in §4.1. |
