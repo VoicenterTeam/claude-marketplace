@@ -497,7 +497,7 @@ Skill 1 must extract the following. If any extraction fails (header missing, unr
 |---|---|
 | `## 1. Bot Identity` | bot name, primary language, channel scope, account ID, model config (catalog name or raw IDs) |
 | `## 2. Persona Bundle` (subsections 2.1–2.5) | each `prompts` field, plus inactive-channel `[default — not user-authored]` markers |
-| `## 3. Caller Silence Behavior` | the four silence fields, OR the marker `[not configured]` |
+| `## 3. Caller Silence Behavior` | the silence failover intent + 4 silence fields, OR the marker `[not configured]` |
 | `## 4. Intent List (Structural)` — per `### Intent N: <identifier>` | identifier, display name, description, tool name, RT, hard-intent flag, transitions out (ordered), escalation target, slots, RT-specific fields |
 | `## 4.5 Available Variables` (subsections 4.5.1–4.5.4) | each variable inventory |
 | `## 5. Intent Details` — per `### Intent: <identifier>` | the `**Status:**` marker (`[structural]`, `[detailed]`, `[detailed-revisit]`) |
