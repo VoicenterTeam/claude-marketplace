@@ -56,7 +56,7 @@
 - **silence_duration:** [int seconds]
 - **silence_loops:** [int]
 - **silence_sentence:** [text, Mustache OK]
-- **silence_ending_sentence:** [text]
+- **silence_ending_sentence:** [text. If the bot has a `global` transfer-to-human intent, prefer a "transferring you to a representative" line over a hang-up line — on silence-loop exhaustion the caller lands on the always-available global. If there is no transfer-to-human global, keep a polite hang-up line.]
 
 ---
 
@@ -70,6 +70,7 @@
 - **Response Type:** [1 | 2 | 3 | 4]
 - **Purpose:** [one-line description for human review]
 - **Hard intent:** [`true` | `false`]
+- **Bot-intent role:** [`entry` | `global` | `chained`; default `chained`. `entry` = directly triggerable from the §2.4 opening behaviour; `global` = triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`. Skill 3 emits `entry`→`BotIntentTypeID 1`, `global`→`2`, `chained`→omitted from `botIntents[]`.]
 - **Completion status:** [structural]
 - **Transitions out:**
   1. [target intent identifier] (success path)
