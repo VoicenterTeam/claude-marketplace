@@ -704,13 +704,13 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all ten checks (seven per Doc 1 §15.4 plus three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`). Checks 1–7 are blocking per locked decision C. Checks 8–10: check 8 is advisory at 1,500–2,499 tok and blocking at ≥ 2,500 tok; check 9 is advisory; check 10 is blocking on any mismatch. Failure of any blocking check halts emission.
+After §4 assembly and §5 sanity check: run all **fourteen** checks — seven per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and four **botIntents-role integrity checks (11–14, v1.8.0)**. Checks 1–7 and 11–14 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch. Checks 1–7 are blocking per locked decision C. Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 → 8 → 9 → 10. All fourteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–14 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
 ### 6.2 The ten checks
 
@@ -726,6 +726,10 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. All ten run
 | 8 | Assembled-prompt token budget (Compass rule 1) | Estimated token count of the assembled systemInstruction-equivalent text (bot-level prompts + per-intent validationPrompt + per-intent post-exec intentInstructions, excluding openingAnnouncement) is below the doctrine thresholds. Advisory at 1,500–2,499; **blocking** at ≥ 2,500. Applies only when `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview` (gating per Compass rule 1). | Run the char-based token estimate per `references/voice-prompt-doctrine.md` §2. Banner-report the count and band. Halt on ≥ 2,500. |
 | 9 | Session-resumption ceiling (Compass rule 2) | If spec section 1 declares cross-session continuity is required, the assembled systemInstruction is under 200 tok. Advisory. Same gating as check 8. | Same token estimate as check 8. Banner-only if continuity not required. |
 | 10 | Model-config doctrine (Compass rule 12 — v1.5.0 inversion) | When `<root>.AiModelConfig.AIModelConfig.created.model` is `models/gemini-3.1-flash-live-preview`: validate that the version-level `AIModelConfig.created` does **NOT** contain any of the dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`, `thinkingConfig.thinkingLevel != "minimal"`). The lean payload from §4.2.4 has none of these by construction; check 10 catches future regressions. **Blocking** on any presence. | Inspect the assembled in-memory `ActiveVersionInfo.AIModelConfig.created`. The expected keys are exactly `realtimeInputConfig` and (when voice active) `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`. Any other key under `generationConfig` is a failure. |
+| 11 | Global registered as type-2 (C-a) | Every intent with role `global` has a `botIntents[]` entry with `BotIntentTypeID = 2`. | Build the set of `global` identifiers from section 4; for each, verify a `botIntents[]` entry exists with that `IntentId` and `BotIntentTypeID = 2`. |
+| 12 | Fan-out completeness (C-b) | Every non-global intent has an `intentRelations[]` edge to **every** `global` intent. | For each global `g` and each non-global intent `i`, verify `(i → g)` ∈ `intentRelations[]`. Missing edge = blocking. |
+| 13 | No chained intent in botIntents (C-c) | No intent with role `chained` appears in `botIntents[]`. | For each `botIntents[]` entry, verify its source intent's role is `entry` or `global`. |
+| 14 | Start point exists (C-d) | At least one `entry` or `global` intent exists (otherwise the bot has no top-level trigger). | Assert `botIntents[]` is non-empty and contains ≥1 type-1 or type-2 entry. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -795,6 +799,10 @@ For each failing check, the structured error includes a "route to" recommendatio
 | Check 8 — token budget exceeded (blocking) | **Skill 1 patch mode** to trim bot-level prompts, OR **Skill 2 reactivation** to trim per-intent `validationPrompt` and post-exec `intentInstructions`. Above 4,000 tok, also recommend splitting into orchestrator + specialist bots. |
 | Check 9 — session-resumption ceiling (advisory only) | Informational — no route. The user either drops the cross-session continuity requirement or accepts the known limitation per Compass §1 cookbook #1197 Issue 11. |
 | Check 10 — model-config doctrine violation (blocking) | **Skill 1 patch mode** — model config is set in spec section 1. Skill 1 needs to update the AI Model Config selection or apply per-field corrections (the typical fix: drop `affectiveDialog`/`proactiveAudio` overrides; reset `thinkingLevel` to minimal). |
+| Check 11 — global not type-2 | **Skill 1 patch mode** — role/registry inconsistency; re-run role classification (§3.6). |
+| Check 12 — fan-out incomplete | **Skill 3 internal bug** — Skill 3 generates fan-out from roles; a gap means an emission bug. Report and halt. |
+| Check 13 — chained intent in botIntents | **Skill 1 patch mode** — an intent marked `chained` was registered; fix the role or the membership. |
+| Check 14 — no start point | **Skill 1 patch mode** — designate at least one `entry` intent (or a `global`). |
 
 Appendix B has the consolidated routing table.
 
