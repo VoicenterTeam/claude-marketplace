@@ -51,12 +51,13 @@
 
 ## 3. Caller Silence Behavior
 
-[Either populate the four fields below, or replace this entire section with `[not configured]` if the bot does not handle caller silence.]
+[Either populate the fields below, or replace this entire section with `[not configured]` if the bot does not handle caller silence.]
 
+- **silence failover intent:** [intent identifier from section 4 — the intent to route to when `silence_loops` is exhausted; Skill 3 emits it as `silence_behaviour.intent`. Default to the transfer-to-human `global` when one exists; else an end-call intent, or `<UNKNOWN: silence failover intent>`.]
 - **silence_duration:** [int seconds]
 - **silence_loops:** [int]
 - **silence_sentence:** [text, Mustache OK]
-- **silence_ending_sentence:** [text. If the bot has a `global` transfer-to-human intent, prefer a "transferring you to a representative" line over a hang-up line — on silence-loop exhaustion the caller lands on the always-available global. If there is no transfer-to-human global, keep a polite hang-up line.]
+- **silence_ending_sentence:** [text. If the failover intent is the transfer-to-human `global`, prefer a "transferring you to a representative" line over a hang-up line. If there is no transfer-to-human global, keep a polite hang-up line.]
 
 ---
 

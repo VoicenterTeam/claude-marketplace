@@ -327,14 +327,17 @@ If the spec marks any prompts field `<UNKNOWN>`, emit `""` and add the field pat
 
 If section 3 reads `[not configured]`: **omit** the entire `silence_behaviour` field from `ActiveVersionInfo.AIModelConfig`. Do not emit it as `null`, do not emit it as `{}`. Refua's production sample omits it entirely; Skill 3 follows that pattern.
 
-If section 3 has the four fields populated: emit them direct field-to-field.
+If section 3 has its fields populated: emit them direct field-to-field.
 
 | Wire-format path | Spec source |
 |---|---|
+| `silence_behaviour.intent` | **v1.8.0:** the resolved `IntentId` of section 3's `silence failover intent:` (the intent to jump to when the caller-silence loops are exhausted). Emit as the **first** key of the object (matches production shape). Resolve the identifier exactly as `apiSilenceRelations[].ApiSilenceIntentID` is resolved. `-999` sentinel if `<UNKNOWN>`. Production proof: the operator/משרד-התחבורה export carries `silence_behaviour.intent` (e.g. `7518`). Never emit as a string identifier; never omit when `silence_behaviour` is emitted. |
 | `silence_behaviour.silence_duration` | Section 3 `silence_duration` |
 | `silence_behaviour.silence_loops` | Section 3 `silence_loops` |
 | `silence_behaviour.silence_sentence` | Section 3 `silence_sentence` |
 | `silence_behaviour.silence_ending_sentence` | Section 3 `silence_ending_sentence` |
+
+The `silence_behaviour.intent` failover is bot-level (caller silence regardless of active intent), distinct from each RT=2 intent's `api_silence_behaviour.intent` (API silence). Both are structural `intent` failovers; `silenceRelations[]` stays `[]` (the bot-level failover lives in this field, not a relations row).
 
 ### 4.3 `intentList` assembly (sections 4 + 5 → six parallel collections)
 
