@@ -437,7 +437,7 @@ All other ParameterType fields (`IsActive: 1`, `CreatedBy: "SYSTEM"`, `ModifiedB
 
 #### 4.3.3 `botIntents[]`
 
-One entry per intent in section 4 ordering. Emit fields in this order (matches production):
+**Selective membership (v1.8.0).** Emit an entry **only** for intents whose `**Bot-intent role:**` is `entry` or `global`. Skip `chained` intents entirely (default role; they are reached via `intentRelations[]`). Walk section 4 in order; emit the subset in that order. Emit fields in this order (matches production):
 
 | Order | Wire-format field | Value |
 |---|---|---|
@@ -445,10 +445,10 @@ One entry per intent in section 4 ordering. Emit fields in this order (matches p
 | 2 | `DTMFList` | `[]` (always emitted, never omitted) |
 | 3 | `IntentId` | Cached `<identifier> → IntentId` placeholder (lowercase `d` per production) |
 | 4 | `IsActive` | `1` (integer) |
-| 5 | `SortOrder` | **0-based** ordinal of the intent in section 4 (Intent 1 → 0, Intent 2 → 1, …) |
+| 5 | `SortOrder` | **0-based** ordinal within the **emitted subset**, in section-4 order (first emitted → 0, second emitted → 1, …). Chained intents are skipped and do not consume an index. |
 | 6 | `BotIntentId` | Cached `<identifier> → BotIntentId` placeholder (lowercase `d`) |
 | 7 | `BotVersionId` | `-2` (mirror of `ActiveVersionInfo.BotVersionId`; v1.5.0 added) |
-| 8 | `BotIntentTypeID` | `1` (per Doc 1 §8.2) |
+| 8 | `BotIntentTypeID` | Role discriminator (Doc 1 §8.2 / G-10): `entry` → `1`, `global` → `2`. |
 | 9 | `ConditionGroupList` | **Populated by default** with single entry (see below). v1.5.0 default reversed from prior `[]`. |
 
 Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
@@ -470,6 +470,8 @@ Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
 ```
 
 **v1.5.0 changes from prior baseline:** `BotID`/`IntentID` capital-D casing changed to lowercase `BotId`/`IntentId` per production. `DTMFList: []` added. `BotVersionId: -2` added. `SortOrder` switched to 0-based. `ConditionGroupList` populated by default with the structural entry above.
+
+**v1.8.0 worked example (Noa).** 9 intents, roles: `handle_who_are_you`/`collect_inquiry_basics`/`handle_out_of_scope` = entry, `transfer_to_human` = global, the other 5 = chained. `botIntents[]` emits 4 entries — SortOrder 0/1/2/3 over (9214 t1, 9217 t1, 9229 **t2**, 9235 t1) — and omits the 5 chained intents. See `references/test-artifacts/bot-noa-2026-06-01.json`.
 
 #### 4.3.4 `intentRelations[]`
 
