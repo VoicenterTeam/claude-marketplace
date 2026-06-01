@@ -194,8 +194,9 @@ Failure routing:
 | Check 5 — RT=2 missing pairing | Skill 1 patch mode (RT=2 structural authoring incomplete) |
 | Check 6 — `api_silence_behaviour` mismatch | Skill 3 internal bug (Skill 3 emits both from the same source; mismatch means emission bug) |
 | Check 7 — Mustache unresolvable | Skill 1 patch mode (variable should exist — add to 4.5.1 / 4.5.4) OR Skill 2 reactivation (reference is wrong — typo) |
-| Check 11, 13 — BotIntentTypeID / membership error | Skill 3 internal bug (role → type mapping is deterministic; if check 11 or 13 fires, it's an emission logic bug) |
-| Check 12 — fan-out incomplete | Skill 3 internal bug (fan-out is auto-generated; a missing edge means the generator missed an intent) |
+| Check 11 — global not type-2 | Skill 1 patch mode — role/registry inconsistency; re-run role classification. |
+| Check 12 — fan-out incomplete | Skill 3 internal bug — fan-out is Skill 3's own generation step; a gap means an emission bug. |
+| Check 13 — chained intent in `botIntents[]` | Skill 1 patch mode — an intent marked chained was registered; fix the role or membership. |
 | Check 14 — no start point | Skill 1 patch mode (spec has no `entry` or `global` intents — set at least one role to `entry` or `global`) |
 
 Skill 3 does not invoke Skill 1 or Skill 2 itself. It reports the routing recommendation; the user invokes the appropriate skill.
@@ -368,7 +369,7 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 - **Cross-reference Check 1/2/3 fails on a deleted intent.** Spec was edited inconsistently — run Skill 1 patch mode to clean up the references.
 - **Banner says `<USER_TO_FILL: bot description>` and similar.** Expected — the spec marked these as `<UNKNOWN: ...>`. Replace before importing to the platform.
 - **Cross-reference Check 14 fires — no start point.** All section-4 intents are `chained`. Run Skill 1 patch mode to assign `entry` or `global` to at least one intent.
-- **Cross-reference Check 13 fires — chained intent in `botIntents[]`.** Emission logic bug in Skill 3 — the `botIntents[]` generator included an intent it should have skipped. Report as a Skill 3 bug.
+- **Cross-reference Check 13 fires — chained intent in `botIntents[]`.** Skill 1 patch mode — a chained intent was wrongly registered; fix the role or membership in the spec and re-run Skill 3.
 - **`**Bot-intent role:** start` causes Gate B failure.** Only `entry`, `global`, and `chained` are valid. Run Skill 1 patch mode to correct the role value.
 
 ---
