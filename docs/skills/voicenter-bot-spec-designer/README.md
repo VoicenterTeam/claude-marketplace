@@ -97,7 +97,7 @@ Captures section 1 + section 3:
    - **a. Agent gender** — `AskUserQuestion` (header: "Agent voice", options: Female / Male). **Always asked explicitly — never inferred from the bot name** (names are frequently unisex; guessing risks offering only male voices when the user wanted a female agent). Written to spec section 1 as `**Agent Gender:**` — a selection aid only, not emitted to the JSON.
    - **b. Voice name** — `AskUserQuestion` presenting **only the voices whose `Gender` matches step (a)** for the active model family (default Gemini; e.g. Female → `Kore`, `Leda`, `Aoede`; Male → `Puck`, `Orus`, `Charon`). `Other` allows any provider-supported string.
 8. **AI model config** — **not prompted.** Silently defaults to the canonical model **Gemini Live (Voice driven 3.1)** (`AIModelConfigID=139`, `AIModelTypeId=18`) per `model-catalog.md`. Overridden only if the user volunteers a different model by name (mapped via the catalog) or supplies raw `AIModelConfigID` + `AIModelTypeId` directly.
-9. **Caller silence** — `AskUserQuestion` (Yes → 4 silence fields / No → `[not configured]`)
+9. **Caller silence** — `AskUserQuestion` (Yes → 4 silence fields / No → `[not configured]`). **Silence-exhaustion failover (v1.8.0):** if the bot will have a `global` transfer-to-human intent (decided in Phase 3), `silence_ending_sentence` defaults to a "transferring you to a representative" line rather than a hang-up — on exhaustion the caller lands on the always-available global. If no transfer-to-human global exists, keep a polite hang-up line.
 10. **Created by** — bot author/owner name (free text). Optional; `AskUserQuestion` (header: "Created by", options: "Skip (default: empty)" / "Provide a name"). Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` (production-required audit field).
 11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
 12. **Record agent calls** — boolean, default `false`. `AskUserQuestion` (header: "Record calls", options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
@@ -130,7 +130,17 @@ Captures section 4 (intent rows) and section 4.5 stubs (call-context, environmen
 
 - Elicit the happy path
 - Expand fallbacks for each non-terminal intent
-- Per-intent capture: identifier (snake_case verb_object), display name, description, RT (1/2/3/4), transitions out (ordered), hard-intent flag
+- Per-intent capture: identifier (snake_case verb_object), display name, description, RT (1/2/3/4), transitions out (ordered), `**Bot-intent role:**`, hard-intent flag
+
+**Bot-intent role field (v1.8.0).** Each section-4 intent carries a `**Bot-intent role:**` field with one of three values:
+
+| Value | Meaning | BotIntentTypeID (Skill 3) |
+|---|---|---|
+| `entry` | Directly triggerable from the §2.4 opening behaviour | 1 |
+| `global` | Triggerable from anywhere (transfer-to-human, WhatsApp); supersedes `entry` | 2 |
+| `chained` | Reached only via another intent's transition (default) | omitted from `botIntents[]` |
+
+Skill 1 **infers** roles from context in Phase 3 — it does NOT prompt per-intent. Roles are confirmed in one batch at §3.6 close-out. Authors must NOT hand-author transitions to `global` intents — Skill 3 auto-fans-out an edge from every non-global intent to each global at assembly time.
 
 **Hard-intent criteria** — flag the intent as hard if any one applies:
 
@@ -207,12 +217,26 @@ Run on every greenfield close-out and after every patch. 10 checks, executed in 
 | 4 | No persistent policy embedded in single intents | Blocking |
 | 5 | Persona's claimed capabilities ⊆ intent set | Blocking |
 | 6 | snake_case verb_object naming on all intents | Blocking |
-| 7 | Every non-terminal intent has an escalation transition | Blocking |
+| 7 | Every non-terminal intent has an escalation transition (auto-satisfied by fan-out when a `global` intent exists) | Blocking |
 | 8 | Mustache references resolve against section 4.5 + section 5 slots | Advisory |
 | 9 | Active-channel `prompts` fields populated | Blocking |
 | 10 | Inactive-channel `prompts` have templated defaults marked | Auto-fix |
 
 Blocking failures pause the close-out until the user resolves them. Advisory check #8 records the user's resolution to section 7.3 and continues — Skill 3's check is the authoritative blocking version.
+
+**v1.8.0 interaction with Check 7.** When the bot has at least one `global` intent, the auto-fan-out (Skill 3 generates an edge from every non-global intent to each global) provides each intent's escalation transition by construction, so Check 7 is automatically satisfied. Check 7 still fires for bots with **no** global intent — those must have explicit escalation transitions, or the user should designate a `global` transfer-to-human.
+
+### Greenfield close-out: role classification (v1.8.0)
+
+Before running the self-validation checklist, Skill 1 proposes a `**Bot-intent role:**` assignment for every section-4 intent using the **Approach-B** algorithm:
+
+- `entry` — each intent that the §2.4 opening-behaviour block (spec section 2.4) routes to directly.
+- `global` — each intent the user described as always-available or triggerable from anywhere (transfer-to-human, WhatsApp catch-all). `global` supersedes `entry`.
+- `chained` — all others (default).
+
+Roles are **inferred in Phase 3**, not prompted per-intent. They are **confirmed in one `AskUserQuestion`** batch at close-out. On approval, Skill 1 writes the explicit `**Bot-intent role:**` field into every section-4 intent entry. Skill 3 reads the written field verbatim; no inference is re-done at assembly time.
+
+After role confirmation, Skill 1 revisits `silence_ending_sentence`: if a transfer-to-human `global` exists and the current ending sentence describes a hang-up, Skill 1 offers to switch it to a failover-to-representative line.
 
 ---
 
@@ -222,7 +246,7 @@ Blocking failures pause the close-out until the user resolves them. Advisory che
 
 - Sections 1, 2, 3, 4, 4.5 fully filled
 - Section 5: stub entries per intent, all marked `[structural]`
-- Section 6: initial cross-references (subsections 6.1–6.5)
+- Section 6: initial cross-references (subsections 6.1–6.5). Section 6.2 lists both authored `(origin → next)` transition pairs AND the auto-fan-out edges `(every non-global intent → each global intent)`, marked `[auto: global fan-out]`, so section 6.2 exactly matches what Skill 3 will emit.
 - **Section 6.6: Mermaid `flowchart TD` of the intent graph** — generated at close-out, shown to the user with a refinement loop, and embedded in the spec for human comprehension. Skill 3 ignores this section.
 - Section 7: spec version, schema reference, generation log entry, unknowns aggregation, pending work
 - Optional section 4.7: present iff the user opted in via §3.5.5 (advanced features)
@@ -292,6 +316,17 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 - **Three new Phase 1 questions** added to the interview: `Created by` (optional, populates `IntentParameters[].CreatedBy` audit field), `Max call duration` (default 1200 seconds), `Record agent calls` (default `false`; emitted as a STRING in the JSON — not a JSON boolean).
 - **spec-skeleton.md §1** gains three matching new fields. `spec-skeleton.md §4` gains optional `**Max turns:**` and `**Max turns sentence:**` per-intent override fields.
 - **Skill 1 does NOT interview for max_turns / max_turns_sentence.** Skill 3 applies smart defaults (RT=2 → `max_turns: 15`, standard Hebrew sentence; other RTs → omit). Spec authors can hand-edit section 4 to override.
+
+---
+
+## v1.8.0 changes
+
+- **`**Bot-intent role:**` field added to section 4** (per intent): `entry` | `global` | `chained` (default `chained`). `entry` = directly triggerable from §2.4 opening behaviour; `global` = triggerable from anywhere (transfer-to-human, WhatsApp); `chained` = reached only via another intent's transition. `global` supersedes `entry`.
+- **Approach-B role classification at close-out.** Skill 1 infers roles in Phase 3 (entry = §2.4 routing targets; global = always-available/transfer intents) and confirms them in **one** `AskUserQuestion` batch at §3.6 close-out. NOT prompted per-intent during the interview.
+- **Auto-fan-out edges.** Authors must NOT hand-author transitions to `global` intents — Skill 3 auto-generates an edge from every non-global intent to each global at assembly time. Skill 1's section 6.2 now includes these fan-out edges (marked `[auto: global fan-out]`) so the spec matches what Skill 3 will emit.
+- **Caller-silence failover.** When a transfer-to-human `global` intent exists, `silence_ending_sentence` defaults to a "transferring you to a representative" line rather than a hang-up.
+- **Check 7 is auto-satisfied** when a `global` intent exists, because the fan-out gives every non-global intent an escalation path by construction.
+- **Section 6.4** (escalation paths) is updated: when a global exists, each non-global intent's escalation path is provided by the fan-out edge to the global.
 
 ---
 

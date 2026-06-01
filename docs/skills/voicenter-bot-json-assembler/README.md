@@ -14,7 +14,7 @@ Mechanically projects a `[detailed]` Agent Spec into Bot JSON wire format. Produ
 - `bot-<identifier>-<YYYY-MM-DD>.json` — the deployable JSON
 - `bot-<identifier>-<YYYY-MM-DD>.banner.md` — a sidecar listing every fail-loud sentinel, drift note, and applied default
 
-**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of ten checks (seven §15.4 + three Compass), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **fourteen checks** (seven §15.4 + three Compass + four botIntents-role), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
 
 The risk vector is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations. The skill's longest section (anti-list §8) is the explicit "do not" list.
 
@@ -52,6 +52,7 @@ Skill 3 reads the Agent Spec as a fixed grammar — no synonyms, no flexibility,
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms.
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. Angle brackets, literal token.
 - **Intent header in section 4:** `### Intent N: <identifier>` where N is the 1-based ordinal.
+- **Bot-intent role in section 4:** `**Bot-intent role:** <value>` where `<value>` is exactly `entry`, `global`, or `chained`. The field is optional; absence is parsed as `chained`. Any other value (e.g. `start`, `escalation`) is a parse error. This field drives `botIntents[]` membership/type and the global fan-out in `intentRelations[]`.
 - **Intent header in section 5:** `### Intent: <identifier>`.
 - **Slot lines** in section 4: numbered, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM]`.
 - **Transition lines** in section 4: numbered list under `**Transitions out:**`, target identifier optionally followed by a parenthetical role label.
@@ -70,6 +71,7 @@ Common deviations the parser surfaces:
 | Unknown marker shape wrong | `Expected: '<UNKNOWN: <description>>'. Found: '(UNKNOWN: ...)'. Fix: use angle brackets and the literal token UNKNOWN.` |
 | RT-specific sub-label punctuation off | `Expected: '**URL:** <value>'. Found: 'URL: <value>'. Fix: wrap the sub-label in bold markdown.` |
 | Status marker synonym | `Expected: one of '[structural]', '[detailed]', '[detailed-revisit]'. Found: '[done]'. Fix: re-run Skill 2 to set the canonical marker.` |
+| Bot-intent role value off-grammar | `Expected: '**Bot-intent role:** entry\|global\|chained'. Found: '**Bot-intent role:** start'. Fix: use one of the three canonical role values (or omit for chained).` |
 | Section 4 transition target missing | `Intent 'validate_customer_address' transitions to 'get_slots', but no intent 'get_slots' exists in section 4 (closest match: 'get_available_slots'). Fix: re-run Skill 1 patch mode.` |
 
 Skill 3 halts on the first deviation, emits a structured error, and does not attempt to interpret around it. One deviation, one error, one halt.
@@ -90,10 +92,10 @@ Sequential negative integers, range-coded so the kind of ID is identifiable at a
 | `BotVersionId` | `-2` | Single value |
 | `IntentCategoryId` | `-3` | Single default category |
 | `IntentId` | `-10, -11, -12, ...` | One per intent in section 4 ordering |
-| `BotIntentId` | `-100, -101, -102, ...` | One per intent, same ordering (note lowercase `d` per production casing) |
+| `BotIntentId` | `-100, -101, -102, ...` | **v1.8.0: one per emitted `botIntents[]` entry (entry + global intents only)** — chained intents get no `BotIntentId`. In section-4 order over the emitted subset. (note lowercase `d` per production casing) |
 | `ParameterId` | `-1000, -1001, ...` | One per slot, intent-by-intent then slot-by-slot |
 | `IntentRelatedID` | `-2000, -2001, ...` | **v1.5.0:** one per `intentRelations[]` row (unique row PK — no longer mirrors `NextIntentID`) |
-| `IntentConditionGroupID` | `-3000, -3001, ...` | **v1.5.0:** one per `botIntents[]` entry + one per `intentRelations[]` row |
+| `IntentConditionGroupID` | `-3000, -3001, ...` | **v1.5.0:** one per emitted `botIntents[]` entry (entry + global only — v1.8.0 selective) + one per `intentRelations[]` row (including auto-fan-out rows) |
 | `IntentSourceID` | `-4000, -4001, ...` | **v1.5.0:** one per intent when voice channel is active |
 
 Real platform-assigned IDs after import are positive integers, so there's no collision risk on re-export.
@@ -164,9 +166,9 @@ The sentinel value carries the field role inside the placeholder text, so the ba
 
 ---
 
-## §15.4 cross-reference pass — ten checks
+## §15.4 cross-reference pass — fourteen checks
 
-After assembly + section 6 sanity check, run all ten §15.4 checks against the in-memory wire structure. Checks 1–7 are always blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Checks 8–10 are gated on Gemini Live 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`) with mixed severity: check 8 is advisory/blocking, check 9 is advisory, and check 10 is blocking.
+After assembly + section 6 sanity check, run all fourteen §15.4 checks against the in-memory wire structure. Checks 1–7 and 11–14 are always blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Checks 8–10 are gated on Gemini Live 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`) with mixed severity: check 8 is advisory/blocking, check 9 is advisory, and check 10 is blocking.
 
 | # | Check | Validates |
 |---|---|---|
@@ -178,6 +180,10 @@ After assembly + section 6 sanity check, run all ten §15.4 checks against the i
 | 6 | `IntentResponces.Configuration` matches `apiSilenceRelations[].Configuration` | **Full Configuration deep equality** (v1.5.0 — was just 6 silence fields). Every key in the parent intent's Configuration: `url`, `method`, `headers`, `body`, `fail_output`, `announcement`, `function_output`, `response_success`, `intentInstructions`, `intentLoadingAnnouncement`, and the nested `api_silence_behaviour` sub-object (all six keys including the failover `intent`). |
 | 7 | Mustache resolvability | Every Mustache token resolves via 4.5.1 / 4.5.2 / 4.5.3 / 4.5.4 with directional ordering |
 | 10 | Model-config doctrine (v1.5.0 inverted) | **Blocking.** Validates that the version-level `AIModelConfig.created` does NOT contain dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`). The lean payload has none of these by construction; check 10 catches future regressions. |
+| 11 | Global intents have `BotIntentTypeID = 2` | **Blocking (v1.8.0).** Every `global` intent in section 4 maps to a `botIntents[]` entry with `BotIntentTypeID = 2`. An entry with type `1` for a global intent is an emission bug. |
+| 12 | Fan-out completeness | **Blocking (v1.8.0).** For every non-global intent, `intentRelations[]` contains an edge `(thatIntent → eachGlobalIntent)`. Missing fan-out edge = incomplete emission. |
+| 13 | No chained intents in `botIntents[]` | **Blocking (v1.8.0).** `botIntents[]` contains only `entry` (type 1) and `global` (type 2) intents. A `chained` intent appearing in `botIntents[]` is an emission error — chained intents are reached only via `intentRelations[]`. |
+| 14 | Start point exists | **Blocking (v1.8.0).** At least one intent has role `entry` or `global` so there is a registered start point in `botIntents[]`. A spec with all intents `chained` cannot be imported — the platform has no entry point. |
 
 Failure routing:
 
@@ -188,6 +194,9 @@ Failure routing:
 | Check 5 — RT=2 missing pairing | Skill 1 patch mode (RT=2 structural authoring incomplete) |
 | Check 6 — `api_silence_behaviour` mismatch | Skill 3 internal bug (Skill 3 emits both from the same source; mismatch means emission bug) |
 | Check 7 — Mustache unresolvable | Skill 1 patch mode (variable should exist — add to 4.5.1 / 4.5.4) OR Skill 2 reactivation (reference is wrong — typo) |
+| Check 11, 13 — BotIntentTypeID / membership error | Skill 3 internal bug (role → type mapping is deterministic; if check 11 or 13 fires, it's an emission logic bug) |
+| Check 12 — fan-out incomplete | Skill 3 internal bug (fan-out is auto-generated; a missing edge means the generator missed an intent) |
+| Check 14 — no start point | Skill 1 patch mode (spec has no `entry` or `global` intents — set at least one role to `entry` or `global`) |
 
 Skill 3 does not invoke Skill 1 or Skill 2 itself. It reports the routing recommendation; the user invokes the appropriate skill.
 
@@ -328,6 +337,22 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 ---
 
+## v1.8.0 changes
+
+**`**Bot-intent role:**` field in section 4.** Skill 3 parses this field (strict grammar; off-grammar value = parse error; absence = `chained`). Three values: `entry`, `global`, `chained`.
+
+**`botIntents[]` — selective registry.** Prior versions emitted an entry for every intent. v1.8.0 changes `botIntents[]` to a **selective registry**: only `entry` (BotIntentTypeID 1) and `global` (BotIntentTypeID 2) intents are included. `chained` intents are omitted from `botIntents[]` entirely — they are reached only via `intentRelations[]`. `SortOrder` is 0-based over the emitted subset.
+
+**Global fan-out in `intentRelations[]`.** Skill 3 auto-generates an edge from every non-global intent to each global intent. Authors do not (and must not) list these edges manually. If an author did list a global target, the `(origin, next)` deduplication collapses the duplicate harmlessly. Fan-out edges for each origin are appended in section-4 declaration order of the global intents. Each fan-out row gets its own `IntentRelatedID` and `IntentConditionGroupID` from the standard placeholder ranges.
+
+**Section 6.2 regeneration.** Skill 3's section 6.2 regeneration pass now includes fan-out edges (marked `[auto: global fan-out]`), so no spurious drift is flagged between the authored spec and the assembled JSON.
+
+**Cross-reference pass expands to fourteen checks.** Four new blocking checks added (11–14): check 11 verifies global intents have `BotIntentTypeID = 2`; check 12 verifies fan-out completeness; check 13 verifies no chained intents appear in `botIntents[]`; check 14 verifies at least one start point exists.
+
+**`BotIntentId` placeholder allocation.** The `-100` series now allocates only to the emitted subset (entry + global intents). Chained intents get an `IntentId` but no `BotIntentId`.
+
+---
+
 ## voice-agent-llm v1.0.3+ runtime notes
 
 **Empty `announcement` is runtime-tolerant.** RT=2 `announcement` may be empty at runtime — the voice-agent service substitutes `[START THE CONVERSATION]` as an LLM instruction (bot opens from persona; the literal string is **not** spoken aloud). Skill 3 emits whatever the spec contains verbatim. No new validation rule — Skill 2's Check 10 still requires authored text upstream.
@@ -342,6 +367,9 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 - **Cross-reference Check 7 fails on a typo.** Re-run Skill 2 for the affected intent, fix the Mustache reference, re-invoke Skill 3.
 - **Cross-reference Check 1/2/3 fails on a deleted intent.** Spec was edited inconsistently — run Skill 1 patch mode to clean up the references.
 - **Banner says `<USER_TO_FILL: bot description>` and similar.** Expected — the spec marked these as `<UNKNOWN: ...>`. Replace before importing to the platform.
+- **Cross-reference Check 14 fires — no start point.** All section-4 intents are `chained`. Run Skill 1 patch mode to assign `entry` or `global` to at least one intent.
+- **Cross-reference Check 13 fires — chained intent in `botIntents[]`.** Emission logic bug in Skill 3 — the `botIntents[]` generator included an intent it should have skipped. Report as a Skill 3 bug.
+- **`**Bot-intent role:** start` causes Gate B failure.** Only `entry`, `global`, and `chained` are valid. Run Skill 1 patch mode to correct the role value.
 
 ---
 
