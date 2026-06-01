@@ -475,7 +475,7 @@ Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
 
 #### 4.3.4 `intentRelations[]`
 
-For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Then apply global fan-out (v1.8.0, D4/D5):** for every intent whose role is **not** `global`, append an edge `(thatIntent → eachGlobalIntent)`. This applies to **all** non-global intents with no exceptions — including terminals (RT=1/RT=3 end-states); the extra edge on a terminal is inert at runtime (a terminal transfers/ends before evaluating transitions) but is emitted for uniformity. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates) — so an author who also listed a global hand-off collapses harmlessly into the fan-out edge (D6). Fan-out rows are appended after the intent's authored transitions; `Order` is the 0-based position in the final deduped list for that origin.
+For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Then apply global fan-out (v1.8.0, D4/D5):** for every intent whose role is **not** `global`, append an edge `(thatIntent → eachGlobalIntent)`. This applies to **all** non-global intents with no exceptions — including terminals (RT=1/RT=3 end-states); the extra edge on a terminal is inert at runtime (a terminal transfers/ends before evaluating transitions) but is emitted for uniformity. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates) — so an author who also listed a global hand-off collapses harmlessly into the fan-out edge (D6). Fan-out rows are appended after the intent's authored transitions; when a bot has multiple globals, the fan-out edges for an origin are appended in the **section-4 declaration order of the global intents**. `Order` is then the 0-based position in the final deduped list for that origin.
 
 Emit fields in this order (matches production):
 
@@ -510,7 +510,7 @@ Note the differences from `botIntents[]` ConditionGroupList: `Order: 0` (vs `1`)
 
 **v1.5.0 changes:** `IntentRelatedID` is now a unique row PK with its own placeholder range (was mirror of NextIntentID). `Order` is 0-based (was 1-based). `DTMFList: []` always emitted. `ConditionGroupList` populated by default.
 
-**v1.8.0:** auto-fan-out rows each get a fresh `IntentRelatedID` (`-2000` series) and `IntentConditionGroupID` (`-3000` series) like any other relation row. Authors never list global edges (D6); Skill 3 generates the complete set.
+**v1.8.0:** auto-fan-out rows each get a fresh `IntentRelatedID` (`-2000` series) and `IntentConditionGroupID` (`-3000` series) like any other relation row. Authors need not list global edges; if they do, the `(origin, next)` dedup (D6) collapses the duplicate. Skill 3 generates the complete set.
 
 **Section 4.7 pass-through rule (unchanged from prior).** Section 4.7 opt-in lets the spec author override the default `condition_groups` and `dtmf_list` content. If present, Skill 3 lifts the YAML-style blocks verbatim into the corresponding JSON fields. If absent, the v1.5.0 defaults above apply.
 
