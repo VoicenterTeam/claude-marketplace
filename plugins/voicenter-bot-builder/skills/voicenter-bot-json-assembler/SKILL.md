@@ -106,6 +106,7 @@ Specifically, the parser expects:
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms (e.g., `[done]`, `[in progress]`).
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. The angle-bracket format is not optional; `(UNKNOWN: ...)` is a parse error.
 - **Intent header in section 4:** `### Intent N: <identifier>` where N is the 1-based ordinal and identifier is snake_case. The number determines section 4 ordering (used for first-intent start-marker logic in `botIntents[]`).
+- **Bot-intent role in section 4:** `**Bot-intent role:** <value>` where `<value>` is exactly one of `entry`, `global`, `chained`. The field is **optional**; absence is parsed as `chained`. Any other value (e.g. `start`, `escalation`, a list) is a parse error per §3.2. This field drives §4.3.3 botIntents membership/type and §4.3.4 fan-out.
 - **Intent header in section 5:** `### Intent: <identifier>` (no ordinal). Identifier matches a section 4 entry.
 - **Slot lines in section 4:** numbered list under `**Slots:**` heading, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM]`.
 - **Transition lines in section 4:** numbered list under `**Transitions out:**` heading, each item is a target intent identifier optionally followed by a parenthetical role label (e.g., `1. get_available_slots (success path)`).
@@ -146,6 +147,7 @@ These are illustrative — the parser is grammar-driven, not pattern-matched, so
 | Section 4 reference to undeclared transition target | `Intent 'validate_customer_address' transitions to 'get_slots', but no intent 'get_slots' exists in section 4 (closest match: 'get_available_slots'). Fix: re-run Skill 1 patch mode to correct the transition target.` |
 | Spec ends mid-intent (truncated upload) | `Section 5 entry 'confirm_appointment' has no closing structure (no following section 6 header). Fix: re-attach the complete spec.` |
 | RT-specific sub-label punctuation off | `Expected: '**URL:** <value>'. Found: 'URL: <value>'. Fix: wrap the sub-label in bold markdown.` |
+| Bot-intent role value off-grammar | `Expected: '**Bot-intent role:** entry\|global\|chained'. Found: '**Bot-intent role:** start'. Fix: use one of the three canonical role values (or omit for chained).` |
 
 The transition-target check (last two rows) blurs into cross-reference territory — it's caught at parse time because it's a dangling identifier discoverable from sections 4-5 alone, and Skill 3 already has the data. Treating it as a parse error rather than waiting for §15.4 lets the user fix one thing at a time.
 
