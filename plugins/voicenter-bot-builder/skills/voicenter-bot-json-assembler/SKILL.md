@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-json-assembler
-description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 10 checks (7 §15.4 + 3 Compass), all blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 14 checks (7 §15.4 + 3 Compass + 4 botIntents-role), checks 1–7 and 11–14 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
 # Skill 3 — JSON Assembler & Publish
@@ -35,7 +35,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §12 — `ParameterTypeId` catalog | Slot type emission |
 | Doc 1 §13 — Mustache + variable categories | Cross-reference check 7 |
 | Doc 1 §15.3 — ID placeholder strategy (Option A) | §4.1 allocation |
-| Doc 1 §15.4 — Cross-reference pass spec | §6 — the ten checks |
+| Doc 1 §15.4 — Cross-reference pass spec | §6 — the fourteen checks |
 | Doc 1 §16 — Schema quirks summary | §4.5 + Appendix A |
 | Doc 2 §3.7 — Strict-template enforcement | §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | Everything in this file implements this |
@@ -704,7 +704,7 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all **fourteen** checks — seven per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and four **botIntents-role integrity checks (11–14, v1.8.0)**. Checks 1–7 and 11–14 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch. Checks 1–7 are blocking per locked decision C. Failure of any blocking check halts emission.
+After §4 assembly and §5 sanity check: run all **fourteen** checks — seven per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and four **botIntents-role integrity checks (11–14, v1.8.0)**. Checks 1–7 and 11–14 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch. (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
@@ -712,7 +712,7 @@ The pass operates on the **assembled in-memory wire structure**, not on the spec
 
 Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 → 8 → 9 → 10. All fourteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–14 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
-### 6.2 The ten checks
+### 6.2 The fourteen checks
 
 | # | Check | What it validates | Detection |
 |---|---|---|---|
@@ -808,14 +808,14 @@ Appendix B has the consolidated routing table.
 
 ### 6.4 Pass/fail behavior
 
-**On all ten checks passing:** proceed to §7 emission.
+**On all fourteen checks passing:** proceed to §7 emission.
 
 **On any check failing:** emit a structured error report:
 
 ```
 Skill 3 cross-reference pass failed.
 
-Checks failed: <count> of 10
+Checks failed: <count> of 14
 Checks passed: <count>
 
 [For each failure:]
@@ -941,7 +941,7 @@ If the file already exists in the workspace (Claude Code), append `-<counter>` b
 Append one entry to spec section 7.3:
 
 ```
-[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 10/10 passed.
+[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 14/14 passed.
 ```
 
 In single-conv: this entry appears in the regenerated spec, which is part of Skill 3's chat output below the JSON code block.
