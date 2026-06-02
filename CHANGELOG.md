@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-06-02
+
+### Skills
+
+- **All 18 skills:** added a **language-mirroring** directive — each skill now replies in the user's language (Hebrew→Hebrew, English→English) and follows mid-conversation switches. Affects conversational prose, questions, and `AskUserQuestion` labels only; emitted artifacts (identifiers, JSON keys, BCP-47 codes, API field names) are unchanged. The generated bot's runtime language behavior and the code-switch guardrail are **not** affected.
+- **4 interactive skills** (voicenter-mcp `setup`, Skill 1 Spec Designer, Skill 2 Intent Detail Author, Skill 3 JSON Assembler): added a **bilingual opening** (Hebrew + English greeting on first contact). Skills 2, 3 and `setup` also gained a **one-question-per-turn** interview directive (single `AskUserQuestion` per message, never batch). Skill 1's existing §2.4 iron rule was **upgraded** with the same one-question-per-turn teeth rather than duplicated.
+
+### Versioning
+
+- voicenter-mcp 1.1.6 → 1.1.7, voicenter-api 1.1.6 → 1.1.7, voicenter-bot-builder 1.8.0 → 1.9.0, marketplace metadata 1.8.0 → 1.9.0.
+
 ## [1.8.0] — 2026-06-01
 
 ### Skills
