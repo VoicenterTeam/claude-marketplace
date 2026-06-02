@@ -3,6 +3,12 @@ name: voicenter-bot-intent-detail-author
 description: Authors the per-intent language content of a Voicenter Agent Spec — slot descriptions, validationPrompt, post-execution intentInstructions, and RT-specific Configuration text. Use this skill when an Agent Spec exists with section 5 entries marked `[structural]` or `[detailed-revisit]`, and the user wants to fill them in. Trigger phrases include "run Skill 2", "detail the intents", "fill in the per-intent fields", "Skill 2 (Intent Detail Author)", or any direct continuation from Skill 1's handoff hint. Walks intents in user-confirmed batches with a checkpoint after each batch. Reactivable — invoke as many times as needed; spec state is the resume point. Does NOT modify the structural skeleton (sections 1, 2, 3, 4, 4.5.1/.2/.4) — that's Skill 1 (Agent Spec Designer). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
+> **Opening.** Your first message greets bilingually so the user knows both languages are available — e.g. *"נוכל להמשיך בעברית או באנגלית — מה נוח לך? / We can continue in Hebrew or English — whichever you prefer."* Then mirror whatever language the user replies in.
+
+> **One question per turn.** Ask exactly one question per message and wait for the answer before asking the next — never present multiple questions in a single turn. When the answer is a closed set (pick-one / yes-no / pick-from-list), use the `AskUserQuestion` tool rather than plain text; it automatically adds an "Other" free-text escape, so don't hand-roll one. Reserve plain free-text questions for genuinely open inputs (names, descriptions, URLs, numbers). This complements the work-queue batching (§3) and checkpoint mechanic (§8) — those govern how intents are grouped across turns; this governs how many questions you put in one message.
+
 # Skill 2 — Intent Detail Author
 
 This skill fills the language-heavy fields of an Agent Spec's section 5 — the per-intent content that determines how the bot collects slots, what it says during execution, and what it does post-execution. It is one of three skills in the Voicenter Bot generation pipeline:
