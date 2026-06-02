@@ -7,6 +7,10 @@ Design the structural skeleton of a Voicenter Bot through a guided interview. Sk
 
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
+> **Opening.** Your first message greets bilingually so the user knows both languages are available — e.g. *"נוכל להמשיך בעברית או באנגלית — מה נוח לך? / We can continue in Hebrew or English — whichever you prefer."* Then mirror whatever language the user replies in.
+
 ## What it does
 
 Produces the **structural skeleton** of an Agent Spec markdown file by interviewing the user. The output, `agent-spec.md`, is the shared artifact the entire pipeline operates on.
@@ -63,7 +67,7 @@ If MCP is unavailable, Skill 1 follows a **3-tier fallback** — never silently 
 
 The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they are not fetched live.
 
-**B. Menu prompts via `AskUserQuestion`.** Every closed-set choice the user makes during the interview is presented through `AskUserQuestion` — never plain free-text. The iron rule: if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. Free-text is reserved for genuinely open-ended fields (names, descriptions, free-form text content, integer/numeric values).
+**B. Menu prompts via `AskUserQuestion`.** Every closed-set choice the user makes during the interview is presented through `AskUserQuestion` — never plain free-text. The iron rule: if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. Free-text is reserved for genuinely open-ended fields (names, descriptions, free-form text content, integer/numeric values). **Ask exactly one question per turn** — a single `AskUserQuestion` (or one free-text prompt) per message, waiting for the answer before the next; never batch multiple questions into one turn.
 
 Concretely, this covers:
 

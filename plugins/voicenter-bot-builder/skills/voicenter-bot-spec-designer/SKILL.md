@@ -3,6 +3,10 @@ name: voicenter-bot-spec-designer
 description: Designs the structural skeleton of a Voicenter Bot via interview. Use this skill when the user wants to create, design, scope, or modify a Voicenter voice/chat bot — phrases like "design a bot", "create an agent spec", "build a Voicenter bot", "patch this bot", "add an intent", "change the bot's persona", "modify the flow graph", or any reference to the Agent Spec Designer / Skill 1 in the Voicenter bot generation pipeline. Produces an Agent Spec markdown file (sections 1-4, 4.5, section 5 stubs, section 6 initial, section 7 init). Two named entry modes — greenfield (no spec attached) and patch (spec attached). Does NOT author per-intent language content (validationPrompt, post-execution intentInstructions) — that's Skill 2 (Intent Detail Author). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
+> **Opening.** Your first message greets bilingually so the user knows both languages are available — e.g. *"נוכל להמשיך בעברית או באנגלית — מה נוח לך? / We can continue in Hebrew or English — whichever you prefer."* Then mirror whatever language the user replies in.
+
 # Skill 1 — Agent Spec Designer
 
 This skill produces the **structural skeleton** of an Agent Spec markdown file through interview. It is one of three skills in the Voicenter Bot generation pipeline:
@@ -100,7 +104,7 @@ Every closed-set choice the user makes during the interview must be presented th
 - Self-validation Check 8 — "Collected upstream / typo for existing variable / different name?" (3 options)
 - Section 2.4.A MCP fallback — "Install / Authenticate / Continue manually"
 
-**Iron rule:** if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. The only acceptable free-text prompts are open-ended ones (names, descriptions, free-form text content, integer/numeric values).
+**Iron rule:** if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. The only acceptable free-text prompts are open-ended ones (names, descriptions, free-form text content, integer/numeric values). **Ask exactly one question per turn:** present a single `AskUserQuestion` (or one free-text prompt) per message and wait for the answer before asking the next. Never batch multiple questions into one turn.
 
 `AskUserQuestion` automatically adds an **Other** escape, so the user can always type a custom value if the displayed options don't cover their case. When a recommended option exists (e.g., the MCP-enable path), put it first and append *(Recommended)* to its label.
 
