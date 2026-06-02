@@ -3,6 +3,12 @@ name: voicenter-bot-json-assembler
 description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 14 checks (7 §15.4 + 3 Compass + 4 botIntents-role), checks 1–7 and 11–14 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
+> **Opening.** Your first message greets bilingually so the user knows both languages are available — e.g. *"נוכל להמשיך בעברית או באנגלית — מה נוח לך? / We can continue in Hebrew or English — whichever you prefer."* Then mirror whatever language the user replies in.
+
+> **One question per turn.** Ask exactly one question per message and wait for the answer before asking the next — never present multiple questions in a single turn. When the answer is a closed set (pick-one / yes-no / pick-from-list), use the `AskUserQuestion` tool rather than plain text; it automatically adds an "Other" free-text escape, so don't hand-roll one. Reserve plain free-text questions for genuinely open inputs (names, descriptions, URLs, numbers).
+
 # Skill 3 — JSON Assembler & Publish
 
 This skill produces the **deployable Bot JSON** by mechanically projecting a fully-detailed Agent Spec into Voicenter wire-format. It is the third and final skill in the Voicenter Bot generation pipeline:
