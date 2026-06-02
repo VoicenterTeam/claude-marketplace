@@ -3,6 +3,8 @@ name: call-log
 description: Pull call detail records (CDR) from Voicenter using the Call Log API
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer query **call history (CDR records)** from the Voicenter Call Log API — filter by date, phone, extension, call type, and choose exactly which fields to return.
 
 ## When to use this skill

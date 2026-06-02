@@ -3,6 +3,8 @@ name: mute-recording
 description: Mute or unmute call recording in real time via the Voicenter Mute Call Recording API
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer integrate **real-time recording mute/unmute** into their CRM — so agents can pause recording when a customer provides sensitive information (credit card, ID number, etc.).
 
 ## When to use this skill

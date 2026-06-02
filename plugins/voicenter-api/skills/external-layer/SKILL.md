@@ -3,6 +3,8 @@ name: external-layer
 description: Build an External Layer IVR endpoint that lets Voicenter route inbound calls based on your CRM business logic
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer implement an **External Layer** endpoint — a URL that Voicenter's IVR calls mid-flow, so the developer's server can decide where to route each incoming call dynamically based on CRM data.
 
 ## When to use this skill

@@ -3,6 +3,8 @@ name: lead-tracker
 description: Track which marketing campaign or web page generated an inbound call using the Voicenter Lead Tracker JS SDK
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer integrate the **Voicenter Lead Tracker** — a JavaScript SDK that assigns dynamic phone numbers (DIDs) to website visitors to track which ad, campaign, or landing page led to each incoming call.
 
 ## When to use this skill

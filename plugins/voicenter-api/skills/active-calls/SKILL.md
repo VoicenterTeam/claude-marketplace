@@ -3,6 +3,8 @@ name: active-calls
 description: Get a real-time snapshot of all active calls and queue activity via the Voicenter Active Calls API
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer query **live call state** — who is on a call right now, what extensions are active, and how many callers are waiting in queues — using simple HTTP requests (no socket connection required).
 
 ## When to use this skill

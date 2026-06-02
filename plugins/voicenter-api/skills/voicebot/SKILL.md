@@ -3,6 +3,8 @@ name: voicebot
 description: Build a VoiceBot data endpoint that the Voicenter Voice Agent calls mid-conversation to fetch dynamic CRM data
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer implement a **VoiceBot API endpoint** — a URL that the Voicenter Voice Agent (AI bot) calls during a live conversation to retrieve dynamic CRM data before continuing.
 
 ## When to use this skill

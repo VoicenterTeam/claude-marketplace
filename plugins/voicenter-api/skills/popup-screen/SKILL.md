@@ -3,6 +3,8 @@ name: popup-screen
 description: Implement a Pop-Up Screen endpoint that Voicenter calls during incoming calls to display caller CRM data to agents
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer build the **Pop-Up Screen** endpoint — a server-side URL that Voicenter calls when an incoming call rings, answers, or hangs up, so the agent's CRM opens automatically with the caller's details.
 
 ## When to use this skill

@@ -3,6 +3,8 @@ name: login-logout
 description: Set agent login/logout and status via the Voicenter Login/Logout API
 ---
 
+> **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
+
 Help the developer integrate **agent status management** — log agents in/out and set their work status (Login, Logout, Lunch, etc.) directly from a CRM, HR system, or workforce management tool.
 
 ## When to use this skill
