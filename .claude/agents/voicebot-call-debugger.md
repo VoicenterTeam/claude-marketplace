@@ -171,7 +171,8 @@ back to the dump folder name if absent. Structure:
 1. **Header** — session id, bot id / version, caller, duration, terminal status.
 2. **Reconstructed timeline** — compact ordered view: turns, transitions, tool calls.
 3. **Findings** — a table with columns:
-   `class | severity | evidence (seq · event) | owner | recommendation`.
+   `class | severity | evidence | owner | recommendation`, where the `evidence` cell uses
+   the §3 citation form `seq N (event-name)`.
 4. **Root-cause verdict** — ONE paragraph: what most likely went wrong and the single
    highest-value next action.
 
