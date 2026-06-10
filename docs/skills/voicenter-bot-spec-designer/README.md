@@ -72,7 +72,7 @@ The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they
 Concretely, this covers:
 
 - **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
-- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence yes/no, identifier ASCII-default confirmation (AI model config is **not** prompted — silent default)
+- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence yes/no (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
 - **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
 - **Phase 2/3 boundary** — pause vs skip Deep Research
 - **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
@@ -92,7 +92,7 @@ Concretely, this covers:
 Captures section 1 + section 3:
 
 1. **Bot name** (free text, often Hebrew)
-2. **Identifier** (snake_case ASCII; used as the JSON filename prefix by Skill 3 — defaults to a snake_cased Bot Name when ASCII)
+2. **Identifier** (snake_case ASCII; used as the JSON filename prefix by Skill 3 — always auto-derived from the Bot Name, never prompted: ASCII names are snake_cased, non-ASCII names are transliterated to Latin then snake_cased)
 3. **Description**
 4. **Customer Account ID** — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Accounts"]` to fetch the live account list, displays it, and prompts via `AskUserQuestion`. Falls back to free-text + `<UNKNOWN: Account ID>` if MCP is not connected.
 5. **Primary language** (BCP-47, e.g., `he-IL`)
@@ -342,7 +342,7 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 
 ## Common pitfalls
 
-- **Hebrew bot names without an Identifier.** Skill 3's filename rule reads section 1 `**Identifier:**`. Pre-v1.0 specs that lack the field fall back to ASCII-folding `**Bot Name:**`, and for Hebrew names that fallback fails → filename becomes `bot-bot-<date>.json`. Skill 1 always asks for an identifier explicitly.
+- **Hebrew bot names without an Identifier.** Skill 3's filename rule reads section 1 `**Identifier:**`. Pre-v1.0 specs that lack the field fall back to ASCII-folding `**Bot Name:**`, and for Hebrew names that fallback fails → filename becomes `bot-bot-<date>.json`. Skill 1 always populates an identifier by auto-transliterating the Bot Name (e.g. `יובל` → `yuval`), so specs it produces never hit this fallback.
 - **Generic "helpful assistant" personas.** Skill 1 blocks at Check 1. Push the user toward concrete identity, role, tone, and language assertions.
 - **Voice-isms inside `persona`.** Skill 1 blocks at Check 2 and offers to move them to `voiceInstructions`. Don't argue — accept the move.
 - **`<UNKNOWN: ...>` markers used loosely.** They aggregate into section 7.4 and become Skill 3 sentinel entries the user must resolve at import time. Use them deliberately.

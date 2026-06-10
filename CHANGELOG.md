@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Skills
+
+- **Skill 1 (Spec Designer):** the Phase 1 **Identifier** is no longer prompted. It is now silently auto-derived from the Bot Name — ASCII names are snake_cased, non-ASCII (e.g. Hebrew) names are transliterated to Latin then snake_cased (`יובל` → `yuval`). Removes one `AskUserQuestion` from the interview. The separate Phase 3 intent-name reject-and-suggest prompt is unaffected.
+
 ## [1.9.0] — 2026-06-02
 
 ### Skills

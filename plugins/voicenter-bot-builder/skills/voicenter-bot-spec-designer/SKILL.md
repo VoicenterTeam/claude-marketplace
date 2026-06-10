@@ -90,7 +90,7 @@ The **model catalog and voice catalog are NOT fetched live** — both remain har
 Every closed-set choice the user makes during the interview must be presented through `AskUserQuestion` — never plain free-text. This applies to every "pick one" or "yes/no" step, including (but not limited to):
 
 - Setup §2.1/§2.2 — runtime correction (Single-conversation vs Claude Code) and mode override (Greenfield vs Patch) when the auto-detected value is wrong
-- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence yes/no, identifier confirmation when an ASCII default is suggested ("Use suggested `[snake_case]`" / "Propose alternative"). (AI model config is **not** prompted — it silently defaults to Gemini Live 3.1 per §3.1 step 8.)
+- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence yes/no. (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Gemini Live 3.1 per §3.1 step 8.)
 - Phase 2 — every "Show the draft, confirm or edit" prompt (§3.2.1 persona, §3.2.3 opening behavior, §3.2.4 opening announcement) → "Accept" / "Edit" (Edit branches into free-text capture)
 - Phase 2 — "Accept template default or override?" for inactive channels (§3.2.2)
 - Phase 2/3 boundary — "Pause for Deep Research or skip and proceed?" (§3.3)
@@ -125,7 +125,7 @@ Four phases, in order. Phase boundaries are not strict — revisit earlier phase
 Ask, in order:
 
 1. **Bot name** (free text, often Hebrew). Required.
-2. **Identifier**: ASCII snake_case used as the filename prefix when Skill 3 emits the JSON. If Bot Name is already pure ASCII, default to its snake_cased form and prompt via `AskUserQuestion` per Section 2.4.B (header: "Identifier", 2 options: "Use suggested `[snake_case]` *(Recommended)*" / "Propose alternative" — Other captures the alternative as free text). Otherwise (Hebrew or other non-ASCII bot names), capture the identifier as free text. Required. Written to spec section 1 as `**Identifier:**`.
+2. **Identifier**: ASCII snake_case used as the filename prefix when Skill 3 emits the JSON. **Always auto-derive it from the Bot Name — never prompt.** If Bot Name is pure ASCII, snake_case it (`Customer Support` → `customer_support`). If Bot Name is Hebrew or other non-ASCII, transliterate it to Latin first, then snake_case (`יובל` → `yuval`, `מוקד רפואה` → `moked_refua`). Required. Written to spec section 1 as `**Identifier:**` without asking the user.
 3. **Description** (free text). May duplicate the name. Required.
 4. **Customer Account ID** (integer, references the Voicenter customer account). Per Section 2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Accounts"]` and display the returned accounts to the user as an id+name table. Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Account"). If MCP is not connected or the user genuinely doesn't know: fall back to free-text capture and mark `<UNKNOWN: Account ID>`.
 5. **Primary language** (BCP-47, e.g., `he-IL`, `en-US`). Required.
