@@ -732,7 +732,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 →
 | 5 | RT=2 has `apiSilenceRelations[]` pairing **and an inline failover `intent`** | Every intent with `IntentResponces.ResponseTypeId = 2` has (a) a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`, and (b) a `Configuration.api_silence_behaviour.intent` that is a present, non-null integer equal to that entry's `ApiSilenceIntentID`. | Walk RT=2 intents; for each, verify the row exists AND the inline `intent` failover key is present and matches `ApiSilenceIntentID`. A missing/null/string `intent` is a blocking failure — the intent has no failover. |
 | 6 | `IntentResponces.Configuration` matches `apiSilenceRelations[].Configuration` | For each RT=2 intent, the **full content** of `IntentResponces.Configuration` equals the corresponding `apiSilenceRelations[].Configuration` content (v1.5.0 — was just the six `silence_*` sub-fields in prior baseline). | Deep equality across every key in the parent intent's Configuration: `url`, `method`, `headers`, `body` (if any), `fail_output`, `announcement`, `function_output`, `response_success`, `intentInstructions`, `intentLoadingAnnouncement`, AND the nested `api_silence_behaviour` sub-object (all six keys: the failover `intent` plus `silence_loops`, `silence_duration`, `silence_sentence`, `silence_instructions`, `silence_ending_sentence`). |
 | 7 | Mustache resolvability | Every Mustache reference (in any text field across the assembled structure) resolves: (a) collected by the same intent that uses it, OR (b) in 4.5.1+4.5.2 whitelist (call-context or env), OR (c) in 4.5.3 collected by an intent that is upstream of the using intent in the transition graph, OR (d) in 4.5.4 declared for the same RT=2 intent or an upstream RT=2 intent. | Walk every text field; extract Mustache tokens; for each, classify against (a)-(d). |
-| 8 | Assembled-prompt token budget (Compass rule 1) | Estimated token count of the assembled systemInstruction-equivalent text (bot-level prompts + per-intent validationPrompt + per-intent post-exec intentInstructions, excluding openingAnnouncement) is below the doctrine thresholds. Advisory at 1,500–2,499; **blocking** at ≥ 2,500. Applies only when `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview` (gating per Compass rule 1). | Run the char-based token estimate per `references/voice-prompt-doctrine.md` §2. Banner-report the count and band. Halt on ≥ 2,500. |
+| 8 | Assembled-prompt token budget (Compass rule 1) | Estimated token count of the assembled systemInstruction-equivalent text (bot-level prompts + per-intent validationPrompt + per-intent post-exec intentInstructions, excluding openingAnnouncement) is below the doctrine thresholds. Advisory at 1,500–4,999; **blocking** at ≥ 5,000 (forced decomposition at ≥ 6,000). Applies only when `AiModelConfig.created.model` is `gemini-3.1-flash-live-preview` (gating per Compass rule 1). | Run the char-based token estimate per `references/voice-prompt-doctrine.md` §2. Banner-report the count and band. Halt on ≥ 5,000. |
 | 9 | Session-resumption ceiling (Compass rule 2) | If spec section 1 declares cross-session continuity is required, the assembled systemInstruction is under 200 tok. Advisory. Same gating as check 8. | Same token estimate as check 8. Banner-only if continuity not required. |
 | 10 | Model-config doctrine (Compass rule 12 — v1.5.0 inversion) | When `<root>.AiModelConfig.AIModelConfig.created.model` is `models/gemini-3.1-flash-live-preview`: validate that the version-level `AIModelConfig.created` does **NOT** contain any of the dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`, `thinkingConfig.thinkingLevel != "minimal"`). The lean payload from §4.2.4 has none of these by construction; check 10 catches future regressions. **Blocking** on any presence. | Inspect the assembled in-memory `ActiveVersionInfo.AIModelConfig.created`. The expected keys are exactly `realtimeInputConfig` and (when voice active) `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`. Any other key under `generationConfig` is a failure. |
 | 11 | Global registered as type-2 (C-a) | Every intent with role `global` has a `botIntents[]` entry with `BotIntentTypeID = 2`. | Build the set of `global` identifiers from section 4; for each, verify a `botIntents[]` entry exists with that `IntentId` and `BotIntentTypeID = 2`. |
@@ -758,15 +758,21 @@ Apply the char-based estimate from `../../references/voice-prompt-doctrine.md` �
 2. Count characters per class: Latin/ASCII/digit/punctuation at 1/4 token; Hebrew/Arabic/CJK at 1/1.5 token; whitespace at 1/4 token.
 3. Sum and round up. The result has ±15% accuracy.
 
-Thresholds (from Compass §4):
+Thresholds (enforcement policy — deliberately above the Compass §4 degradation point; see `references/voice-prompt-doctrine.md` rule 1 enforcement note and §4):
 - < 1,500 tok: no banner entry.
-- 1,500 – 2,499 tok: advisory — emit banner line `# - Token estimate: <N> tok (advisory threshold 1,500-2,499; expect noticeable barge-in lag and instruction-drop risk). See references/voice-prompt-doctrine.md rule 1.`
-- ≥ 2,500 tok: blocking — halt assembly. The structured error includes:
+- 1,500 – 4,999 tok: advisory — emit banner line `# - Token estimate: <N> tok (advisory threshold 1,500-4,999; expect noticeable barge-in lag and instruction-drop risk above ~2,500 per Compass §4). See references/voice-prompt-doctrine.md rule 1.`
+- 5,000 – 5,999 tok: blocking — halt assembly. The structured error includes:
   ```
   Check 8: Assembled-prompt token budget (Compass rule 1)
-    Violation: estimated <N> tok exceeds the 2,500 doctrine ceiling
+    Violation: estimated <N> tok exceeds the 5,000 enforcement ceiling
     Route to: Skill 1 patch mode — trim prompts.persona / voiceInstructions / intentInstructions, OR split this bot into orchestrator + specialist bots.
     Suggested fix: review per-intent validationPrompt for redundant guidance duplicated across persona and voiceInstructions; remove duplicates from the per-intent fields.
+  ```
+- ≥ 6,000 tok: blocking — same halt, but the error additionally **mandates decomposition** (the prompt is too large to trim into budget):
+  ```
+  Check 8: Assembled-prompt token budget (Compass rule 1)
+    Violation: estimated <N> tok exceeds the 6,000 decomposition ceiling — trimming alone will not reach budget.
+    Route to: Skill 1 patch mode — split this bot into an orchestrator + specialist bots (Compass §4). Trimming prompt text will not be sufficient at this size.
   ```
 
 **Check 9 specifics — session-resumption ceiling:**
@@ -991,7 +997,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
 - **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.
 - **Tolerate intent identifier collisions.** If two intents share an identifier across section 4 (which shouldn't happen post Skill 1 validation but could from a hand-edit), Skill 3 reports a parse error rather than silently reusing the cached ID. Identifier uniqueness is structurally required.
-- **Rewrite or compress prompt text to meet the Compass rule 1 token budget.** When check 8 (token budget) fires at the blocking threshold (≥ 2,500 tok), Skill 3 halts and routes to Skill 1 / Skill 2 patch — it does not auto-trim, summarize, paraphrase, or re-section the user's prompt content. The user owns the prose; Skill 3's job is to measure and refuse, never to author.
+- **Rewrite or compress prompt text to meet the Compass rule 1 token budget.** When check 8 (token budget) fires at the blocking threshold (≥ 5,000 tok), Skill 3 halts and routes to Skill 1 / Skill 2 patch — it does not auto-trim, summarize, paraphrase, or re-section the user's prompt content. The user owns the prose; Skill 3's job is to measure and refuse, never to author.
 - **Resolve Compass advisories without user input.** Rules 3, 4, 5, 6, 7, 9, 10 are all advisory-only at their owning skill. If a spec arrives at Skill 3 with unresolved advisories in section 7.3, Skill 3 emits the corresponding DOCTRINE SENTINELS banner lines (per rule 13) — it does not silently apply fixes. The user decides at authoring time; Skill 3 only reports.
 
 ---

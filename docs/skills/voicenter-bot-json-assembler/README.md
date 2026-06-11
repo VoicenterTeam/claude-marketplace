@@ -384,14 +384,14 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 The bot-builder plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`. Skill 3 owns three new cross-reference checks plus a banner extension:
 
-- **Check 8 — Assembled-prompt token budget (Compass rule 1).** Advisory at 1,500–2,499 tok; blocking at ≥ 2,500 tok. Estimated via a char-based method (Latin at 1/4 tok per char, Hebrew/Arabic/CJK at 1/1.5). Excludes `prompts.openingAnnouncement` (platform-rendered). Gated on `AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`.
+- **Check 8 — Assembled-prompt token budget (Compass rule 1).** Advisory at 1,500–4,999 tok; blocking at ≥ 5,000 tok (forced decomposition at ≥ 6,000 tok). The block threshold is deliberately set above the Compass-measured degradation point (~2,500 tok) — the advisory band still surfaces that degradation, but the pipeline only halts at 5,000 to give authors working room. Estimated via a char-based method (Latin at 1/4 tok per char, Hebrew/Arabic/CJK at 1/1.5). Excludes `prompts.openingAnnouncement` (platform-rendered). Gated on `AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`.
 - **Check 9 — Session-resumption ceiling (Compass rule 2).** Advisory. Fires only when the spec declares cross-session continuity is required. Warns if the assembled prompt exceeds 200 tok.
 - **Check 10 — Model-config doctrine (Compass rule 12).** Blocking on any of: wrong model string, `thinkingLevel` ≠ minimal/absent, `affectiveDialog` enabled, `proactiveAudio` populated, missing `responseModalities: ["AUDIO"]` on voice-active bots.
 - **DOCTRINE SENTINELS banner section (Compass rule 13).** Auto-applied at emission. One banner line per Compass advisory (rules 3, 4, 5, 6, 7, 9, 10) that fired during authoring and was not resolved.
 
 Cross-references 1–7 (per Doc 1 §15.4) remain blocking; checks 8–10 are gated on Gemini Live 3.1 and skip silently with a one-time section 7.3 log entry for other models.
 
-Anti-list addition: Skill 3 **does not auto-trim prompt text** to satisfy the token budget. Above 2,500 tok, assembly halts and routes to Skill 1 / Skill 2 patch.
+Anti-list addition: Skill 3 **does not auto-trim prompt text** to satisfy the token budget. Above 5,000 tok, assembly halts and routes to Skill 1 / Skill 2 patch.
 
 ---
 

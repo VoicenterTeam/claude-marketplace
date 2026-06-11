@@ -2,9 +2,16 @@
 
 ## [Unreleased]
 
+## [1.9.1] — 2026-06-11
+
 ### Skills
 
 - **Skill 1 (Spec Designer):** the Phase 1 **Identifier** is no longer prompted. It is now silently auto-derived from the Bot Name — ASCII names are snake_cased, non-ASCII (e.g. Hebrew) names are transliterated to Latin then snake_cased (`יובל` → `yuval`). Removes one `AskUserQuestion` from the interview. The separate Phase 3 intent-name reject-and-suggest prompt is unaffected.
+- **Skill 3 (JSON Assembler) — token-budget gate raised.** Check 8 (Compass rule 1) now goes **advisory at 1,500–4,999 tok** and **blocking at ≥ 5,000 tok**, with **forced decomposition at ≥ 6,000 tok** (was: advisory 1,500–2,499, blocking ≥ 2,500, decompose ≥ 4,000). This is a deliberate operator override: the Compass-measured degradation point (~2,500 tok) is **unchanged** and still surfaced as an advisory — only the pipeline's *block* threshold is relaxed to give authors working room. `voice-prompt-doctrine.md` §4 now separates the Compass *measurement* column from the Skill 3 *enforcement* column so the doc stays internally honest about the divergence.
+
+### Versioning
+
+- voicenter-bot-builder 1.9.0 → 1.9.1, marketplace metadata 1.9.0 → 1.9.1. **voicenter-mcp and voicenter-api stay at 1.1.7** — neither plugin changed (versions are bumped per-plugin for what actually changed, not in blanket lockstep).
 
 ## [1.9.0] — 2026-06-02
 

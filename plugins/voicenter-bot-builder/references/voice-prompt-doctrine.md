@@ -19,9 +19,9 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 **Source:** Compass §4 budget table, §8 operating rule 2.
 **Applies to:** assembled `systemInstruction` content (= `prompts.persona` + `prompts.voiceInstructions` + `prompts.intentInstructions` + sum of every intent's `validationPrompt` + sum of every intent's post-execution `intentInstructions`).
 **Owning skill:** Skill 3 (§6.2 cross-reference check 8).
-**Severity:** advisory at 1,500–2,500 tok; **blocking** above 2,500 tok.
+**Severity:** advisory at 1,500–4,999 tok; **blocking** at ≥ 5,000 tok (forced decomposition at ≥ 6,000 tok).
 **Gating:** `[GL3.1]`.
-**Why:** Gemini Live 3.1 Flash does not support context caching — the assembled prompt is paid in full on every session start, and every subsequent turn re-attends over it. Above 2,500 tok, first-turn TTFA materially degrades and instruction-drop risk rises (Compass §1, §4).
+**Why:** Gemini Live 3.1 Flash does not support context caching — the assembled prompt is paid in full on every session start, and every subsequent turn re-attends over it. Above 2,500 tok, first-turn TTFA materially degrades and instruction-drop risk rises (Compass §1, §4). **Enforcement note:** the pipeline gate is deliberately set *higher* than the Compass degradation point — advisory through 4,999, blocking only at ≥ 5,000 — an operator decision that accepts the documented 2,500–4,999 degradation as advisory-only to give authors working room. The Compass measurement (degradation begins ~2,500) is unchanged; only the pipeline's block threshold is relaxed. See §4.
 **Fix recipe (advisory):** offer to (a) split bot-level `prompts.intentInstructions` across orchestrator + specialist bots, (b) trim duplicate guidance across `persona` / `voiceInstructions` / per-intent `validationPrompt`, (c) move policy that's not call-wide into the relevant intent.
 **Fix recipe (blocking):** halt assembly with the same advice plus a routing recommendation to Skill 1 patch mode.
 
@@ -186,7 +186,7 @@ Rules 1 and 2 require an assembled-prompt token estimate. v1 uses a deterministi
 
 **Reporting:** in the banner, declare the method and the band: `token estimate (char-method, ±15%): <N> tok — threshold <X> <fired|not fired>`.
 
-**Known limitations:** ±15% accuracy is acceptable for the 1,500 / 2,500 thresholds, both of which have wide bands. Sharper accuracy would be needed to enforce the 200-tok session-resumption ceiling tightly — for that, the spec recommends warning when the estimate is within ±30% of 200.
+**Known limitations:** ±15% accuracy is acceptable for the 1,500 / 5,000 thresholds, both of which have wide bands. Sharper accuracy would be needed to enforce the 200-tok session-resumption ceiling tightly — for that, the spec recommends warning when the estimate is within ±30% of 200.
 
 ---
 
@@ -217,15 +217,17 @@ Compass §2 + §6 condensed. Use this table to triage whether a concern belongs 
 
 ## 4. Token budget table
 
-Compass §4 thresholds for assembled systemInstruction on Gemini Live 3.1:
+The **Impact** column is the Compass §4 *measurement* for Gemini Live 3.1 (unchanged). The **Skill 3 behavior** column is the pipeline's *enforcement* policy, deliberately relaxed above the degradation point so authors have working room — see the rule 1 enforcement note. The two diverge on purpose between 2,500 and 5,000.
 
-| Size (tok) | Impact | Skill 3 behavior |
+| Size (tok) | Impact (Compass §4, measured) | Skill 3 behavior (pipeline policy) |
 |---|---|---|
 | < 800 | Negligible; native audio path ~400 ms TTFA | No banner mention. |
 | 800 – 1,499 | Mild; first-turn +100–300 ms | No banner mention. |
 | 1,500 – 2,499 | Noticeable; barge-in feels sluggish | Advisory in banner. |
-| ≥ 2,500 | Material degradation; instruction-drop risk | **Block assembly.** |
-| ≥ 4,000 | Stop — split into orchestrator + specialists | **Block + suggest decomposition.** |
+| 2,500 – 3,999 | Material degradation; instruction-drop risk | Advisory in banner. |
+| 4,000 – 4,999 | Severe (Compass: "stop, split") | Advisory in banner. |
+| 5,000 – 5,999 | — | **Block assembly.** |
+| ≥ 6,000 | — | **Block + force decomposition** (orchestrator + specialists). |
 
 The 200-tok session-resumption ceiling (rule 2) is a separate concern with its own banner line.
 
@@ -238,7 +240,7 @@ These are the prompt-author-facing summary. Useful to re-read before any bot-lev
 1. The prompt is conversational policy and nothing else. If a concern can be enforced in code with guarantees, enforce it in code.
 2. Target 600–1,200 tokens for the system instruction; hard ceiling at 1,500. Above that, split the agent. Below 200 if you need session resumption to work reliably.
 
-> **Pipeline note:** the bot-builder's Skill 3 enforces *advisory* (not blocking) at 1,500–2,499 to give authors room to work; blocking fires at ≥ 2,500. See rule 1 and §4 for the actual enforcement thresholds. The 1,500 figure is the Compass author's ideal target, retained verbatim here because the operating rules section is meant to mirror Compass §8.
+> **Pipeline note:** the bot-builder's Skill 3 enforces *advisory* (not blocking) at 1,500–4,999 to give authors room to work; blocking fires at ≥ 5,000, with forced decomposition at ≥ 6,000. See rule 1 and §4 for the actual enforcement thresholds. The 1,500 figure is the Compass author's ideal target, retained verbatim here because the operating rules section is meant to mirror Compass §8; note the pipeline's block threshold (5,000) is deliberately set above the Compass degradation point (2,500).
 
 3. No prompt-injection defenses in the prompt. Use a multilingual classifier as an input gate.
 4. No PII rules, rate limits, or compliance boilerplate in the prompt. Those live in the data plane.
