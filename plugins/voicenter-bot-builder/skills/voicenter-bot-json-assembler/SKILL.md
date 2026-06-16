@@ -99,7 +99,7 @@ Parseability is checked before completeness in cases where the file is malformed
 
 #### Gate C — RT=2 verification
 
-For every intent with `ResponseTypeId = 2` (RT=2 / API Call) in section 4, verify a matching entry exists in spec section 7.6 (the RT=2 API verification log). If any RT=2 intent has no 7.6 entry, refuse:
+For every intent whose section-4 **Response Type** is 2 (RT=2 / API Call), verify a matching entry exists in spec section 7.6 (the RT=2 API verification log). If any RT=2 intent has no 7.6 entry, refuse:
 
 > Skill 3 will not assemble an RT=2 intent whose API was never verified. Intent(s) missing a section 7.6 verification record: [list]. Re-run **Skill 2 (Intent Detail Author)** on each — it hard-verifies the live API (real `curl`, 2xx + every declared response path present) and writes the 7.6 record. There is no waiver.
 
@@ -169,7 +169,7 @@ The transition-target check (last two rows) blurs into cross-reference territory
 
 ## 4. Spec-to-wire-format assembly
 
-Run only if both pre-flight gates pass and the parser succeeds. Assembly happens in memory; nothing is emitted until §6 (cross-reference pass) also passes.
+Run only if all three pre-flight gates pass and the parser succeeds. Assembly happens in memory; nothing is emitted until §6 (cross-reference pass) also passes.
 
 ### 4.1 ID placeholder allocation
 
