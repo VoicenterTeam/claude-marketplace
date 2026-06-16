@@ -366,6 +366,20 @@ Layer ID is structural (declared in section 4). If marked `<UNKNOWN: layer ID>`,
 
 #### RT=2 (API Call)
 
+**Iron rule (live API verification — fires during step 3, blocking; HARD BLOCK, no waiver):**
+
+Before authoring/confirming the RT=2 `announcement`, Skill 2 must verify the API live. An RT=2 intent CANNOT be marked `[detailed]` until this passes. There is no waiver.
+
+1. **Gather a concrete sample request.** Ask the user for real values for the body's Mustache slots and for any secret/auth header values (from section 4.5.2 env or supplied inline for the call). If the URL is still `<UNKNOWN: webhook URL>`, verification cannot run — **block** and route the user back to Skill 1 patch mode to supply the URL.
+2. **Execute a live `curl`** (via the Bash tool) against the section-4 URL using the captured method/headers/body with the sample values substituted. Example shape: `curl -sS -X POST "<url>" -H "<header>: <value>" -d '<body-json>' -w "\n%{http_code}"`.
+3. **Pass condition (both must hold):**
+   - HTTP status is 2xx.
+   - Every dotted path declared in section 4.5.4 for this intent, AND every path referenced in the `announcement`, is present in the live response JSON (path form per 4.5.4: `available_slots.0.display`, `response.order.status`).
+4. **On pass:** record a verification entry in spec section 7.6 (see `spec-skeleton.md` §7.6) — ISO-8601 timestamp, intent identifier, HTTP status, the confirmed dotted paths, and a **redacted** echo of the request (method, URL, header NAMES with values masked, body with Mustache-slot values masked). Then continue to the language fields.
+5. **On any failure** — non-2xx, network/DNS error, unknown URL, or any declared path absent — **block**. Surface the exact failure (HTTP code + body excerpt, or the specific missing path). The intent cannot reach `[detailed]`.
+
+**Secrets & PII:** never write raw secrets or raw PII to the spec. Section 7.6 stores only the masked request echo, the status code, and the confirmed path list.
+
 Required language fields:
 
 | Field | Meaning |

@@ -136,6 +136,8 @@ Layer ID is structural (in section 4). If `<UNKNOWN: layer ID>`, leave as-is —
 
 #### RT=2 (API Call)
 
+**Live API verification (blocking — hard block, no waiver).** Before authoring the RT=2 `announcement`, Skill 2 curls the real endpoint with a user-supplied sample request (real slot values + any auth/secret header values). The intent cannot be marked `[detailed]` unless the call returns HTTP 2xx AND every dotted path declared in 4.5.4 / referenced in the `announcement` is present in the live response JSON. Any failure — non-2xx, unreachable, unknown URL, or a missing path — blocks; there is no override. On success, a redacted verification record (masked request, status, confirmed paths — never raw secrets/PII) is written to spec section 7.6.
+
 | Field | Meaning |
 |---|---|
 | `announcement` | What the bot says when the API succeeds (v1.5.0 — was `apiResponseAnnouncement` pre-v1.5.0). Almost always uses Mustache references against section 4.5.4 dotted paths. |
