@@ -82,6 +82,7 @@ IF caller refuses to provide an address:
   - If still refused, transfer to transfer_to_human.
 
 IRON RULES:
+- Ask for exactly ONE parameter per turn, in collection order. Do NOT combine the address and time-slot requests into one utterance. Wait for the caller's answer before the next ask.
 - Every appointment requires a complete address.
 - The selected time slot must be one of the offered options. No improvisation.
 - Do NOT discuss pricing — refer to transfer_to_human for billing.
@@ -405,6 +406,7 @@ Run through this before flipping an intent to `[detailed]`.
 - [ ] Steps are numbered (`1.`, `2.`, `3.`), not bulleted
 - [ ] All branching uses explicit IF / ELSE
 - [ ] At least one IRON RULE block exists
+- [ ] If the intent has ≥2 collectable slots: a one-parameter-per-turn IRON RULE is present and each numbered step asks for exactly one slot
 - [ ] No paragraphs of free prose
 - [ ] No channel-specific behavior (pacing, formatting, emoji policy) — these belong in section 2.2 / 2.3
 - [ ] No persistent policy (privacy, GDPR, retention) — these belong in section 2.1
