@@ -38,7 +38,7 @@ Skill 3 refuses to run if any intent is still `[structural]` or `[detailed-revis
 
 ## Pre-flight gates
 
-Two gates run before any assembly. Both blocking. Refusal at either gate emits a clear message and halts; no JSON is produced.
+Three gates run before any assembly. All blocking. Refusal at any gate emits a clear message and halts; no JSON is produced.
 
 | Gate | Check | Refusal route |
 |---|---|---|
