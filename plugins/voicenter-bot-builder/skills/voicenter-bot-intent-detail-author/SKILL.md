@@ -263,10 +263,32 @@ Free prose is forbidden. See `conversation-routines-style-guide.md` for template
    - Every slot in the intent appears in the prompt
    - Every v1-fallback slot has explicit format/range guidance
    - At least one IRON RULE block exists for the most critical constraint
+   - If the intent has ≥2 collectable slots, the one-parameter-per-turn IRON RULE is present (see sequential-collection iron rule below) and the numbered steps ask for exactly one slot each, in `CollectionOrder`
    - Prompt language matches the bot's primary language (Hebrew text for Hebrew bots, etc.)
    - Every Mustache reference resolves (see section 5 — Mustache resolvability mechanics)
 
 If any of these fail at end-of-step, return to authoring; do not advance to step 3.
+
+**Iron rule (sequential collection — fires during step 2, blocking):**
+
+If the intent has **two or more collectable slots**, the `validationPrompt` must collect them one at a time. "Collectable" excludes values populated from an upstream RT=2 API response (e.g. a dynamic ENUM whose `OptionList` is filled at runtime) — those are not asked of the caller and do not count toward the threshold.
+
+Two conditions, both required:
+
+1. The numbered steps ask for **exactly one slot per step**, ordered by the slot's `CollectionOrder` (from section 4).
+2. The prompt carries an IRON RULE that forbids bundling multiple slot requests into a single utterance and requires the bot to wait for the caller's answer before requesting the next slot.
+
+If either condition is unmet, **block** — do not flip the intent to `[detailed]`. Seed the rule with this wording (localize to the bot's primary language):
+
+```
+IRON RULE: ask for exactly ONE parameter per turn, in collection order.
+Do NOT combine multiple requests into a single utterance.
+Wait for the caller's answer before asking for the next parameter.
+```
+
+A single logical slot the caller answers in one breath (e.g. a `full address` STRING covering street + number + city) is still **one** slot and therefore one turn — the rule constrains across distinct declared slots, not the internal richness of one slot.
+
+Log on resolution to section 7.3: `Sequential-collection rule fired on [intent].validationPrompt — resolved`.
 
 **Iron rule (Compass rule 8 — TTS-safe formatting; fires during step 2, blocking on markdown/URLs and advisory on long digit runs):**
 

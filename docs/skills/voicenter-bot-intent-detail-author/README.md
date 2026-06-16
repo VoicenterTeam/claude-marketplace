@@ -111,6 +111,16 @@ The authoring procedure:
 4. Show the draft. User confirms or edits.
 5. Verify before advancing — every slot appears, every v1-fallback slot has format guidance, at least one IRON RULE exists, language matches the bot's primary language, every Mustache reference resolves.
 
+**Sequential collection (blocking).** When an intent has two or more caller-collectable slots, the `validationPrompt` must ask for them one at a time: one slot per numbered step in `CollectionOrder`, plus an IRON RULE forbidding bundled requests and requiring the bot to wait for each answer before the next ask. Slots populated from an upstream RT=2 response do not count toward the threshold. A single logical slot (e.g. a `full address` covering street + number + city) is one turn. Seed wording:
+
+```
+IRON RULE: ask for exactly ONE parameter per turn, in collection order.
+Do NOT combine multiple requests into a single utterance.
+Wait for the caller's answer before asking for the next parameter.
+```
+
+Skill 2 will not mark the intent `[detailed]` until both conditions hold; resolution is logged to section 7.3.
+
 ### Step 3 — RT-specific configuration
 
 The Configuration shape and required language fields differ by Response Type.
