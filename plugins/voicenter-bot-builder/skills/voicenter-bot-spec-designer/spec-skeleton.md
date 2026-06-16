@@ -210,3 +210,9 @@
 - [count] intents still in `[structural]` state: [list]
 - Hard intents pending: [list]
 - [Add `[detailed-revisit]` count if any patches have run]
+
+### 7.6 RT=2 API verification log
+
+[Per verified RT=2 intent, one append-only entry:
+ - [ISO-8601] [intent identifier] — HTTP [status]; paths confirmed: [comma-separated 4.5.4 dotted paths]; request (redacted): [method] [url], headers [names only], body [Mustache-slot values masked].
+ An RT=2 intent with no entry here is unverified and CANNOT be marked `[detailed]` (Skill 2 hard block) — Skill 3 Gate C also refuses to assemble it. Never store raw secrets or PII here.]
