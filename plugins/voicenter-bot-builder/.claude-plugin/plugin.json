@@ -1,6 +1,6 @@
 {
   "name": "voicenter-bot-builder",
   "description": "Three-skill pipeline for designing and generating Voicenter Bot JSON: Agent Spec Designer (interview), Intent Detail Author (per-intent language), and JSON Assembler (wire-format projection). Produces a deployable bot-<name>-<date>.json file.",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "keywords": ["voicenter", "voicebot", "voice-ai", "agent-spec", "bot-builder", "conversational-ai", "ivr", "intent-design", "json-emitter", "skill-suite"]
 }

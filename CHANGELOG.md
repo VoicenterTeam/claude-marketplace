@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-06-16
+
+### Skills
+
+- **Skill 2 (Intent Detail Author) — sequential slot collection (blocking).** Any intent with ≥2 caller-collectable slots now requires its `validationPrompt` to ask for them one at a time — one slot per numbered step in `CollectionOrder`, plus an IRON RULE forbidding bundled requests and requiring the bot to wait for each answer. Skill 2 will not mark the intent `[detailed]` until both hold. Slots populated from an upstream RT=2 response don't count toward the threshold; a single logical slot (e.g. `full address`) is one turn. Wired into §4.2 verify list, the Pattern V2 template, and the style-guide checklist.
+- **Skill 2 (Intent Detail Author) — RT=2 live API verification (hard block, no waiver).** Before authoring an RT=2 `announcement`, Skill 2 now curls the real endpoint with a user-supplied sample request. The intent cannot reach `[detailed]` unless the call returns HTTP 2xx AND every dotted path declared in 4.5.4 / referenced in the `announcement` is present in the live response JSON. Any failure (non-2xx, unreachable, unknown URL, missing path) blocks — there is no override. A redacted verification record (masked request, status, confirmed paths — never raw secrets/PII) is written to the new spec section 7.6. This replaces the prior "v1 trusts the declared shape" posture.
+- **Skill 1 (Spec Designer):** the §4.5.4 declared response shape is now documented as **provisional** pending Skill 2's live verification (was "v1 trusts the declared shape").
+- **Skill 3 (JSON Assembler):** new pre-flight **Gate C** — refuses to assemble any RT=2 intent lacking a section 7.6 verification record (backstop against hand-edited specs). Pre-flight is now three gates.
+
+### Documentation
+
+- New spec skeleton section **7.6 (RT=2 API verification log)**.
+- `docs/skills/voicenter-bot-{intent-detail-author,spec-designer,json-assembler}/README.md` mirrors updated.
+
+### Versioning
+
+- voicenter-bot-builder 1.9.1 → 1.10.0, marketplace metadata 1.9.1 → 1.10.0. **voicenter-mcp and voicenter-api stay at 1.1.7** — neither plugin changed.
+
 ## [1.9.1] — 2026-06-11
 
 ### Skills
