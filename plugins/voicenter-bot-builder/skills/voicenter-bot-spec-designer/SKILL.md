@@ -284,7 +284,7 @@ Ask:
 
 - **4.5.1 Call-context variables:** "What platform-supplied variables does your account expose at call start? Common entries: `caller_phone`, `TimeNow`, `caller_name`, `account_id`." If the user can't enumerate: emit defaults `caller_phone` and `TimeNow`, mark section `<INCOMPLETE: user to verify with platform>`.
 - **4.5.2 Environment variables:** "Are there any deployment-time secrets you'll reference, like `{{ENV.API_TOKEN}}`?" Capture by name. v1 trusts the user's declaration; no validation that the secret exists.
-- **4.5.4 API response shapes:** for each RT=2 intent, ask: "What dotted paths will you reference in the API response announcement? E.g., `available_slots.0.display`, `response.order.status`." Capture per intent. v1 trusts the declared shape; Skill 3 validates `announcement` (was `apiResponseAnnouncement` pre-v1.5.0) references against this allowlist.
+- **4.5.4 API response shapes:** for each RT=2 intent, ask: "What dotted paths will you reference in the API response announcement? E.g., `available_slots.0.display`, `response.order.status`." Capture per intent. The declared shape is **provisional** — Skill 2 hard-verifies it against the live API (real `curl`, 2xx + every declared path present) before the intent can be detailed; an unverifiable endpoint blocks. Skill 3 also validates `announcement` (was `apiResponseAnnouncement` pre-v1.5.0) references against this allowlist.
 
 (Section 4.5.3 is auto-derived from section 5 slots — generated in Phase 4 close-out.)
 
@@ -309,7 +309,7 @@ For unsupported types (number, integer, date, email — captured via the `Parame
 - Method — prompt via `AskUserQuestion` (POST / GET, header: "HTTP method")
 - Headers structure (user-described; defaults to `{}`)
 - Body structure with Mustache references (user-described)
-- API response shape declaration → already captured in 4.5.4
+- API response shape declaration → already captured in 4.5.4 (provisional; Skill 2 hard-verifies it against the live API before the intent can be detailed)
 - API silence behavior fields: `silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions` (text or empty), and **fallback intent reference** — pick from the existing intent set via `AskUserQuestion` per Section 2.4.B (header: "Fallback intent"; show the full intent list as a reference table first if it exceeds 4 items, then top candidates with Other for the long tail)
 - **Max turns / Max turns sentence (per-intent turn cap):** Skill 1 does NOT capture these in the interview. Skill 3 v1.5.0+ applies smart defaults at emission — RT=2 gets `max_turns: 15` and the standard Hebrew sentence; other RTs omit. If the spec author needs to override a specific intent's cap (e.g., set RT=1 unrelated-topic to `max_turns: 1` like the transport-planner production sample), they can hand-edit spec section 4 with the optional `**Max turns:**` field documented in `spec-skeleton.md` §4.
 

@@ -132,6 +132,8 @@ If the transcript triggers any of the four cues in `trigger-detection-rules.md`,
 
 Captures section 4 (intent rows) and section 4.5 stubs (call-context, environment, API-response variables):
 
+The declared response shape is provisional — Skill 2 hard-verifies it against the live API (a real `curl` returning 2xx with every declared dotted path present) before the RT=2 intent can be detailed; an unverifiable endpoint blocks.
+
 - Elicit the happy path
 - Expand fallbacks for each non-terminal intent
 - Per-intent capture: identifier (snake_case verb_object), display name, description, RT (1/2/3/4), transitions out (ordered), `**Bot-intent role:**`, hard-intent flag
