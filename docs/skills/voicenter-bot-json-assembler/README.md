@@ -47,6 +47,8 @@ Two gates run before any assembly. Both blocking. Refusal at either gate emits a
 
 In a malformed spec where section headers are missing entirely, Gate B fires first; in a structurally clean spec with pending intents, Gate A fires first.
 
+**Gate C — RT=2 verification.** Every RT=2 intent must carry a section 7.6 verification record (written by Skill 2 after a live `curl` confirmed 2xx + every declared response path). A missing record refuses assembly — backstop against a hand-edited spec. No waiver.
+
 ---
 
 ## Strict-template parser
@@ -86,7 +88,7 @@ Skill 3 halts on the first deviation, emits a structured error, and does not att
 
 ## Spec-to-wire-format assembly
 
-Runs only if both pre-flight gates pass.
+Runs only if all three pre-flight gates pass.
 
 ### ID placeholder allocation
 

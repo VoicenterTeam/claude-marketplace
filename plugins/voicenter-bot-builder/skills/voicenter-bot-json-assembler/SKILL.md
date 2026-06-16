@@ -79,7 +79,7 @@ State the detected runtime. The user can correct.
 
 ### 2.3 Pre-flight gates
 
-Two gates run before any assembly work. Both are blocking. Refusal at either gate emits a clear message and halts; no JSON is produced.
+Three gates run before any assembly work. All are blocking. Refusal at any gate emits a clear message and halts; no JSON is produced.
 
 #### Gate A — Completeness
 
@@ -96,6 +96,14 @@ Cross-check against section 7.5 (which Skill 2 maintains). If 7.5 says zero pend
 Run the strict-template parser (§3) over the spec. The first deviation halts parsing and produces a structured error. No partial assembly.
 
 Parseability is checked before completeness in cases where the file is malformed at the section-header level (e.g., section headers missing entirely) — in that case, Skill 3 cannot even tell which intents are pending. Practical order: try a quick scan for the seven `## N.` section headers first; if they're missing, Gate B fires first. If headers are present, Gate A fires first.
+
+#### Gate C — RT=2 verification
+
+For every intent with `ResponseTypeId = 2` (RT=2 / API Call) in section 4, verify a matching entry exists in spec section 7.6 (the RT=2 API verification log). If any RT=2 intent has no 7.6 entry, refuse:
+
+> Skill 3 will not assemble an RT=2 intent whose API was never verified. Intent(s) missing a section 7.6 verification record: [list]. Re-run **Skill 2 (Intent Detail Author)** on each — it hard-verifies the live API (real `curl`, 2xx + every declared response path present) and writes the 7.6 record. There is no waiver.
+
+This is a backstop: a hard-verified spec reaches Skill 3 with every RT=2 intent already `[detailed]` (Gate A) and logged in 7.6. Gate C catches a hand-edited spec that flipped an intent to `[detailed]` without verifying.
 
 ---
 
@@ -1044,6 +1052,7 @@ When Skill 3 fails, it tells the user which skill to invoke for the fix. This ta
 | Parse error: section header / field label deviation | §3 | **Manual fix** — usually a spec hand-edit. Restore the strict-template form, re-invoke Skill 3. |
 | Parse error: orphan section 5 entry / undeclared transition target | §3.3 | **Skill 1 patch mode** — structural issue (added/removed an intent, broke transition references). |
 | Pre-flight gate A: incomplete spec | §2.3 | **Skill 2 reactivation** — detail the remaining `[structural]` / `[detailed-revisit]` intents. |
+| Pre-flight gate C: RT=2 intent missing 7.6 verification | §2.3 | **Skill 2 reactivation** — re-run on the unverified RT=2 intent(s); Skill 2 curls the live API and writes the 7.6 record. |
 | Cross-reference check 1 fail (botIntents→intents dangling) | §6.2 | **Skill 1 patch mode** — intent removed but `botIntents[]` reference not cleaned up. |
 | Cross-reference check 2 fail (intentRelations dangling) | §6.2 | **Skill 1 patch mode** — transition target removed without cleaning up relation. |
 | Cross-reference check 3 fail (apiSilenceRelations dangling) | §6.2 | **Skill 1 patch mode** — API silence fallback intent removed. |
