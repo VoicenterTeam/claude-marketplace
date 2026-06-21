@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-06-21
+
+### Skills
+
+- **Skill 1 (Spec Designer) — caller silence is now MANDATORY.** Skill 1 no longer asks whether to handle caller silence; section 3 is always populated. The interview collects only the parameters, each with an accepted default (`silence_duration` 5, `silence_loops` 3, plus the two sentences). `[not configured]` is removed as a Skill-1 output.
+- **Skill 1 (Spec Designer) — explicit silence-forward prompt + global/system catalog intents.** Skill 1 now explicitly asks which intent the call forwards to after the silence loops are exhausted. The target may be the transfer-to-human `global`, another own intent, or a **global/system catalog intent** (e.g. `id=19`, `AccountId 0`) declared verbatim in new spec section `4.6 Global/System Catalog Intents`, each with a `Wiring:` flag (`silence-forward only` default, `triggerable global` opt-in).
+- **Skill 3 (JSON Assembler) — catalog-intent injection.** Skill 3 parses section 4.6, appends each catalog intent to `intentList.intents[]` verbatim (real IDs preserved, bypassing the negative-placeholder allocator), merges its system category into `intentCategories[]` de-duped, resolves `silence_behaviour.intent` to the real `IntentId`, and honors the `Wiring:` flag for `botIntents[]`/fan-out. Cross-reference pass grows from fourteen to **fifteen checks** (new non-blocking check 15: catalog-intent reference resolves).
+
 ## [1.10.0] — 2026-06-16
 
 ### Skills
