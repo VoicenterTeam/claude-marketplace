@@ -51,9 +51,9 @@
 
 ## 3. Caller Silence Behavior
 
-[Either populate the fields below, or replace this entire section with `[not configured]` if the bot does not handle caller silence.]
+[Caller-silence handling is MANDATORY (v1.11.0) — this section is always populated. Each field has a default the author may accept or override. Defaults: `silence_duration` 5, `silence_loops` 3, `silence_sentence` a polite re-prompt in the primary language, `silence_ending_sentence` a transfer line (if the forward target transfers) or a polite hang-up.]
 
-- **silence failover intent:** [intent identifier from section 4 — the intent to route to when `silence_loops` is exhausted; Skill 3 emits it as `silence_behaviour.intent`. Default to the transfer-to-human `global` when one exists; else an end-call intent, or `<UNKNOWN: silence failover intent>`.]
+- **silence failover intent:** [intent identifier from section 4, OR a global/system catalog intent's real `IntentId` declared in section 4.6 — the intent to route to when `silence_loops` is exhausted; Skill 3 emits it as `silence_behaviour.intent`. Default to the transfer-to-human `global` when one exists; else a section-4.6 catalog intent, an end-call intent, or `<UNKNOWN: silence failover intent>`.]
 - **silence_duration:** [int seconds]
 - **silence_loops:** [int]
 - **silence_sentence:** [text, Mustache OK]
@@ -141,6 +141,25 @@
 
 `<intent_identifier>` returns:
 - `[dotted.path.to.field]`
+
+---
+
+## 4.6 Global/System Catalog Intents
+
+[Either declare one or more catalog intents below, or replace this entire section with `[none]` if the bot references no global/system intents.]
+
+A global/system catalog intent is a predefined platform intent the bot references rather than authors. It carries **real positive IDs** (`IntentId`, `IntentCategoryId`, `ParameterId`, `IntentScriptId`) and `AccountId: 0`. Skill 3 injects its `**Definition:**` block verbatim — it does NOT renumber the IDs.
+
+### Catalog Intent: [real IntentId] — [Name]
+
+- **Wiring:** [`silence-forward only` (default) | `triggerable global`]
+  - `silence-forward only` — injected into `intents[]` and its category merged into `intentCategories[]`, but NOT added to `botIntents[]` / `intentRelations[]` (free-floating; reachable only via `silence_behaviour.intent` or another structural failover field).
+  - `triggerable global` — additionally wired into `botIntents[]` (`BotIntentTypeID 2`) and the global fan-out, like transfer-to-human.
+- **Definition:**
+
+```json
+{ "Name": "...", "IntentId": 19, "AccountId": 0, "IntentCategoryId": 22, "IntentParameters": [], "IntentScripts": [], "IntentResponces": { } }
+```
 
 ---
 
