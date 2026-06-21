@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-json-assembler
-description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 14 checks (7 §15.4 + 3 Compass + 4 botIntents-role), checks 1–7 and 11–14 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 15 checks (8 §15.4 + 3 Compass + 4 botIntents-role), checks 1–7 and 11–14 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
@@ -41,7 +41,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §12 — `ParameterTypeId` catalog | Slot type emission |
 | Doc 1 §13 — Mustache + variable categories | Cross-reference check 7 |
 | Doc 1 §15.3 — ID placeholder strategy (Option A) | §4.1 allocation |
-| Doc 1 §15.4 — Cross-reference pass spec | §6 — the fourteen checks |
+| Doc 1 §15.4 — Cross-reference pass spec | §6 — the fifteen checks |
 | Doc 1 §16 — Schema quirks summary | §4.5 + Appendix A |
 | Doc 2 §3.7 — Strict-template enforcement | §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | Everything in this file implements this |
@@ -495,6 +495,8 @@ Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
 
 **v1.8.0 worked example (Noa).** 9 intents, roles: `handle_who_are_you`/`collect_inquiry_basics`/`handle_out_of_scope` = entry, `transfer_to_human` = global, the other 5 = chained. `botIntents[]` emits 4 entries — SortOrder 0/1/2/3 over (9214 t1, 9217 t1, 9229 **t2**, 9235 t1) — and omits the 5 chained intents. See `references/test-artifacts/bot-noa-2026-06-01.json`.
 
+**Catalog-intent wiring (v1.11.0).** A section-4.6 catalog intent wired `silence-forward only` emits NO `botIntents[]` row (free-floating — matches the reference export, where id=19 is absent from `botIntents[]`). A catalog intent wired `triggerable global` emits a `botIntents[]` row with `BotIntentTypeID 2`, using its real `BotIntentId` if the 4.6 definition supplies one (else a `-100`-series placeholder), and is included as a fan-out target in §4.3.4.
+
 #### 4.3.4 `intentRelations[]`
 
 For each section 4 row's "Transitions out" list, build the candidate set of `(origin, next)` pairs. **Then apply global fan-out (v1.8.0, D4/D5):** for every intent whose role is **not** `global`, append an edge `(thatIntent → eachGlobalIntent)`. This applies to **all** non-global intents with no exceptions — including terminals (RT=1/RT=3 end-states); the extra edge on a terminal is inert at runtime (a terminal transfers/ends before evaluating transitions) but is emitted for uniformity. **Deduplicate by `(OriginIntentID, NextIntentID)` before emission**, keeping the lowest `Order` value (DB unique key forbids duplicates) — so an author who also listed a global hand-off collapses harmlessly into the fan-out edge (D6). Fan-out rows are appended after the intent's authored transitions; when a bot has multiple globals, the fan-out edges for an origin are appended in the **section-4 declaration order of the global intents**. `Order` is then the 0-based position in the final deduped list for that origin.
@@ -535,6 +537,8 @@ Note the differences from `botIntents[]` ConditionGroupList: `Order: 0` (vs `1`)
 **v1.8.0:** auto-fan-out rows each get a fresh `IntentRelatedID` (`-2000` series) and `IntentConditionGroupID` (`-3000` series) like any other relation row. Authors need not list global edges; if they do, the `(origin, next)` dedup (D6) collapses the duplicate. Skill 3 generates the complete set.
 
 **Section 4.7 pass-through rule (unchanged from prior).** Section 4.7 opt-in lets the spec author override the default `condition_groups` and `dtmf_list` content. If present, Skill 3 lifts the YAML-style blocks verbatim into the corresponding JSON fields. If absent, the v1.5.0 defaults above apply.
+
+**Catalog-intent fan-out (v1.11.0).** A `triggerable global` catalog intent participates in global fan-out exactly like an authored `global`: every non-global intent gets an edge `(thatIntent → catalogIntent.IntentId)`, deduped by `(OriginIntentID, NextIntentID)`. A `silence-forward only` catalog intent participates in NO `intentRelations[]` rows.
 
 #### 4.3.5 `intentCategories[]`
 
@@ -728,15 +732,15 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all **fourteen** checks — seven per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and four **botIntents-role integrity checks (11–14, v1.8.0)**. Checks 1–7 and 11–14 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch. (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
+After §4 assembly and §5 sanity check: run all **fifteen** checks — eight per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and four **botIntents-role integrity checks (11–14, v1.8.0)**. Checks 1–7 and 11–14 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch; 15 is non-blocking advisory. (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 → 8 → 9 → 10. All fourteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–14 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 → 8 → 9 → 10 → 15. All fifteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–14 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
-### 6.2 The fourteen checks
+### 6.2 The fifteen checks
 
 | # | Check | What it validates | Detection |
 |---|---|---|---|
@@ -754,6 +758,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 14 →
 | 12 | Fan-out completeness (C-b) | Every non-global intent has an `intentRelations[]` edge to **every** `global` intent. | For each global `g` and each non-global intent `i`, verify `(i → g)` ∈ `intentRelations[]`. Missing edge = blocking. |
 | 13 | No chained intent in botIntents (C-c) | No intent with role `chained` appears in `botIntents[]`. | For each `botIntents[]` entry, verify its source intent's role is `entry` or `global`. |
 | 14 | Start point exists (C-d) | At least one `entry` or `global` intent exists (otherwise the bot has no top-level trigger). | Assert `botIntents[]` is non-empty and contains ≥1 type-1 or type-2 entry. |
+| 15 | Section-4.6 catalog intents resolve | Every catalog intent referenced by section 3 (`silence_behaviour.intent`) or any structural failover field is present in the emitted `intents[]` by real `IntentId`, AND its `IntentCategoryId` is present in `intentCategories[]`. Non-blocking advisory (the §4.6 parse already guaranteed structure; this catches a reference to an undeclared catalog id). | Walk every failover `intent` field that resolves to a catalog IntentId; verify presence in `intents[]` and `intentCategories[]` by real ID. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -838,14 +843,14 @@ Appendix B has the consolidated routing table.
 
 ### 6.4 Pass/fail behavior
 
-**On all fourteen checks passing:** proceed to §7 emission.
+**On all fifteen checks passing:** proceed to §7 emission.
 
 **On any check failing:** emit a structured error report:
 
 ```
 Skill 3 cross-reference pass failed.
 
-Checks failed: <count> of 14
+Checks failed: <count> of 15
 Checks passed: <count>
 
 [For each failure:]
@@ -971,7 +976,7 @@ If the file already exists in the workspace (Claude Code), append `-<counter>` b
 Append one entry to spec section 7.3:
 
 ```
-[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 14/14 passed.
+[ISO-8601 timestamp]  Skill 3  assembling  Emitted bot.json. <N> sentinels listed in banner. <D> drift notes. Section 7.4: <unknowns count>. Cross-reference pass: 15/15 passed.
 ```
 
 In single-conv: this entry appears in the regenerated spec, which is part of Skill 3's chat output below the JSON code block.
