@@ -115,7 +115,8 @@ The Agent Spec template is documented in Doc 2 §3 and codified in Skill 1's `sp
 
 Specifically, the parser expects:
 
-- **Section headers exact:** `## 1. Bot Identity`, `## 2. Persona Bundle`, `## 3. Caller Silence Behavior`, `## 4. Intent List (Structural)`, `## 4.5 Available Variables`, `## 5. Intent Details`, `## 6. Cross-References`, `## 7. Generation Metadata`. Exact strings, exact numbering, exact punctuation. `## 1: Bot Identity` is a parse error. `## Bot Identity` is a parse error.
+- **Section headers exact:** `## 1. Bot Identity`, `## 2. Persona Bundle`, `## 3. Caller Silence Behavior`, `## 4. Intent List (Structural)`, `## 4.5 Available Variables`, `## 4.6 Global/System Catalog Intents`, `## 5. Intent Details`, `## 6. Cross-References`, `## 7. Generation Metadata`. Exact strings, exact numbering, exact punctuation. `## 1: Bot Identity` is a parse error. `## Bot Identity` is a parse error.
+- **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error (§3.2) — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`. Bold markdown around the colon-terminated label, exactly as written.
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms (e.g., `[done]`, `[in progress]`).
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. The angle-bracket format is not optional; `(UNKNOWN: ...)` is a parse error.
@@ -200,6 +201,8 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 3. Emit `BotID = -1`, `BotVersionId = -2`, `IntentCategoryId = -3` as fixed values.
 
 The cached mappings are used in §4.3 wherever an ID is referenced (transition rows, parameter parent-ID, api-silence relations, botIntents references).
+
+**Catalog intents (section 4.6) bypass placeholder allocation entirely.** Their `IntentId`, `IntentCategoryId`, `ParameterId`, `IntentScriptId`, and any nested IDs are real platform-assigned positives and are copied through verbatim. Do NOT assign them `-10`/`-1000`/`-3` placeholders and do NOT add them to the cached `<identifier> → IntentId` map used for the bot's own intents (they are referenced by real `IntentId`, not identifier).
 
 The numerical ranges are wide so a human reading the JSON can identify what kind of ID a placeholder represents at a glance. Real platform-assigned IDs after import will be positive integers, so there's no collision risk on re-export.
 
@@ -345,7 +348,7 @@ If section 3 has its fields populated: emit them direct field-to-field.
 
 | Wire-format path | Spec source |
 |---|---|
-| `silence_behaviour.intent` | **v1.8.0:** the resolved `IntentId` of section 3's `silence failover intent:` (the intent to jump to when the caller-silence loops are exhausted). Emit as the **first** key of the object (matches production shape). Resolve the identifier exactly as `apiSilenceRelations[].ApiSilenceIntentID` is resolved. `-999` sentinel if `<UNKNOWN>`. Production proof: the operator/משרד-התחבורה export carries `silence_behaviour.intent` (e.g. `7518`). Never emit as a string identifier; never omit when `silence_behaviour` is emitted. |
+| `silence_behaviour.intent` | **v1.8.0:** the resolved `IntentId` of section 3's `silence failover intent:` (the intent to jump to when the caller-silence loops are exhausted). Emit as the **first** key of the object (matches production shape). Resolve the identifier exactly as `apiSilenceRelations[].ApiSilenceIntentID` is resolved. `-999` sentinel if `<UNKNOWN>`. Production proof: the operator/משרד-התחבורה export carries `silence_behaviour.intent` (e.g. `7518`). Never emit as a string identifier; never omit when `silence_behaviour` is emitted. If section 3's `silence failover intent` names a **section-4.6 catalog intent**, resolve it to that intent's **real `IntentId`** (e.g. `19`) — not a placeholder. Otherwise resolve via the cached own-intent map as before. |
 | `silence_behaviour.silence_duration` | Section 3 `silence_duration` |
 | `silence_behaviour.silence_loops` | Section 3 `silence_loops` |
 | `silence_behaviour.silence_sentence` | Section 3 `silence_sentence` |
@@ -397,6 +400,8 @@ When both fields are emitted, they sit as siblings of `prompts` inside `IntentCo
 **v1.5.0 changes from prior 14-field baseline:** Reordered to match production. Added intent-root `IsActive` (always `1`). Added intent-root `AccountId`. `IsSilenceIntent` now integer (was boolean). `IntentSources` shape includes `SourceName` and `IntentSourceID` (was `[{ SourceID: 1 }]`). `max_turns` / `max_turns_sentence` added with RT-conditional defaults.
 
 **v1.5.0 fields removed from prior baseline:** intent-root `IsDeleted` (production never had it; the v1.4.1 correction removed it correctly — kept removed).
+
+**Catalog-intent injection (v1.11.0).** After emitting the bot's own intents (above), append each section-4.6 catalog intent's `**Definition:**` JSON object to `intents[]` **verbatim**, in section-4.6 declaration order. No field is rewritten, reordered, or renumbered. (These intents already carry real IDs and a complete shape; Skill 3 is a pure conduit for them.)
 
 #### 4.3.2 `IntentParameters[]` (per intent, slot list)
 
@@ -545,6 +550,8 @@ Single default category, all intents reference it. Emit fields in this order:
 | 6 | `IntentCategoryId` | `-3` (placeholder) |
 
 **v1.5.0 changes:** `BotID` removed (production doesn't carry it). `IsActive`, `AccountId`, `Description` added. `PriorityId` corrected from `2` to `1`.
+
+**Catalog-intent category merge (v1.11.0).** For each section-4.6 catalog intent, add its category row (the full object: `Name`, `IsActive`, `AccountId` — typically `0`, `PriorityId`, `Description`, `IntentCategoryId`) to `intentCategories[]`, **de-duplicated by `IntentCategoryId`**. The bot's own `-3` Default Category is always emitted; catalog categories (e.g. system category `22` "Sales intents", `AccountId 0`) ride alongside it. If the catalog intent's `**Definition:**` does not embed its category object, the author must supply it in the 4.6 block — Skill 3 does not synthesize category metadata.
 
 #### 4.3.6 `silenceRelations[]`
 
