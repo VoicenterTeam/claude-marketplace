@@ -73,7 +73,7 @@ The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they
 Concretely, this covers:
 
 - **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
-- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence yes/no (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
+- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward intent (MANDATORY — always configured, no yes/no gate) (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
 - **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
 - **Phase 2/3 boundary** — pause vs skip Deep Research
 - **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
