@@ -20,7 +20,7 @@ Mechanically projects a `[detailed]` Agent Spec into Bot JSON wire format. Produ
 - `bot-<identifier>-<YYYY-MM-DD>.json` — the deployable JSON
 - `bot-<identifier>-<YYYY-MM-DD>.banner.md` — a sidecar listing every fail-loud sentinel, drift note, and applied default
 
-**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **fourteen checks** (seven §15.4 + three Compass + four botIntents-role), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **fifteen checks** (eight §15.4 + three Compass + four botIntents-role), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
 
 The risk vector is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations. The skill's longest section (anti-list §8) is the explicit "do not" list.
 
@@ -174,9 +174,9 @@ The sentinel value carries the field role inside the placeholder text, so the ba
 
 ---
 
-## §15.4 cross-reference pass — fourteen checks
+## §15.4 cross-reference pass — fifteen checks
 
-After assembly + section 6 sanity check, run all fourteen §15.4 checks against the in-memory wire structure. Checks 1–7 and 11–14 are always blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Checks 8–10 are gated on Gemini Live 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`) with mixed severity: check 8 is advisory/blocking, check 9 is advisory, and check 10 is blocking.
+After assembly + section 6 sanity check, run all fifteen §15.4 checks against the in-memory wire structure. Checks 1–7 and 11–14 are always blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Checks 8–10 are gated on Gemini Live 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`) with mixed severity: check 8 is advisory/blocking, check 9 is advisory, and check 10 is blocking. Check 15 is non-blocking advisory.
 
 | # | Check | Validates |
 |---|---|---|
@@ -192,6 +192,7 @@ After assembly + section 6 sanity check, run all fourteen §15.4 checks against 
 | 12 | Fan-out completeness | **Blocking (v1.8.0).** For every non-global intent, `intentRelations[]` contains an edge `(thatIntent → eachGlobalIntent)`. Missing fan-out edge = incomplete emission. |
 | 13 | No chained intents in `botIntents[]` | **Blocking (v1.8.0).** `botIntents[]` contains only `entry` (type 1) and `global` (type 2) intents. A `chained` intent appearing in `botIntents[]` is an emission error — chained intents are reached only via `intentRelations[]`. |
 | 14 | Start point exists | **Blocking (v1.8.0).** At least one intent has role `entry` or `global` so there is a registered start point in `botIntents[]`. A spec with all intents `chained` cannot be imported — the platform has no entry point. |
+| 15 | Section-4.6 catalog intents resolve | **Non-blocking advisory (v1.11.0).** Every catalog intent referenced by section 3 (`silence_behaviour.intent`) or any structural failover field is present in the emitted `intents[]` by real `IntentId`, AND its `IntentCategoryId` is present in `intentCategories[]`. The §4.6 parse already guaranteed structure; this check catches a reference to an undeclared catalog id. |
 
 Failure routing:
 
@@ -328,6 +329,8 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 **`intentCategories[]`:** `BotID` removed. `IsActive`, `AccountId`, `Description` added. `PriorityId` corrected from `2` to `1`.
 
+**Global/system catalog intents (v1.11.0).** Spec section 4.6 declares predefined platform intents (e.g. silence-forward target id=19, `AccountId 0`) as verbatim JSON blocks. Skill 3 appends each to `intents[]` unchanged (real IDs preserved, bypassing the negative-placeholder allocator), merges its system category into `intentCategories[]` de-duped, resolves `silence_behaviour.intent` to its real `IntentId`, and — per the per-intent `Wiring:` flag — either leaves it free-floating (`silence-forward only`, the default, matching production exports) or wires it into `botIntents[]`/fan-out (`triggerable global`).
+
 **`apiSilenceRelations[]`:** `Configuration` is now a full deep copy of the parent intent's `IntentResponces.Configuration` (not just the six silence fields). Check 6 validates full deep equality.
 
 **RT=2 Configuration:** `apiResponseAnnouncement` renamed `announcement`. `function_output` changed from bare string to object `{ "default": "..." }`. `response_success` changed from bare string to object `{ "instructions": "..." }`. Capital-I `IntentLoadingAnnouncement` removed (lowercase form only).
@@ -356,7 +359,7 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 **Section 6.2 regeneration.** Skill 3's section 6.2 regeneration pass now includes fan-out edges (marked `[auto: global fan-out]`), so no spurious drift is flagged between the authored spec and the assembled JSON.
 
-**Cross-reference pass expands to fourteen checks.** Four new blocking checks added (11–14): check 11 verifies global intents have `BotIntentTypeID = 2`; check 12 verifies fan-out completeness; check 13 verifies no chained intents appear in `botIntents[]`; check 14 verifies at least one start point exists.
+**Cross-reference pass expands to fifteen checks.** Four new blocking checks added (11–14): check 11 verifies global intents have `BotIntentTypeID = 2`; check 12 verifies fan-out completeness; check 13 verifies no chained intents appear in `botIntents[]`; check 14 verifies at least one start point exists. (Check 15, a non-blocking advisory for catalog-intent resolution, was added in v1.11.0.)
 
 **`BotIntentId` placeholder allocation.** The `-100` series now allocates only to the emitted subset (entry + global intents). Chained intents get an `IntentId` but no `BotIntentId`.
 
