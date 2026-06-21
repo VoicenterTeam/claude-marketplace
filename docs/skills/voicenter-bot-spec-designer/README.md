@@ -21,9 +21,10 @@ Skill 1 fills these spec sections:
 |---|---|
 | 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls |
 | 2. Persona Bundle | `persona`, voice/chat instructions, opening behavior, opening announcement |
-| 3. Caller Silence Behavior | The silence failover intent + 4 silence fields, or `[not configured]` |
+| 3. Caller Silence Behavior | Mandatory (v1.11.0) — 4 silence fields (with defaults) + the silence forward intent |
 | 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields |
 | 4.5 Available Variables | Call-context, environment, slot, and API-response variable inventories |
+| 4.6 Global/System Catalog Intents | Verbatim definitions of referenced platform intents (e.g. silence-forward target id=19), or `[none]` |
 | 5. Intent Details | **Stubs only**, marked `[structural]`. Skill 2 fills the rest. |
 | 6. Cross-References | Initial pass — Mustache usage, transition graph, escalation paths, ID placeholders |
 | 7. Generation Metadata | Spec version, schema reference, generation log, open unknowns, pending work |
@@ -72,7 +73,7 @@ The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they
 Concretely, this covers:
 
 - **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
-- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence yes/no (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
+- **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward intent (MANDATORY — always configured, no yes/no gate) (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
 - **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
 - **Phase 2/3 boundary** — pause vs skip Deep Research
 - **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
@@ -101,7 +102,7 @@ Captures section 1 + section 3:
    - **a. Agent gender** — `AskUserQuestion` (header: "Agent voice", options: Female / Male). **Always asked explicitly — never inferred from the bot name** (names are frequently unisex; guessing risks offering only male voices when the user wanted a female agent). Written to spec section 1 as `**Agent Gender:**` — a selection aid only, not emitted to the JSON.
    - **b. Voice name** — `AskUserQuestion` presenting **only the voices whose `Gender` matches step (a)** for the active model family (default Gemini; e.g. Female → `Kore`, `Leda`, `Aoede`; Male → `Puck`, `Orus`, `Charon`). `Other` allows any provider-supported string.
 8. **AI model config** — **not prompted.** Silently defaults to the canonical model **Gemini Live (Voice driven 3.1)** (`AIModelConfigID=139`, `AIModelTypeId=18`) per `model-catalog.md`. Overridden only if the user volunteers a different model by name (mapped via the catalog) or supplies raw `AIModelConfigID` + `AIModelTypeId` directly.
-9. **Caller silence** — `AskUserQuestion` (Yes → silence failover intent + 4 silence fields / No → `[not configured]`). **Silence-exhaustion failover (v1.8.0, structural):** Skill 1 captures a **silence failover intent** (Skill 3 emits it as `silence_behaviour.intent`), defaulting to the `global` transfer-to-human intent (decided in Phase 3) when one exists; `silence_ending_sentence` then defaults to a "transferring you to a representative" line rather than a hang-up. If no transfer-to-human global exists, the author picks a target (e.g. an end-call intent) or it is left `<UNKNOWN>`, and the ending stays a polite hang-up.
+9. **Caller silence (mandatory — v1.11.0)** — always configured; Skill 1 does NOT ask Yes/No. It collects the 4 silence fields (each with an accepted default: `silence_duration` 5, `silence_loops` 3, `silence_sentence`, `silence_ending_sentence`), then **explicitly** asks "after the silence loops are exhausted, which intent should the call forward to?". The forward target may be the transfer-to-human `global`, another own intent, or **a global/system catalog intent (e.g. id=19, `AccountId 0`)** declared verbatim in spec section 4.6. Skill 3 emits the choice as `silence_behaviour.intent`; `silence_ending_sentence` defaults to a "transferring you to a representative" line when the target transfers. Section 3 is never `[not configured]`.
 10. **Created by** — bot author/owner name (free text). Optional; `AskUserQuestion` (header: "Created by", options: "Skip (default: empty)" / "Provide a name"). Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` (production-required audit field).
 11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
 12. **Record agent calls** — boolean, default `false`. `AskUserQuestion` (header: "Record calls", options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
@@ -250,7 +251,7 @@ After role confirmation, Skill 1 revisits `silence_ending_sentence`: if a transf
 
 **On greenfield completion:**
 
-- Sections 1, 2, 3, 4, 4.5 fully filled
+- Sections 1, 2, 3, 4, 4.5 fully filled; section 4.6 populated when a catalog intent is referenced, else `[none]`
 - Section 5: stub entries per intent, all marked `[structural]`
 - Section 6: initial cross-references (subsections 6.1–6.5). Section 6.2 lists both authored `(origin → next)` transition pairs AND the auto-fan-out edges `(every non-global intent → each global intent)`, marked `[auto: global fan-out]`, so section 6.2 exactly matches what Skill 3 will emit.
 - **Section 6.6: Mermaid `flowchart TD` of the intent graph** — generated at close-out, shown to the user with a refinement loop, and embedded in the spec for human comprehension. Skill 3 ignores this section.
