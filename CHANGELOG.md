@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.11.1] — 2026-06-24
+
+### Skills
+
+- **Skill 3 (JSON Assembler) — `silence_behaviour.intent` is never a negative placeholder (empirically confirmed 2026-06-23, Matan bot, AccountID 15832).** The Voicenter import procedure remaps negative placeholder IDs inside `intents[]` / `botIntents[]` / `intentRelations[]` to real positive IDs, but does **NOT** remap `silence_behaviour.intent`. A negative value survives verbatim into the imported bot, points at no real intent, and the silence forward silently breaks (UI shows it blank until set by hand). Skill 3 now resolves the field by priority: (1) a section-4.6 catalog/global intent → its real positive `IntentId` (e.g. `19`) verbatim — preferred; (2) a **bot-own** target (placeholder-only pre-import) → substitute the canonical system silence-forward global `19`, inject intent `19` + merge category `22`, banner-note it is re-pointable in the UI; (3) `-999` + banner only in the impossible case that id `19`'s definition is unavailable AND no real catalog target exists. Fixes a prior internal contradiction where Skill 1 (Spec Designer) step 9 said bot-own targets emit a `-999` sentinel while Skill 3 substituted `19`.
+- **Skill 1 (Spec Designer) — silence-forward guidance aligned + import-limitation warning.** Step 9 now states the import limitation and that bot-own targets are auto-substituted with the canonical global `19` (never a negative sentinel), and recommends option (c) — a real catalog/global intent — for a self-contained deployable bot.
+- **`spec-skeleton.md` §4.6 — canonical system silence-forward global (`IntentId 19`)** verbatim block (captured from a real export; `IsSilenceIntent`, `AccountId 0`, category `22`) added, with usage note that it is a re-pointable dummy RT=2.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-{json-assembler,spec-designer}/README.md` mirrors updated for the never-negative resolution rule and import limitation.
+
+### Versioning
+
+- voicenter-bot-builder 1.11.0 → 1.11.1, marketplace metadata 1.11.0 → 1.11.1. **voicenter-mcp and voicenter-api stay at 1.1.7** — neither plugin changed.
+
 ## [1.11.0] — 2026-06-21
 
 ### Skills

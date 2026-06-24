@@ -161,6 +161,56 @@ A global/system catalog intent is a predefined platform intent the bot reference
 { "Name": "...", "IntentId": 19, "AccountId": 0, "IntentCategoryId": 22, "IntentParameters": [], "IntentScripts": [], "IntentResponces": { } }
 ```
 
+#### Canonical system silence-forward global (`IntentId 19`) — verbatim, captured from a real Voicenter export (Matan bot, 2026-06-23)
+
+This is the platform's default `IsSilenceIntent` system global (`AccountId 0`, category `22` "Sales intents"). When a bot's silence failover would otherwise target a *bot-own* intent (whose placeholder ID does NOT survive import — see Skill 3 §4.2.5), declare THIS block in section 4.6 with `**Wiring:** silence-forward only` and set section 3's `silence failover intent` to `19`. It imports working with no manual step. **It is functionally a dummy** (an RT=2 to `/api/printer-support`) — a generic placeholder to keep the silence forward live; re-point it in the UI to the real human-transfer target afterward if desired. Skill 3 injects it verbatim into `intents[]` and merges category `22` into `intentCategories[]`.
+
+```json
+{
+  "Name": "Some global Intent",
+  "IntentId": 19,
+  "IsActive": 1,
+  "Priority": 1,
+  "AccountId": 0,
+  "Description": "Some Dummy Global Intent",
+  "MaxAttempts": 3,
+  "IntentConfig": {},
+  "IntentScripts": [
+    { "IsActive": 1, "LanguageCode": "en-US", "ScriptTypeId": 1, "ScriptContent": "I'll help you check your account balance.", "IntentScriptId": 100 },
+    { "IsActive": 1, "LanguageCode": "en-US", "ScriptTypeId": 2, "ScriptContent": "Please provide your account number.", "IntentScriptId": 103 }
+  ],
+  "IntentSources": [],
+  "IntentToolName": null,
+  "IntentResponces": {
+    "IsActive": 1,
+    "Configuration": { "method": "POST", "endpoint": "/api/printer-support" },
+    "ResponseTypeId": 2,
+    "SuccessCondition": null
+  },
+  "IsSilenceIntent": 1,
+  "IntentCategoryId": 22,
+  "IntentParameters": [
+    {
+      "Name": "account_number", "Schema": null, "IntentId": 19, "IsActive": 1, "CreatedBy": "SYSTEM",
+      "IsRequired": 1, "ModifiedBy": null, "OptionList": null, "CreatedDate": "2025-01-21 11:25:25",
+      "Description": "Customer account number", "ParameterId": 52, "DefaultValue": null, "ModifiedDate": null,
+      "ParameterType": { "Name": "INTEGER", "IsActive": 1, "CreatedBy": "SYSTEM", "ModifiedBy": null, "CreatedDate": "2025-01-21 11:25:25", "Description": "Whole number input", "ModifiedDate": null, "ParameterTypeId": 4, "ValidationPattern": "^[0-9]+$", "IsCustomValidationAllowed": 1 },
+      "CollectionOrder": 1, "ParameterTypeId": 4, "ValidationRules": { "required": true, "min_length": 5 }
+    }
+  ],
+  "ValidationTimeout": 30,
+  "HandlingInstructions": null
+}
+```
+
+And its category for `intentCategories[]`:
+
+```json
+{ "Name": "Sales intents", "IsActive": 1, "AccountId": 0, "PriorityId": 1, "Description": "Sales Intents predefined by the system which everyone can use", "IntentCategoryId": 22 }
+```
+
+(The real export also carried a second `data`/JSON parameter on intent 19; it is optional and omitted here to keep the injected block lean. The `account_number` parameter above is sufficient for the import to resolve the silence-forward reference.)
+
 ---
 
 ## 5. Intent Details
