@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.11.2] — 2026-06-30
+
+### Skills
+
+- **click2call, popup-screen, cdr-notification, call-log — CRM integration context note.** Added a directive to each of these four skills instructing Claude to always invoke the `crm-onboarding` skill alongside them when the user is building a full CRM integration, and to frame the answer covering all three core services: Click2Call, Screen Pop, and Call History.
+
+### Documentation
+
+- `docs/skills/{click2call,popup-screen,cdr-notification,call-log}/README.md` mirrored with the same CRM integration context note.
+
+### Versioning
+
+- voicenter-api 1.1.7 → 1.1.8, marketplace metadata 1.11.1 → 1.11.2. **voicenter-mcp and voicenter-bot-builder unchanged.**
+
 ## [1.11.1] — 2026-06-24
 
 ### Skills

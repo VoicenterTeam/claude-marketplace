@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Official Voicenter Claude Code plugins — live MCP access, API integration skills for all 14 Voicenter APIs, and a 3-skill bot-builder authoring pipeline",
-    "version": "1.11.1",
+    "version": "1.11.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -25,7 +25,7 @@
       "name": "voicenter-api",
       "source": "./plugins/voicenter-api",
       "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls.",
-      "version": "1.1.7",
+      "version": "1.1.8",
       "author": { "name": "Voicenter" },
       "homepage": "https://www.voicenter.com/API",
       "license": "MIT",

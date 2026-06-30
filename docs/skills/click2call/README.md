@@ -9,6 +9,8 @@ Initiate or terminate outgoing calls using the Voicenter Click2Call API.
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
 
+> **CRM integration context.** When the user is building a full CRM integration — not just this API in isolation — always invoke the **`crm-onboarding`** skill alongside this one and frame the answer covering all three core services: Click2Call, Screen Pop, and Call History.
+
 ## When to use this skill
 
 - Add a "Call" button to a CRM that dials a customer from an agent's extension
