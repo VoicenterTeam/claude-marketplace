@@ -362,7 +362,7 @@ Required language fields:
 | `announcement` | What the bot says before transferring | "אני מעבירה אותך לנציג, רגע אחד" |
 | `intentLoadingAnnouncement` | Latency-cover utterance between announcement and the actual transfer | "המתן בבקשה" |
 
-Layer ID is structural (declared in section 4). If marked `<UNKNOWN: layer ID>`, leave as-is — Skill 3 will emit the fail-loud sentinel `-999`. Do not invent a layer.
+Layer ID is structural (declared in section 4). Skill 1 captures the real layer number from the MCP; if the spec omits a layer, Skill 3 defaults it to `0` (root layer) — there is no `-999` sentinel for layer (v1.12.0). Do not invent a specific layer.
 
 #### RT=2 (API Call)
 

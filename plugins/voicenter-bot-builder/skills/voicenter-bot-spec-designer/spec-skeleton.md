@@ -93,7 +93,7 @@
     - silence_ending_sentence: [string]
     - silence_instructions: [string, often `""`]
     - fallback intent: [intent identifier from section 4]
-  - **Layer:** [int]   (RT=1 only)
+  - **Layer:** [int — the real layer number fetched from the MCP (§2.4.A); defaults to 0 (root layer) if omitted]   (RT=1 only)
   - **Dial source:** [`parameter` | `static`]   (RT=4 only — chooses whether the dialed number comes from a slot or is hard-coded)
   - **Parameter phone:** [slot identifier from this intent's slot list]   (RT=4 only, dial-source=parameter)
   - **Phone1 / Phone2 / Phone3:** [E.164 with leading `+`, attempted in order]   (RT=4 only, dial-source=static; any unused slot may be `""`)
@@ -154,7 +154,7 @@ A global/system catalog intent is a predefined platform intent the bot reference
 
 - **Wiring:** [`silence-forward only` (default) | `triggerable global`]
   - `silence-forward only` — injected into `intents[]` and its category merged into `intentCategories[]`, but NOT added to `botIntents[]` / `intentRelations[]` (free-floating; reachable only via `silence_behaviour.intent` or another structural failover field).
-  - `triggerable global` — additionally wired into `botIntents[]` (`BotIntentTypeID 2`) and the global fan-out, like transfer-to-human.
+  - `triggerable global` — additionally wired into `botIntents[]` (`BotIntentTypeID 2`), reachable from anywhere like transfer-to-human (no per-intent fan-out edges; v1.12.0).
 - **Definition:**
 
 ```json

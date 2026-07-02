@@ -257,7 +257,7 @@ For each intent in the list, capture:
 - **Tool name:** same as identifier.
 - **Response Type:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Response type", 4 options: "RT=1 — Transfer the call", "RT=2 — Call an external API", "RT=3 — Collect info and continue", "RT=4 — Initiate an outbound dial"). *(Note for cross-referencing the schema: RT=3 is stored as `ResponseTypeId=3` and the DB seed name is "Message" / "Update Bot Configuration" — but operationally, RT=3 is what every conversational data-collection intent uses. Match the operational semantic, not the seed label.)*
   - For RT=4: surface the rarity warning per Doc 1 §11.4: "RT=4 (outbound dial) is uncommon. Confirm you actually need to initiate an outbound call from this intent, not transfer the existing call."
-- **Transitions out:** ordered list of (target intent, role). Role is "success path" / "fallback" / "escalation". **Do NOT hand-author transitions to `global` intents** (e.g. transfer-to-human) — Skill 3 auto-generates those edges from every non-global intent (D6). List only flow transitions to entry/chained intents.
+- **Transitions out:** ordered list of (target intent, role). Role is "success path" / "fallback" / "escalation". **Do NOT hand-author transitions to `global` intents** (e.g. transfer-to-human) — a `global` is reachable from anywhere via its `botIntents[]` type-2 registration, so no explicit transition edge is needed (v1.12.0 — Skill 3 no longer fans out edges to globals). List only flow transitions to entry/chained intents.
 - **Bot-intent role:** `entry` | `global` | `chained` (default `chained`). Captured here as a first pass — **infer from context; do NOT prompt the user for this field per-intent during Phase 3.** It is confirmed in one batch at §3.6. `entry` = the §2.4 opening behaviour routes to it directly; `global` = triggerable from anywhere (transfer-to-human, WhatsApp); `chained` = reached only via another intent's transition. `global` supersedes `entry`.
 - **Hard-intent flag:** Skill 1 evaluates per the four criteria below; mark `true` or `false`.
 
@@ -300,7 +300,7 @@ Ask:
 
 For unsupported types (number, integer, date, email — captured via the `ParameterTypeId` Other branch): emit STRING (ParameterTypeId 1) and flag the slot for Skill 2 to author a `validationPrompt` enforcing format. Note in section 7.3: "Slot `[name]` requires natural-language validation (v1 type fallback: STRING)."
 
-**RT=1:** Layer ID. Per Section 2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]` and display the returned layers to the user as an id+name table. Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Layer"). If MCP is not connected or the user genuinely doesn't know: fall back to free-text capture and mark `<UNKNOWN: layer ID>`.
+**RT=1:** Layer ID. **Always use the real layer number.** Per Section 2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]`, display the returned layers to the user as an id+name table, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Layer") and record the selected layer number. Only if MCP is not connected **and** the user genuinely doesn't know the layer: default the layer to `0` (root layer) — do **not** mark `<UNKNOWN: layer ID>` and do not emit a sentinel (v1.12.0). The MCP-fetched number is the rule; `0` is the last-resort fallback.
 
 **RT=2:**
 - URL (user-supplied; `<UNKNOWN: webhook URL>` if not known)
@@ -429,9 +429,9 @@ If section 4.7 is empty or missing (the default), Skill 3 emits the safe default
 2. Run the **self-validation checklist** (Section 5 of this SKILL.md).
 3. Generate **spec section 6** initial pass:
    - 6.1: Mustache variable usage (every `{{...}}` reference, where used, what it resolves via).
-   - 6.2: Intent transition graph — list authored `(origin → next)` pairs AND the **auto-fan-out** edges `(every non-global intent → each global)` so section 6 matches what Skill 3 will emit (D4/D5). Mark fan-out rows with a trailing `[auto: global fan-out]`. A section-4.6 catalog intent wired `triggerable global` is treated as a `global` for fan-out: every non-global intent gets an edge to it, marked `[auto: global fan-out]`. A `silence-forward only` catalog intent produces NO transition rows (it is reachable only via `silence_behaviour.intent`).
+   - 6.2: Intent transition graph — list the authored `(origin → next)` pairs **only**, so section 6 matches what Skill 3 will emit (v1.12.0 — no global fan-out; a `global`, including a `triggerable global` catalog intent, is reachable from anywhere via its `botIntents[]` type-2 registration, so no edges to it are listed). A `silence-forward only` catalog intent produces NO transition rows (it is reachable only via `silence_behaviour.intent`).
    - 6.3: RT=2 API silence pairings (per RT=2 intent: Skill 3 will pair its embedded `api_silence_behaviour` with an `apiSilenceRelations[]` registry entry; section 6.3 lists which RT=2 intents need pairing).
-   - 6.4: Escalation paths — for every non-global intent, the fan-out edge to each `global` is its escalation path. (When a global exists, this also satisfies §5 Check 7 for every intent.)
+   - 6.4: Escalation paths — when a `global` transfer-to-human exists, it is every non-global intent's escalation path by virtue of being reachable from anywhere (no explicit edge; v1.12.0). This satisfies §5 Check 7 for every intent whenever a global exists.
    - 6.5: ID assignments — placeholders, sequential negative integers per Doc 1 §15.3 Option A. Per intent: `-1`, `-2`, `-3`, ...
    - 6.6: Intent flow diagram (Mermaid) — see §3.6.1 below.
 4. Initialize **spec section 7:**
@@ -683,7 +683,7 @@ Execute in the order below.
 
 **Remediation:** user supplies escalation target; transition is added.
 
-**v1.8.0 interaction:** when the bot has a `global` intent, the auto-fan-out (every non-global intent → each global) provides each intent's escalation transition by construction, so Check 7 is satisfied automatically. Check 7 still fires for bots with **no** global intent — those must author explicit escalation transitions, or the user should designate a `global` transfer-to-human.
+**Global interaction:** when the bot has a `global` intent, it is reachable from anywhere via its `botIntents[]` type-2 registration, so every intent has an escalation path by construction and Check 7 is satisfied automatically (v1.12.0 — this implicit reachability replaces the v1.8.0 fan-out edges). Check 7 still fires for bots with **no** global intent — those must author explicit escalation transitions, or the user should designate a `global` transfer-to-human.
 
 ### Check 8 — Mustache references resolve against section 4.5 + section 5 slots (§14.3.5) — **advisory**
 

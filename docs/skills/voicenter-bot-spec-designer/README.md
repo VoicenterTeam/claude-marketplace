@@ -224,14 +224,14 @@ Run on every greenfield close-out and after every patch. 10 checks, executed in 
 | 4 | No persistent policy embedded in single intents | Blocking |
 | 5 | Persona's claimed capabilities ⊆ intent set | Blocking |
 | 6 | snake_case verb_object naming on all intents | Blocking |
-| 7 | Every non-terminal intent has an escalation transition (auto-satisfied by fan-out when a `global` intent exists) | Blocking |
+| 7 | Every non-terminal intent has an escalation transition (auto-satisfied when a `global` intent exists — reachable from anywhere) | Blocking |
 | 8 | Mustache references resolve against section 4.5 + section 5 slots | Advisory |
 | 9 | Active-channel `prompts` fields populated | Blocking |
 | 10 | Inactive-channel `prompts` have templated defaults marked | Auto-fix |
 
 Blocking failures pause the close-out until the user resolves them. Advisory check #8 records the user's resolution to section 7.3 and continues — Skill 3's check is the authoritative blocking version.
 
-**v1.8.0 interaction with Check 7.** When the bot has at least one `global` intent, the auto-fan-out (Skill 3 generates an edge from every non-global intent to each global) provides each intent's escalation transition by construction, so Check 7 is automatically satisfied. Check 7 still fires for bots with **no** global intent — those must have explicit escalation transitions, or the user should designate a `global` transfer-to-human.
+**Global interaction with Check 7.** When the bot has at least one `global` intent, it is reachable from anywhere via its `botIntents[]` type-2 registration, so every non-global intent has an escalation path by construction and Check 7 is automatically satisfied (v1.12.0 — this implicit reachability replaces the v1.8.0 fan-out edges). Check 7 still fires for bots with **no** global intent — those must have explicit escalation transitions, or the user should designate a `global` transfer-to-human.
 
 ### Greenfield close-out: role classification (v1.8.0)
 
@@ -253,7 +253,7 @@ After role confirmation, Skill 1 revisits `silence_ending_sentence`: if a transf
 
 - Sections 1, 2, 3, 4, 4.5 fully filled; section 4.6 populated when a catalog intent is referenced, else `[none]`
 - Section 5: stub entries per intent, all marked `[structural]`
-- Section 6: initial cross-references (subsections 6.1–6.5). Section 6.2 lists both authored `(origin → next)` transition pairs AND the auto-fan-out edges `(every non-global intent → each global intent)`, marked `[auto: global fan-out]`, so section 6.2 exactly matches what Skill 3 will emit.
+- Section 6: initial cross-references (subsections 6.1–6.5). Section 6.2 lists the authored `(origin → next)` transition pairs only (v1.12.0 — no fan-out; globals are reachable from anywhere via their `botIntents[]` type-2 registration), so section 6.2 exactly matches what Skill 3 will emit.
 - **Section 6.6: Mermaid `flowchart TD` of the intent graph** — generated at close-out, shown to the user with a refinement loop, and embedded in the spec for human comprehension. Skill 3 ignores this section.
 - Section 7: spec version, schema reference, generation log entry, unknowns aggregation, pending work
 - Optional section 4.7: present iff the user opted in via §3.5.5 (advanced features)
@@ -330,10 +330,10 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 
 - **`**Bot-intent role:**` field added to section 4** (per intent): `entry` | `global` | `chained` (default `chained`). `entry` = directly triggerable from §2.4 opening behaviour; `global` = triggerable from anywhere (transfer-to-human, WhatsApp); `chained` = reached only via another intent's transition. `global` supersedes `entry`.
 - **Approach-B role classification at close-out.** Skill 1 infers roles in Phase 3 (entry = §2.4 routing targets; global = always-available/transfer intents) and confirms them in **one** `AskUserQuestion` batch at §3.6 close-out. NOT prompted per-intent during the interview.
-- **Auto-fan-out edges.** Authors must NOT hand-author transitions to `global` intents — Skill 3 auto-generates an edge from every non-global intent to each global at assembly time. Skill 1's section 6.2 now includes these fan-out edges (marked `[auto: global fan-out]`) so the spec matches what Skill 3 will emit.
+- **No fan-out to globals (v1.12.0).** Authors must NOT hand-author transitions to `global` intents — a `global` is reachable from anywhere via its `botIntents[]` type-2 registration, so no explicit edge is needed (the v1.8.0 auto-fan-out was removed). Skill 1's section 6.2 lists authored transitions only, matching what Skill 3 emits.
 - **Caller-silence failover.** When a transfer-to-human `global` intent exists, `silence_ending_sentence` defaults to a "transferring you to a representative" line rather than a hang-up.
-- **Check 7 is auto-satisfied** when a `global` intent exists, because the fan-out gives every non-global intent an escalation path by construction.
-- **Section 6.4** (escalation paths) is updated: when a global exists, each non-global intent's escalation path is provided by the fan-out edge to the global.
+- **Check 7 is auto-satisfied** when a `global` intent exists, because the global is reachable from anywhere, giving every non-global intent an escalation path by construction.
+- **Section 6.4** (escalation paths): when a global exists, each non-global intent's escalation path is the global itself, reachable from anywhere (no explicit edge; v1.12.0).
 
 ---
 

@@ -132,7 +132,7 @@ The Configuration shape and required language fields differ by Response Type.
 | `announcement` | What the bot says before transferring |
 | `intentLoadingAnnouncement` | Latency-cover utterance between announcement and transfer |
 
-Layer ID is structural (in section 4). If `<UNKNOWN: layer ID>`, leave as-is — Skill 3 will emit `-999`.
+Layer ID is structural (in section 4). Skill 1 captures the real layer number from the MCP; if omitted, Skill 3 defaults it to `0` (root layer) — no `-999` sentinel for layer (v1.12.0).
 
 #### RT=2 (API Call)
 

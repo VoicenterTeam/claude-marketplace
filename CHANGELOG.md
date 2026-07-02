@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-07-02
+
+Three corrections from Voicenter's voicebot lead, applied across the bot-builder pipeline.
+
+### Skills
+
+- **Skill 3 (JSON Assembler) — intent category is named after the bot.** `intentCategories[]` for the bot's own `-3` category now takes its `Name` (and `Description`) from spec section 1 `**Bot Name:**` instead of the hardcoded literal `"Default Category"`. Every generated bot previously landed a category called "Default Category" in the account, so they all collided; each bot's category now carries the bot's own name. System/catalog categories (e.g. `22` "Sales intents") are unchanged. Appendix D.5 updated.
+- **Skill 1/2/3 — RT=1 (IVR / Layer Transfer) layer defaults to `0` (root layer), never a sentinel.** Skill 1 now always fetches the real layer number from the MCP (`list_resources`, `entityFilter: ["Layers"]`) and records it; `0` (root layer) is used **only** as a last-resort fallback when the MCP is unavailable **and** the layer is unknown. `<UNKNOWN: layer ID>` and the `-999` layer sentinel are removed — an unset IVR layer no longer blocks import (it was breaking the account-not-connected and end-call-transfer cases). Layer is now the single documented exception to the fail-loud sentinel doctrine, because `0` is itself a valid runtime layer.
+- **Skill 1/3 — global fan-out removed (reverses v1.8.0 D4/D5).** `intentRelations[]` now carries authored transitions only. Global intents (hangup, transfer-to-human, …) are reachable from anywhere by virtue of their `botIntents[]` type-2 registration, so Skill 3 no longer emits a per-intent edge from every non-global intent to every global. Skill 1 no longer writes `[auto: global fan-out]` rows into section 6.2, and section 6.4 escalation is provided by the global's implicit reachability. Skill 1 Check 7 (escalation) stays auto-satisfied whenever a `global` exists.
+- **Skill 3 — cross-reference pass drops from fifteen to fourteen checks.** The v1.8.0 fan-out-completeness check (old check 12) is removed; checks renumbered (old 13→12, 14→13, 15→14). Run order, banner (`14/14 passed`), and the frontmatter description updated.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-{json-assembler,spec-designer,intent-detail-author}/README.md` mirrors updated for all three changes (category name, layer default, fan-out removal + check renumber).
+
+### Versioning
+
+- voicenter-bot-builder 1.11.1 → 1.12.0, marketplace metadata 1.11.2 → 1.12.0. **voicenter-mcp stays at 1.1.7 and voicenter-api stays at 1.1.8** — neither plugin changed in this release.
+
 ## [1.11.2] — 2026-06-30
 
 ### Skills
