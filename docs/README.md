@@ -28,6 +28,7 @@ It is organized so you can:
 | `voicenter-mcp` (live MCP server) | [plugins/voicenter-mcp.md](plugins/voicenter-mcp.md) |
 | `voicenter-api` (14 integration skills) | [plugins/voicenter-api.md](plugins/voicenter-api.md) |
 | `voicenter-bot-builder` (3-skill bot authoring pipeline) | [plugins/voicenter-bot-builder.md](plugins/voicenter-bot-builder.md) |
+| `voicenter-dashboard` (end-user support-center knowledge base) | [plugins/voicenter-dashboard.md](plugins/voicenter-dashboard.md) |
 
 ### Skills
 
@@ -53,6 +54,7 @@ Every skill ships its own subfolder with a complete reference.
 | Agent Spec Designer (Skill 1) | voicenter-bot-builder | — | Authoring (interview) | [skills/voicenter-bot-spec-designer/README.md](skills/voicenter-bot-spec-designer/README.md) |
 | Intent Detail Author (Skill 2) | voicenter-bot-builder | — | Authoring (per-intent language) | [skills/voicenter-bot-intent-detail-author/README.md](skills/voicenter-bot-intent-detail-author/README.md) |
 | JSON Assembler (Skill 3) | voicenter-bot-builder | — | Authoring (wire-format projection) | [skills/voicenter-bot-json-assembler/README.md](skills/voicenter-bot-json-assembler/README.md) |
+| Voicenter Dashboard | voicenter-dashboard | — | Knowledge base (crawled snapshot) | [skills/voicenter-Dashboard/README.md](skills/voicenter-Dashboard/README.md) |
 
 ---
 
@@ -75,7 +77,7 @@ Read [architecture.md](architecture.md) — it shows the four canonical call flo
 
 ## Versioning
 
-The marketplace is at **v1.2.1**. `voicenter-mcp` and `voicenter-api` are at v1.1.2; `voicenter-bot-builder` is at v1.0.1. See the project [CHANGELOG.md](../CHANGELOG.md) for release history.
+The marketplace is at **v1.12.0**. `voicenter-mcp` and `voicenter-api` are at v1.1.2; `voicenter-bot-builder` is at v1.0.1; `voicenter-dashboard` is at v1.0.0. See the project [CHANGELOG.md](../CHANGELOG.md) for release history.
 
 The skill documentation under this `docs/` tree is kept in lockstep with the source `SKILL.md` files in [`plugins/voicenter-api/skills/`](../plugins/voicenter-api/skills), [`plugins/voicenter-mcp/skills/`](../plugins/voicenter-mcp/skills), and [`plugins/voicenter-bot-builder/skills/`](../plugins/voicenter-bot-builder/skills). When a SKILL.md changes, update the corresponding `docs/skills/<skill>/README.md`.
 
