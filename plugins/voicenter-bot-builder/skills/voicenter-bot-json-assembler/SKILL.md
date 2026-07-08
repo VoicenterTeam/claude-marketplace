@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-json-assembler
-description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 14 checks (8 §15.4 + 3 Compass + 3 botIntents-role), checks 1–7 and 11–13 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 15 checks (8 §15.4 + 3 Compass + 3 botIntents-role + 1 duplicate-global-intent), checks 1–7, 11–13, and 15 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
@@ -729,13 +729,13 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all **fourteen** checks — eight per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, and three **botIntents-role integrity checks (11–13, v1.8.0; the v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped)**. Checks 1–7 and 11–13 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch; 14 is non-blocking advisory. (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
+After §4 assembly and §5 sanity check: run all **fifteen** checks — eight per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, three **botIntents-role integrity checks (11–13, v1.8.0; the v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped)**, and one **duplicate-global-intent check (15, v1.12.0)**. Checks 1–7, 11–13, and 15 are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch; 14 is non-blocking advisory. (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec. Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 8 → 9 → 10 → 14. All fourteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–13 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 8 → 9 → 10 → 14. All fifteen run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–13 and 15 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
 ### 6.2 The fourteen checks
 
@@ -755,6 +755,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 8 → 
 | 12 | No chained intent in botIntents (C-c) | No intent with role `chained` appears in `botIntents[]`. | For each `botIntents[]` entry, verify its source intent's role is `entry` or `global`. |
 | 13 | Start point exists (C-d) | At least one `entry` or `global` intent exists (otherwise the bot has no top-level trigger). | Assert `botIntents[]` is non-empty and contains ≥1 type-1 or type-2 entry. |
 | 14 | Section-4.6 catalog intents resolve | Every catalog intent referenced by section 3 (`silence_behaviour.intent`) or any structural failover field is present in the emitted `intents[]` by real `IntentId`, AND its `IntentCategoryId` is present in `intentCategories[]`. Non-blocking advisory (the §4.6 parse already guaranteed structure; this catches a reference to an undeclared catalog id). | Walk every failover `intent` field that resolves to a catalog IntentId; verify presence in `intents[]` and `intentCategories[]` by real ID. |
+| 15 | No duplicate global intents by tool name (C-e) | For each unique `IntentToolName` value across section 4, at most **one** intent with that tool name may have role `global` (registered in `botIntents[]` with `BotIntentTypeID = 2`). Multiple global intents with the same tool name cause duplicates in the UI. Blocking check. | Build a map `{ IntentToolName → [intent1, intent2, ...] }` for all intents with role `global` (those in `botIntents[]` with type 2). For each tool name with count > 1, it's a blocking failure listing the duplicate intent identifiers. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -816,6 +817,52 @@ The blocking error report aggregates all check 10 sub-failures into a single che
 
 **Gating unchanged:** check 10 fires only when `<root>.AiModelConfig.AIModelConfig.created.model` is `models/gemini-3.1-flash-live-preview` (per Compass rule 12 gating). Other models (OpenAI realtime, Gemini 2.5) skip silently.
 
+**Check 15 specifics — duplicate global intents (v1.12.0):**
+
+Fires unconditionally; applies to all model configs. Background: when a bot is rebuilt or updated, new intents are sometimes created while old ones remain in the `intents[]` array (orphaned but not registered in `botIntents[]`). The UI displays only intents that are registered in `botIntents[]`. However, if two intents with the same `IntentToolName` (e.g., `"transfer_to_human"`) are both registered as type-2 (`global`), the UI shows both as separate entries, creating a perceived duplicate.
+
+**When this violation occurs:**
+
+- Spec section 4 lists two or more intents with the same `IntentToolName`.
+- Both (or more) are marked `**Bot-intent role:** global`.
+- Both are emitted to `botIntents[]` with `BotIntentTypeID = 2`.
+- Result: the bot's UI (Voicenter operator console, API explorer, etc.) displays multiple entries for the same tool (e.g., "העברה לנציג" twice), confusing users and causing routing ambiguity.
+
+**Detection:**
+
+Walk section 4. Group intents by `IntentToolName`. For each group, count how many intents have role `global`. If any group has count > 1, gather the offending identifiers and halt with a blocking error.
+
+**Structured error format:**
+
+```
+Check 15: No duplicate global intents by tool name (C-e)
+  Violation: tool name 'transfer_to_human' registered as global (type-2) in 2 intents:
+    - Intent identifier: transfer_to_human (IntentId -10)
+    - Intent identifier: transfer_to_human_legacy (IntentId -11)
+  
+  At most one intent per tool name may have role=global (type-2 in botIntents).
+  
+  Root cause: when a bot is rebuilt, new intents are created but old ones remain orphaned
+  in intents[]. If BOTH the new and old are marked global, they both register and appear
+  as duplicates in the UI.
+  
+  Solution: Only the NEW transfer intent should have role=global. The old one should be
+  marked role=chained (or role=entry if it's a starting point), leaving it in intents[]
+  but unregistered in botIntents[].
+  
+  Route to: Skill 1 patch mode — review intent roles. Mark the legacy/old transfer intent
+  as role=chained, keeping only the current transfer intent as global. Or remove the old
+  intent from section 4 entirely if it's no longer used.
+```
+
+**Prevention pattern (v1.12.0+):**
+
+When Skill 1 creates or updates a spec from an existing bot export (or when a bot is rebuilt in the UI):
+1. Detect intents with duplicate `IntentToolName` values.
+2. For tool names that should be global (e.g., `transfer_to_human`), mark the most recent as role=`global`; mark older ones as role=`chained`.
+3. The `chained` intents remain in `intents[]` (preserved for backward compatibility or reference) but do not register in `botIntents[]`, so they do not appear in the UI.
+4. Skill 3 check 15 catches any violation (e.g., if the spec was hand-edited incorrectly).
+
 ### 6.3 Failure routing per Doc 2 §7.5
 
 For each failing check, the structured error includes a "route to" recommendation.
@@ -833,12 +880,14 @@ For each failing check, the structured error includes a "route to" recommendatio
 | Check 11 — global not type-2 | **Skill 1 patch mode** — role/registry inconsistency; re-run role classification (§3.6). |
 | Check 12 — chained intent in botIntents | **Skill 1 patch mode** — an intent marked `chained` was registered; fix the role or the membership. |
 | Check 13 — no start point | **Skill 1 patch mode** — designate at least one `entry` intent (or a `global`). |
+| Check 14 — catalog intent unresolved | **Skill 1 patch mode** or **manual fix** — verify the catalog `IntentId` in section 4.6 is correct; if referencing a non-existent catalog intent, either remove the reference or add the catalog definition. |
+| Check 15 — duplicate global by tool name (blocking) | **Skill 1 patch mode** — review section 4 roles. Mark the legacy intent as role=`chained` (keep it in `intents[]`, unregister from `botIntents[]`), leaving only the current intent as role=`global`. This prevents UI duplication while preserving the old intent in the archive. Alternatively, delete the old intent from section 4 if it's no longer referenced. |
 
 Appendix B has the consolidated routing table.
 
 ### 6.4 Pass/fail behavior
 
-**On all fourteen checks passing:** proceed to §7 emission.
+**On all fifteen checks passing:** proceed to §7 emission.
 
 **On any check failing:** emit a structured error report:
 
