@@ -5,8 +5,8 @@
     "email": "[email protected]"
   },
   "metadata": {
-    "description": "Official Voicenter Claude Code plugins — live MCP access, API integration skills for all 14 Voicenter APIs, and a 3-skill bot-builder authoring pipeline",
-    "version": "1.12.0",
+    "description": "Official Voicenter Claude Code plugins — live MCP access, API integration skills for all 14 Voicenter APIs, a 3-skill bot-builder authoring pipeline, and an end-user Dashboard/support-center knowledge base",
+    "version": "1.13.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -42,6 +42,17 @@
       "license": "MIT",
       "category": "integrations",
       "keywords": ["voicenter", "voicebot", "voice-ai", "agent-spec", "bot-builder", "conversational-ai", "ivr", "intent-design", "json-emitter", "skill-suite"]
+    },
+    {
+      "name": "voicenter-dashboard",
+      "source": "./plugins/voicenter-dashboard",
+      "description": "End-user knowledge base of Voicenter's support center (voicenter.co.il): the Dashboard/Monitor interface and all 193 monitoring report/chart templates (with template numbers), plus Cpanel, call history, Softphone, Auto-Dialer, Chrome extension, networks, recording storage, security, account setup, SSO, CRM, mobile, VoiceBot, and AI call analysis.",
+      "version": "1.0.0",
+      "author": { "name": "Voicenter" },
+      "homepage": "https://www.voicenter.co.il/מרכז-תמיכה",
+      "license": "MIT",
+      "category": "documentation",
+      "keywords": ["voicenter", "dashboard", "monitoring", "reports", "support-center", "cpanel", "dialer", "callcenter", "contact-center", "template-number"]
     }
   ]
 }

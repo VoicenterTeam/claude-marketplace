@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-07-05
+
+### New plugin
+
+- **`voicenter-dashboard`** — end-user knowledge base of Voicenter's public support center (`voicenter.co.il/מרכז-תמיכה`). One skill, `voicenter-Dashboard`, ships a crawled snapshot of 439 items across 15 categories, including all 193 Dashboard monitoring report/chart templates with template numbers — for "how does this feature/report work" questions, as opposed to `voicenter-api`'s developer-integration focus.
+- Crawl methodology: the support center is a Nuxt.js SPA with no public content API, but the server-rendered HTML embeds the full page payload in a `__NUXT_DATA__` script tag (devalue-style flattened object graph). `scripts/decode-nuxt.js` decodes it generically; `scripts/crawl.js` and `scripts/build-references.js` turn it into the `references/*.md` files the skill reads. The `data/*.json` crawl cache is not committed — only the generated references and the scripts are.
+- House rule: the skill always states each report's template number (מספר תבנית), even for reports not directly asked about.
+
+### Documentation
+
+- Added `docs/plugins/voicenter-dashboard.md` and `docs/skills/voicenter-Dashboard/README.md`.
+- `docs/README.md`, root `README.md` — added the new plugin to the plugin/skill indexes and quick-start install steps.
+
+### Versioning
+
+- New plugin `voicenter-dashboard` at 1.0.0. Marketplace metadata 1.12.0 → 1.13.0. **voicenter-mcp, voicenter-api, and voicenter-bot-builder unchanged.**
+
 ## [1.12.0] — 2026-07-02
 
 Three corrections from Voicenter's voicebot lead, applied across the bot-builder pipeline.
