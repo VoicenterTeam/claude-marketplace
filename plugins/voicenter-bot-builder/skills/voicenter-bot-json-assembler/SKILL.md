@@ -493,7 +493,7 @@ Default `ConditionGroupList` content (emitted for every `botIntents[]` row):
 
 **v1.5.0 changes from prior baseline:** `BotID`/`IntentID` capital-D casing changed to lowercase `BotId`/`IntentId` per production. `DTMFList: []` added. `BotVersionId: -2` added. `SortOrder` switched to 0-based. `ConditionGroupList` populated by default with the structural entry above.
 
-**v1.8.0 worked example (Noa).** 9 intents, roles: `handle_who_are_you`/`collect_inquiry_basics`/`handle_out_of_scope` = entry, `transfer_to_human` = global, the other 5 = chained. `botIntents[]` emits 4 entries — SortOrder 0/1/2/3 over (9214 t1, 9217 t1, 9229 **t2**, 9235 t1) — and omits the 5 chained intents. See `references/test-artifacts/bot-noa-2026-06-01.json`.
+**v1.8.0 worked example (Noa).** 9 intents, roles: `handle_who_are_you`/`collect_inquiry_basics`/`handle_out_of_scope` = entry, `transfer_to_human` = global, the other 5 = chained. `botIntents[]` emits 4 entries — SortOrder 0/1/2/3 over (9214 t1, 9217 t1, 9229 **t2**, 9235 t1) — and omits the 5 chained intents. See `../../references/examples/bot-noa-example.json`.
 
 **Catalog-intent wiring (v1.11.0).** A section-4.6 catalog intent wired `silence-forward only` emits NO `botIntents[]` row (free-floating — matches the reference export, where id=19 is absent from `botIntents[]`). A catalog intent wired `triggerable global` emits a `botIntents[]` row with `BotIntentTypeID 2`, using its real `BotIntentId` if the 4.6 definition supplies one (else a `-100`-series placeholder). Like any authored `global`, it is reachable from anywhere via that type-2 registration — Skill 3 generates NO per-intent `intentRelations[]` edges to it (v1.12.0).
 

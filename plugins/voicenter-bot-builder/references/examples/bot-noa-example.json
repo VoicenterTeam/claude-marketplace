@@ -1,0 +1,1526 @@
+{
+  "Name": "נועה (Noa)",
+  "BotID": 1963,
+  "AccountID": 15471,
+  "intentList": {
+    "intents": [
+      {
+        "Name": "מענה לשאלת זהות",
+        "IntentId": 9214,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Brief detour explaining who Noa and EZget are when the caller asks about identity (\"who are you?\", \"what is this?\"). After the explanation, returns to the main intake flow.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "IDENTITY EXPLANATION PRE-EXECUTION\n\n1. No slots. Speak the announcement (canonical identity text). Wait for response.\n\nIRON: do not extend the canonical text. No marketing."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2029
+          }
+        ],
+        "IntentToolName": "handle_who_are_you",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "אני נועה, נציגת השירות הדיגיטלית של EZget. אנחנו מסייעים ללקוחות לפנות לחברות הביטוח בנושאי שירות. במה אפשר לעזור לך היום — באיזו פנייה ביטוחית?",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Route on response:\n   - insurance inquiry → collect_inquiry_basics.\n   - persistent identity question → repeat announcement once, then route.\n   - human request → transfer_to_human.\n\nIRON: max one repeat. No expansion of the canonical text."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "איסוף פרטי פנייה",
+        "IntentId": 9217,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Collect the basic inquiry classification: insurance company (enum with \"other\" fallback), insurance domain, request type (enum with \"other\" fallback), short description, and policy/claim number. Bridges intake routing and identity collection.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "INQUIRY CLASSIFICATION\n\n1. Ask for insurance_company:\n   \"לאיזו חברת ביטוח הפנייה קשורה? למשל הראל, כלל, מגדל, מנורה, הפניקס, איילון, AIG, ביטוח ישיר, או אחר.\"\n   Match to: harel, klal, migdal, menora, phoenix, ayalon, aig, bituach_yashir, other.\n   IF \"other\", capture company_free_text:\n   \"איזו חברה? תאמר/י את שם החברה.\"\n\n2. Ask for insurance_domain:\n   \"האם זה קשור לרכב, דירה, בריאות/חיים/סיכונים, פיננסים, או פנסיה?\"\n   Match to: auto, home, health_life_risks, financial, pension.\n\n3. Ask for request_type:\n   \"מה סוג הפנייה? חיוב או תשלום, תביעה, שינוי פרטים, ביטול, מסמכים, שירות כללי, או אחר.\"\n   Match to: billing, claim, details_change, cancellation, documents, general_service, other.\n   IF \"other\", capture request_type_free_text:\n   \"מה בדיוק סוג הפנייה?\"\n\n4. Ask for short_description (1-2 sentences):\n   \"במשפט אחד או שניים: מה קרה ומה צריך לעשות?\"\n   IF goes long: \"תודה, רשמתי בקצרה. עוברים הלאה.\"\n\n5. Ask for policy_or_claim_number (optional):\n   \"יש מספר פוליסה או מספר תביעה? אם אין — תאמר/י 'אין'.\"\n   Accept digits, \"אין\", or skip.\n\nIRON: no advice. If asked, say \"אני לא נותנת ייעוץ ביטוחי, אני מעבירה אותך לנציג.\"\nRoute to transfer_to_human."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2032
+          }
+        ],
+        "IntentToolName": "collect_inquiry_basics",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "קיבלתי את פרטי הפנייה. עכשיו רק כמה פרטים מזהים כדי שנפתח פנייה מסודרת.",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Proceed to collect_caller_identity with all 7 slots (empty values pass through).\n\nIRON: no \"is there anything else?\" — flow continues with collect_caller_identity."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [
+          {
+            "Name": "company_free_text",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "שם חברת ביטוח כאשר נבחר 'אחר' מהרשימה.",
+            "ParameterId": 13543,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 2,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "insurance_company",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "חברת הביטוח שאליה הפנייה קשורה.",
+            "ParameterId": 13540,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "ENUM",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Selection from predefined options",
+              "ModifiedDate": null,
+              "ParameterTypeId": 19,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 19,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "insurance_domain",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "תחום הביטוח: רכב, דירה, בריאות/חיים/סיכונים, פיננסים, פנסיה.",
+            "ParameterId": 13546,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "ENUM",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Selection from predefined options",
+              "ModifiedDate": null,
+              "ParameterTypeId": 19,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 3,
+            "ParameterTypeId": 19,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "policy_or_claim_number",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "מספר פוליסה או מספר תביעה. ניתן לדלג עם 'אין'.",
+            "ParameterId": 13558,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 7,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "request_type",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "סוג הפנייה: חיוב, תביעה, שינוי פרטים, ביטול, מסמכים, שירות כללי, או אחר.",
+            "ParameterId": 13549,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "ENUM",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Selection from predefined options",
+              "ModifiedDate": null,
+              "ParameterTypeId": 19,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 4,
+            "ParameterTypeId": 19,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "request_type_free_text",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "פירוט סוג הפנייה כאשר נבחר 'אחר'.",
+            "ParameterId": 13552,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 5,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "short_description",
+            "Schema": null,
+            "IntentId": 9217,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "תיאור תמציתי של נושא הפנייה (משפט אחד עד שניים).",
+            "ParameterId": 13555,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 6,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "איסוף פרטים מזהים",
+        "IntentId": 9220,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Collect identifying details — full name (with spelling fallback for last name), 9-digit Israeli ID number with up to 2 retries, date of birth, ID issue date (optional/recommended), and callback phone (confirm against CallerID if available). If ID or DOB collection fails twice, fall back to a minimal-path ticket creation.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "IDENTITY COLLECTION\n\n1. Ask for full_name (as on ID):\n   \"אשמח לשם מלא כפי שמופיע בתעודת הזהות.\"\n   If last name unclear, ask:\n   \"אפשר לאיית את שם המשפחה?\"\n\n2. Ask for id_number:\n   \"כדי לפתוח פנייה מסודרת על שמך — מה מספר תעודת הזהות?\"\n   Must be exactly 9 digits. On invalid, retry once:\n   \"המספר לא תקין. אפשר לחזור על מספר תעודת הזהות בבקשה?\"\n   After 2 failures, set id_failed_2x and continue.\n\n3. Ask for birth_date (DTMF allowed):\n   \"מה תאריך הלידה? יום, חודש, שנה.\"\n   Must include day, month, year. On unparseable, retry once:\n   \"לא הצלחתי לקלוט. אפשר לחזור — יום, חודש, שנה?\"\n   After 2 failures, set dob_failed_2x and continue.\n\n4. Ask for id_issue_date (optional): \"מה תאריך ההנפקה של תעודת הזהות?\"\n   Accept skip.\n\n5. Ask for callback_phone. IF {{caller_phone}} present:\n   \"האם המספר ממנו התקשרת מתאים לחזרה? אם כן, תאמר/י 'כן'.\"\n   \"כן\" → callback_phone = {{caller_phone}}. Else capture new number.\n   Read back digit-by-digit:\n   \"אז המספר לחזרה הוא [digits one by one]. נכון?\"\n\n6. IF id_failed_2x OR dob_failed_2x: speak\n   \"תודה, אני אפתח פנייה ונחזור אליך בקשר עם הפרטים שמסרת.\"\n   Route to create_callback_ticket.\n   ELSE proceed to collect_callback_preferences.\n\nIRON: never invent or pad an ID number. id_number is confidential — never read back\nunprompted. Max 2 attempts on id_number and birth_date."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2035
+          }
+        ],
+        "IntentToolName": "collect_caller_identity",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "מעולה, רשמתי את הפרטים. עכשיו כמה שאלות אחרונות.",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Success path: proceed to collect_callback_preferences with all 5 slots.\n2. Minimal-path fallback (id_failed_2x or dob_failed_2x): proceed to\n   create_callback_ticket; missing slots OK.\n\nIRON: no further questions. No policy re-confirmation."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [
+          {
+            "Name": "birth_date",
+            "Schema": null,
+            "IntentId": 9220,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "תאריך לידה: יום-חודש-שנה. DTMF input accepted. 2-retry limit, then minimal-path fallback.",
+            "ParameterId": 13567,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 3,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "callback_phone",
+            "Schema": null,
+            "IntentId": 9220,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "מספר הטלפון לחזרה אל הלקוח. If {{caller_phone}} is available, confirm rather than re-state.",
+            "ParameterId": 13573,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "PHONE",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Phone number",
+              "ModifiedDate": null,
+              "ParameterTypeId": 10,
+              "ValidationPattern": "^+?[1-9][0-9]{7,14}$",
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 5,
+            "ParameterTypeId": 10,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "full_name",
+            "Schema": null,
+            "IntentId": 9220,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "שם מלא של המתקשר כפי שמופיע בתעודת הזהות. כולל שם פרטי ושם משפחה.",
+            "ParameterId": 13561,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "id_issue_date",
+            "Schema": null,
+            "IntentId": 9220,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "תאריך הנפקת תעודת הזהות: יום-חודש-שנה. DTMF input accepted. Optional — accept skip.",
+            "ParameterId": 13570,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 4,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "id_number",
+            "Schema": null,
+            "IntentId": 9220,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "מספר תעודת זהות ישראלית בן 9 ספרות (digits only). 2-retry limit, then minimal-path fallback.",
+            "ParameterId": 13564,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 2,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "העדפות חזרה ללקוח",
+        "IntentId": 9223,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Collect urgency level, preferred callback time window (with optional specific-time free-text), and explicit consent to be contacted by a representative. Consent=no terminates the call politely without ticket creation.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "CALLBACK PREFERENCES\n\n1. Ask for urgency (optional):\n   \"עד כמה זה דחוף — מיידי, תוך 24 שעות, או לא דחוף?\"\n   Match to: urgent_today, within_24h, not_urgent. Accept skip.\n\n2. Ask for preferred_callback_time (optional):\n   \"מתי נוח שיחזרו אליך: בוקר, צהריים, אחר הצהריים, ערב, או שעה ספציפית?\"\n   Match to: morning, noon, afternoon, evening, specific_time. Accept skip.\n   IF \"specific_time\", ask \"באיזו שעה בערך?\" → preferred_time_text.\n\n3. Ask for consent_contact:\n   \"מאשר/ת שניצור איתך קשר או נעביר אותך לנציג?\"\n   \"כן\" → true. \"לא\" → false. Ambiguous, re-ask once:\n   \"רק כדי לוודא — כן או לא?\"\n   Still ambiguous → treat as false.\n\n4. IF consent_contact = false, speak\n   \"אין בעיה. לא אפתח פנייה. תודה שהתקשרת ויום נעים.\"\n   Route to end_call_polite.\n   ELSE proceed to check_agent_availability.\n\nIRON: consent_contact mandatory. Do not pressure on \"no\" — accept gracefully."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2038
+          }
+        ],
+        "IntentToolName": "collect_callback_preferences",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "מצוין, יש לי את כל מה שצריך. רגע אחד ואני בודקת אם יש נציג פנוי.",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Branch: consent_contact=true → check_agent_availability;\n   consent_contact=false → end_call_polite.\n\nIRON: respect \"no\" — no retry to flip consent."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [
+          {
+            "Name": "consent_contact",
+            "Schema": null,
+            "IntentId": 9223,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 1,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "אישור הלקוח שניצור איתו קשר או נעביר את הפנייה לנציג אנושי.",
+            "ParameterId": 13585,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "BOOLEAN",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Yes/No input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 16,
+              "ValidationPattern": "^(true|false|yes|no)$",
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 4,
+            "ParameterTypeId": 16,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "preferred_callback_time",
+            "Schema": null,
+            "IntentId": 9223,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "חלון הזמן המועדף לחזרה: בוקר, צהריים, אחר הצהריים, ערב, או שעה ספציפית.",
+            "ParameterId": 13579,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "ENUM",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Selection from predefined options",
+              "ModifiedDate": null,
+              "ParameterTypeId": 19,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 2,
+            "ParameterTypeId": 19,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "preferred_time_text",
+            "Schema": null,
+            "IntentId": 9223,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "שעה ספציפית כאשר נבחר 'שעה ספציפית'.",
+            "ParameterId": 13582,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 3,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "urgency",
+            "Schema": null,
+            "IntentId": 9223,
+            "IsActive": 1,
+            "CreatedBy": "IMPORT",
+            "IsRequired": 0,
+            "ModifiedBy": null,
+            "OptionList": null,
+            "CreatedDate": "2026-05-25 07:47:57",
+            "Description": "רמת הדחיפות: דחוף מיידי, תוך 24 שעות, או לא דחוף.",
+            "ParameterId": 13576,
+            "DefaultValue": "",
+            "ModifiedDate": null,
+            "ParameterType": {
+              "Name": "ENUM",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Selection from predefined options",
+              "ModifiedDate": null,
+              "ParameterTypeId": 19,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 0
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 19,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "בדיקת זמינות נציג",
+        "IntentId": 9226,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Query the Voicenter platform for live agent availability at the current moment. Branch on response: if an agent is available, route to warm transfer; otherwise route to CRM ticket creation for callback.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "AVAILABILITY CHECK PRE-EXECUTION\n\n1. Verify upstream slots present (insurance_domain, urgency). IF missing, route to\n   create_callback_ticket without calling the API.\n\n2. Speak \"רגע, אני בודקת זמינות נציג.\" Initiate API call.\n\nIRON: no caller questions here. Wait governed by silence_duration/loops in section 4."
+          },
+          "max_turns": 15,
+          "max_turns_sentence": "אני חייבת לסיים את השיחה בשלב הזה."
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2041
+          }
+        ],
+        "IntentToolName": "check_agent_availability",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "url": "<USER_TO_FILL: webhook_url>",
+            "body": {
+              "urgency": "{{urgency}}",
+              "layer_id": -999,
+              "insurance_domain": "{{insurance_domain}}"
+            },
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer {{ENV.VOICENTER_AVAILABILITY_TOKEN}}"
+            },
+            "fail_output": "לא הצלחתי לבדוק את הזמינות כרגע. אני אפתח פנייה ונחזור אליך.",
+            "announcement": "בדקתי את הזמינות, רגע אחד בבקשה.",
+            "function_output": {
+              "default": "Parse response. Route on response.available:\n- true → transfer_to_human (success).\n- false → create_callback_ticket (fallback).\n\nAnticipated shape: { available: boolean, queue_position?, eta_seconds? }.\nDo NOT relay queue_position/eta_seconds to caller. Developer confirms shape in 4.5.4."
+            },
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Branch on response.available: true → transfer_to_human; false → create_callback_ticket.\n2. On API fail: silence fallback already routed per section 4.\n\nIRON: no caller-facing text beyond apiResponseAnnouncement. No retries.",
+            "api_silence_behaviour": {
+              "intent": 9232,
+              "silence_loops": 1,
+              "silence_duration": 5,
+              "silence_sentence": "רגע קט, אני בודקת זמינות נציג.",
+              "silence_instructions": "On silence exhaust, route to create_callback_ticket. No API retry.",
+              "silence_ending_sentence": "יש עומס כרגע. אני אפתח פנייה ואחזור אליך, בסדר?"
+            },
+            "intentLoadingAnnouncement": "רגע, אני בודקת זמינות נציג."
+          },
+          "ResponseTypeId": 2,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "העברה לנציג אנושי",
+        "IntentId": 9229,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Warm-transfer the caller to the live human agent layer. Speaks a brief handoff confirmation before the transfer. Terminal intent; the bot disengages once the transfer is initiated. Global intent — reachable from anywhere in the call.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "WARM TRANSFER PRE-EXECUTION\n\n1. No slots. Speak announcement, then intentLoadingAnnouncement, then connect to\n   layer (section 4). Platform handles the transfer.\n\nIRON: no slot collection. No promises about agent-side wait time."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2044
+          }
+        ],
+        "IntentToolName": "transfer_to_human",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "layer": -999,
+            "announcement": "מצוין, יש לי את הפרטים. אני מחברת אותך עכשיו לנציג זמין. אם השיחה תתנתק — ניצור קשר חזרה למספר שמסרת.",
+            "intentLoadingAnnouncement": "רגע בבקשה."
+          },
+          "ResponseTypeId": 1,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "יצירת פנייה במערכת",
+        "IntentId": 9232,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "POST a new ticket to the Leadim CRM with all collected slot data (caller identity, inquiry classification, description, callback preferences, urgency). After a successful response, the bot speaks a closing line confirming the ticket was opened and that a callback will follow. Terminal intent.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "CRM TICKET CREATION PRE-EXECUTION\n\n1. Verify minimum slots: full_name, callback_phone, insurance_company, insurance_domain,\n   request_type, short_description. Other slots may be empty (minimal-path allowed).\n\n2. Speak \"רגע, אני פותחת את הפנייה במערכת.\" Initiate POST.\n\nIRON: do not block on missing optional slots. Send what we have."
+          },
+          "max_turns": 15,
+          "max_turns_sentence": "אני חייבת לסיים את השיחה בשלב הזה."
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2047
+          }
+        ],
+        "IntentToolName": "create_callback_ticket",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "url": "<USER_TO_FILL: webhook_url>",
+            "body": {
+              "urgency": "{{urgency}}",
+              "full_name": "{{full_name}}",
+              "id_number": "{{id_number}}",
+              "birth_date": "{{birth_date}}",
+              "request_type": "{{request_type}}",
+              "id_issue_date": "{{id_issue_date}}",
+              "call_timestamp": "{{TimeNow}}",
+              "callback_phone": "{{callback_phone}}",
+              "consent_contact": "{{consent_contact}}",
+              "insurance_domain": "{{insurance_domain}}",
+              "company_free_text": "{{company_free_text}}",
+              "insurance_company": "{{insurance_company}}",
+              "short_description": "{{short_description}}",
+              "caller_phone_origin": "{{caller_phone}}",
+              "preferred_time_text": "{{preferred_time_text}}",
+              "policy_or_claim_number": "{{policy_or_claim_number}}",
+              "request_type_free_text": "{{request_type_free_text}}",
+              "preferred_callback_time": "{{preferred_callback_time}}"
+            },
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer {{ENV.LEADIM_API_TOKEN}}"
+            },
+            "fail_output": "הייתה תקלה בפתיחת הפנייה. אבל יש לי את הפרטים שלך — נציג ייצור איתך קשר בהקדם. תודה ויום טוב.",
+            "announcement": "פתחתי פנייה במערכת. נציג ייצור איתך קשר בהתאם לזמינות ולמועד שביקשת. תודה שהתקשרת, יום טוב.",
+            "function_output": {
+              "default": "Terminal intent. Anticipated response: { ticket_id, status }. Do not relay ticket_id\nto caller. After success or fail, call ends. If status != success, prefer fail_output path."
+            },
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Terminal. After success/fail/silence utterance, bot disengages.\n\nIRON: no additional text. No retries.",
+            "api_silence_behaviour": {
+              "intent": 9238,
+              "silence_loops": 1,
+              "silence_duration": 5,
+              "silence_sentence": "רגע, אני פותחת את הפנייה במערכת.",
+              "silence_instructions": "On silence exhaust, route to end_call_polite. No API retry.",
+              "silence_ending_sentence": "יש עומס. אני סוגרת את השיחה אך נציג ייצור איתך קשר."
+            },
+            "intentLoadingAnnouncement": "רגע, אני פותחת את הפנייה במערכת."
+          },
+          "ResponseTypeId": 2,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "הפניה מנושא לא רלוונטי",
+        "IntentId": 9235,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "One-shot polite redirect when the caller raises a topic unrelated to insurance customer service. If the caller pivots to an insurance matter, route to intake. If the caller persists off-topic, end the call politely.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "OUT-OF-SCOPE REDIRECT PRE-EXECUTION\n\n1. No slots. Speak canonical redirect ONCE. Wait for response.\n\nIRON: redirect ONCE only. Do not repeat."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2050
+          }
+        ],
+        "IntentToolName": "handle_out_of_scope",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "רק כדי לוודא שאני עוזרת נכון — כאן מטפלים בשירות לקוחות בנושאי ביטוח. אם יש לך נושא אחר, תאמר/י בקצרה במה מדובר, או שנסיים את השיחה כאן ביום נעים.",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Route on response:\n   - insurance inquiry → collect_inquiry_basics.\n   - persists off-topic → end_call_polite.\n   - human request → transfer_to_human.\n\nIRON: no engagement with off-topic substance. No repeat of redirect."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "סיום שיחה מנומס",
+        "IntentId": 9238,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 15471,
+        "Description": "Speak a brief polite closing line and end the call. Used when the caller declines consent to be contacted, persists with an off-topic request, or the CRM ticket API fails (best-effort apology). Terminal intent.",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "TERMINAL CLOSING PRE-EXECUTION\n\n1. No slots. Speak closing once. Call ends.\n\nIRON: do not extend. Do not re-engage."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": 2053
+          }
+        ],
+        "IntentToolName": "end_call_polite",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "תודה שהתקשרת ויום נעים.",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION\n\n1. Terminal. Bot disengages.\n\nIRON: no additional text. No re-engagement."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": null
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": 1696,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      }
+    ],
+    "botIntents": [
+      {
+        "BotId": 1963,
+        "DTMFList": [],
+        "IntentId": 9214,
+        "IsActive": 1,
+        "SortOrder": 0,
+        "BotIntentId": 21994,
+        "BotVersionId": 9478,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19405,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 21994,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": 1963,
+        "DTMFList": [],
+        "IntentId": 9217,
+        "IsActive": 1,
+        "SortOrder": 1,
+        "BotIntentId": 21997,
+        "BotVersionId": 9478,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19408,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 21997,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": 1963,
+        "DTMFList": [],
+        "IntentId": 9229,
+        "IsActive": 1,
+        "SortOrder": 2,
+        "BotIntentId": 22009,
+        "BotVersionId": 9478,
+        "BotIntentTypeID": 2,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19420,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 22009,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": 1963,
+        "DTMFList": [],
+        "IntentId": 9235,
+        "IsActive": 1,
+        "SortOrder": 3,
+        "BotIntentId": 22015,
+        "BotVersionId": 9478,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19426,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 22015,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      }
+    ],
+    "intentRelations": [
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9217,
+        "OriginIntentID": 9214,
+        "IntentRelatedID": 17212,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19432,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17212,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9217,
+        "OriginIntentID": 9235,
+        "IntentRelatedID": 17248,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19468,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17248,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9220,
+        "OriginIntentID": 9217,
+        "IntentRelatedID": 17218,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19438,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17218,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9223,
+        "OriginIntentID": 9220,
+        "IntentRelatedID": 17224,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19444,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17224,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9226,
+        "OriginIntentID": 9223,
+        "IntentRelatedID": 17233,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19453,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17233,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9214,
+        "IntentRelatedID": 17215,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19435,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17215,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9217,
+        "IntentRelatedID": 17221,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19441,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17221,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 2,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9220,
+        "IntentRelatedID": 17230,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19450,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17230,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 2,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9223,
+        "IntentRelatedID": 17239,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19459,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17239,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9226,
+        "IntentRelatedID": 17242,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19462,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17242,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9232,
+        "OriginIntentID": 9220,
+        "IntentRelatedID": 17227,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19447,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17227,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9232,
+        "OriginIntentID": 9226,
+        "IntentRelatedID": 17245,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19465,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17245,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9238,
+        "OriginIntentID": 9223,
+        "IntentRelatedID": 17236,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19456,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17236,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 1,
+        "DTMFList": [],
+        "NextIntentID": 9238,
+        "OriginIntentID": 9235,
+        "IntentRelatedID": 17251,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": 19471,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": 17251,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9232,
+        "IntentRelatedID": -2000,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3000,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2000,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 2,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9235,
+        "IntentRelatedID": -2001,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3001,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2001,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": 9229,
+        "OriginIntentID": 9238,
+        "IntentRelatedID": -2002,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3002,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2002,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      }
+    ],
+    "intentCategories": [
+      {
+        "Name": "Default Category",
+        "IsActive": 1,
+        "AccountId": 15471,
+        "PriorityId": 1,
+        "Description": "Default Category",
+        "IntentCategoryId": 1696
+      }
+    ],
+    "silenceRelations": [],
+    "apiSilenceRelations": [
+      {
+        "Configuration": {
+          "url": "<USER_TO_FILL: webhook_url>",
+          "body": {
+            "urgency": "{{urgency}}",
+            "layer_id": -999,
+            "insurance_domain": "{{insurance_domain}}"
+          },
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ENV.VOICENTER_AVAILABILITY_TOKEN}}"
+          },
+          "fail_output": "לא הצלחתי לבדוק את הזמינות כרגע. אני אפתח פנייה ונחזור אליך.",
+          "announcement": "בדקתי את הזמינות, רגע אחד בבקשה.",
+          "function_output": {
+            "default": "Parse response. Route on response.available:\n- true → transfer_to_human (success).\n- false → create_callback_ticket (fallback).\n\nAnticipated shape: { available: boolean, queue_position?, eta_seconds? }.\nDo NOT relay queue_position/eta_seconds to caller. Developer confirms shape in 4.5.4."
+          },
+          "response_success": {
+            "instructions": ""
+          },
+          "intentInstructions": "POST-EXECUTION\n\n1. Branch on response.available: true → transfer_to_human; false → create_callback_ticket.\n2. On API fail: silence fallback already routed per section 4.\n\nIRON: no caller-facing text beyond apiResponseAnnouncement. No retries.",
+          "api_silence_behaviour": {
+            "intent": 9232,
+            "silence_loops": 1,
+            "silence_duration": 5,
+            "silence_sentence": "רגע קט, אני בודקת זמינות נציג.",
+            "silence_instructions": "On silence exhaust, route to create_callback_ticket. No API retry.",
+            "silence_ending_sentence": "יש עומס כרגע. אני אפתח פנייה ואחזור אליך, בסדר?"
+          },
+          "intentLoadingAnnouncement": "רגע, אני בודקת זמינות נציג."
+        },
+        "OriginIntentID": 9226,
+        "ApiSilenceIntentID": 9232
+      },
+      {
+        "Configuration": {
+          "url": "<USER_TO_FILL: webhook_url>",
+          "body": {
+            "urgency": "{{urgency}}",
+            "full_name": "{{full_name}}",
+            "id_number": "{{id_number}}",
+            "birth_date": "{{birth_date}}",
+            "request_type": "{{request_type}}",
+            "id_issue_date": "{{id_issue_date}}",
+            "call_timestamp": "{{TimeNow}}",
+            "callback_phone": "{{callback_phone}}",
+            "consent_contact": "{{consent_contact}}",
+            "insurance_domain": "{{insurance_domain}}",
+            "company_free_text": "{{company_free_text}}",
+            "insurance_company": "{{insurance_company}}",
+            "short_description": "{{short_description}}",
+            "caller_phone_origin": "{{caller_phone}}",
+            "preferred_time_text": "{{preferred_time_text}}",
+            "policy_or_claim_number": "{{policy_or_claim_number}}",
+            "request_type_free_text": "{{request_type_free_text}}",
+            "preferred_callback_time": "{{preferred_callback_time}}"
+          },
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{ENV.LEADIM_API_TOKEN}}"
+          },
+          "fail_output": "הייתה תקלה בפתיחת הפנייה. אבל יש לי את הפרטים שלך — נציג ייצור איתך קשר בהקדם. תודה ויום טוב.",
+          "announcement": "פתחתי פנייה במערכת. נציג ייצור איתך קשר בהתאם לזמינות ולמועד שביקשת. תודה שהתקשרת, יום טוב.",
+          "function_output": {
+            "default": "Terminal intent. Anticipated response: { ticket_id, status }. Do not relay ticket_id\nto caller. After success or fail, call ends. If status != success, prefer fail_output path."
+          },
+          "response_success": {
+            "instructions": ""
+          },
+          "intentInstructions": "POST-EXECUTION\n\n1. Terminal. After success/fail/silence utterance, bot disengages.\n\nIRON: no additional text. No retries.",
+          "api_silence_behaviour": {
+            "intent": 9238,
+            "silence_loops": 1,
+            "silence_duration": 5,
+            "silence_sentence": "רגע, אני פותחת את הפנייה במערכת.",
+            "silence_instructions": "On silence exhaust, route to end_call_polite. No API retry.",
+            "silence_ending_sentence": "יש עומס. אני סוגרת את השיחה אך נציג ייצור איתך קשר."
+          },
+          "intentLoadingAnnouncement": "רגע, אני פותחת את הפנייה במערכת."
+        },
+        "OriginIntentID": 9232,
+        "ApiSilenceIntentID": 9238
+      }
+    ]
+  },
+  "BotStatusId": 1,
+  "CreatedDate": "2026-06-01 12:00:00",
+  "Description": "Digital reception agent for EZget's insurance customer service center. Handles inbound calls: classifies the inquiry (insurance company + domain + request type), collects identifying details, then warm-transfers to a live human agent if available — otherwise opens a Leadim CRM ticket and schedules a callback.",
+  "BotLanguages": [],
+  "ModifiedDate": null,
+  "AiModelConfig": {
+    "Name": "Gemini 3.1 - Voice driven",
+    "ApiKey": {},
+    "AIModel": 18,
+    "IsActive": 1,
+    "AccountId": 0,
+    "ModifiedBy": null,
+    "CreatedDate": "2026-03-29 07:59:31",
+    "ModifiedDate": "2026-03-30 17:02:32",
+    "AIModelConfig": {
+      "created": {
+        "model": "models/gemini-3.1-flash-live-preview"
+      }
+    },
+    "AIModelConfigID": 139
+  },
+  "ActiveVersionInfo": {
+    "IsActive": 1,
+    "CreatedDate": "2026-06-01 12:00:00",
+    "Description": "",
+    "BotVersionId": 9478,
+    "ModifiedDate": null,
+    "SystemPrompt": "",
+    "AIModelConfig": {
+      "max_duration": 1200,
+      "prompts": {
+        "persona": "\"Noa\" (נועה) — digital reception agent for EZget's insurance customer service center.\nHebrew female voice. Inbound calls only.\n\nRole: classify inquiry (company/domain/request type), collect identifying info, then\nwarm-transfer if agent available → else open Leadim CRM callback ticket.\n\nTone: polite, professional, \"assertive-gentle\" — leads, brief empathy, no arguing.\n\nHard constraints (apply call-wide):\n- No insurance/legal/financial advice. No promises. No personal policy info.\n- Stay in scope. One redirect for off-topic; if persists, end call.\n- Calls may be recorded (disclosed in openingAnnouncement).\n- Human-transfer triggers in any intent: \"נציג\", \"בן אדם\", \"תעביר אותי למישהו\", or\n  aggression → immediate transfer_to_human.\n- NEVER infer language from caller's name/accent/tone. Speak only Hebrew.",
+        "chatInstructions": "You are writing as Noa (נועה), a digital reception representative for EZget's insurance customer service center. Maintain the same identity and tone as defined in the global persona.\n\nChat-channel guidelines:\n\n1. Keep messages short and focused — typically 1-3 sentences per turn unless explaining something complex.\n2. No emojis unless the user uses them first.\n3. Use plain text formatting. No markdown headers, no bullet lists unless the content is genuinely list-shaped.\n4. Confirm collected information by writing it back to the user (e.g., \"Got it — phone: 050-1234567. Is that correct?\").\n5. Use Hebrew only. Do not switch languages mid-conversation unless the user does.\n\nThis is a generated default. If the user later activates chat as a primary channel, regenerate this section through Skill 1 patch mode (channel scope expansion).",
+        "voiceInstructions": "Pace: normal-fast. Short pauses (~200ms) before/after numbers and dates.\nDigits/dates: read digit-by-digit. Insurance company names pronounced naturally.\nAcknowledgments: brief only (\"כן\", \"אוקיי\", \"הבנתי\") — never long affirmations.\nConfirmation: read back id_number, callback_phone, full_name once before continuing.\nSpelling fallback: if last name unclear:\n   \"אפשר לאיית את שם המשפחה?\"\nInterruption: yield immediately; return to slot after handling.",
+        "intentInstructions": "OPENING BEHAVIOR\n\n1. Wait for caller's first turn after openingAnnouncement.\n\n2. Route:\n   - identity question → handle_who_are_you (return here after).\n   - human-transfer trigger (see persona) OR aggression: speak once\n     \"אני מבינה. כדי לעזור בצורה הטובה ביותר — אני מעבירה אותך לנציג/ה.\"\n     then transfer_to_human.\n   - unrelated topic → handle_out_of_scope.\n   - insurance inquiry → step 3.\n\n3. Trigger collect_inquiry_basics. Flow: collect_inquiry_basics → collect_caller_identity\n   → collect_callback_preferences → check_agent_availability → transfer_to_human or\n   create_callback_ticket.",
+        "openingAnnouncement": "שלום, הגעת ל-EZget, שירות וסיוע בנושאי ביטוח. מדברת נועה, נציגת שירות דיגיטלית. לתשומת לבך, השיחות עשויות להיות מוקלטות לצורכי שירות ובקרה. אני יכולה לפתוח פנייה מסודרת ולהעביר אותך לנציג אנושי, ובשביל זה אשאל כמה שאלות קצרות. איך אפשר לעזור?"
+      },
+      "recordAgentCalls": "false",
+      "silence_behaviour": {
+        "intent": 9229,
+        "silence_loops": 2,
+        "silence_duration": 6,
+        "silence_sentence": "רוצה שנמשיך עם הפנייה?",
+        "silence_ending_sentence": "מאחר שאין מענה, אני מעבירה אותך לנציג אנושי. רגע אחד בבקשה."
+      },
+      "created": {
+        "realtimeInputConfig": {
+          "automaticActivityDetection": {
+            "disabled": "true"
+          }
+        },
+        "generationConfig": {
+          "speechConfig": {
+            "voiceConfig": {
+              "prebuiltVoiceConfig": {
+                "voiceName": "Aoede"
+              }
+            }
+          }
+        }
+      }
+    },
+    "VersionNumber": "0.0.2",
+    "AIModelConfigId": 139,
+    "BotVersionStatusId": 3
+  }
+}
