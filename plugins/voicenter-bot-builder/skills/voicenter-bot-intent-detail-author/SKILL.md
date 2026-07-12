@@ -43,7 +43,7 @@ Before touching the spec, load context from these references.
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
-| `../../../../references/docs/voicenter-bot-json-schema-audit-v1.md` §11.2, §11.3 | RT=2 / RT=3 Configuration field shapes — v1.5.0 production-aligned (announcement / function_output object / response_success object) |
+| `../../references/voicenter-bot-json-schema-audit-v1.md` §11.2, §11.3 | RT=2 / RT=3 Configuration field shapes — v1.5.0 production-aligned (announcement / function_output object / response_success object) |
 
 Also load this file from this skill's package:
 
