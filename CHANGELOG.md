@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.13.1] — 2026-07-12
+
+Bot-builder house rules for the call opening, applied to Skill 1 (Agent Spec Designer).
+
+### Skills
+
+- **Skill 1 — opening announcement must end with a question (hard rule, no override).** `prompts.openingAnnouncement` must close with a question mark (`?`, or `؟` for Arabic bots) — an engaging question, preferably asking for the first detail the bot collects (typically the entry intent's first slot: "Who am I speaking with?", "Is it a good time to talk?", "Am I speaking with Z?"). Skill 1 refuses statement openings during elicitation and proposes a question-ending rewrite. New blocking self-validation **Check 16** enforces it on every close-out and patch.
+- **Skill 1 — opening behavior is authored around the announcement's answer.** The interview order of §3.2.3/§3.2.4 is swapped: the opening announcement is elicited first, then the bot-level `intentInstructions` (Opening Behavior) is drafted so its first step handles the caller's answer to that question — never re-greeting, never re-asking. Escape hatch: a caller who ignores the question and states a request directly is routed immediately. New blocking self-validation **Check 17** enforces the alignment; patch mode offers a §2.4 alignment edit whenever the announcement's question changes.
+- Self-validation checklist grows from 15 to 17 checks (10 blocking); `spec-skeleton.md` §2.4/§2.5 placeholder text carries both rules for hand-edited specs.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-spec-designer/README.md` mirror updated (Phase 2 bundle bullets, checklist table rows 16–17).
+
+### Versioning
+
+- voicenter-bot-builder 1.12.0 → 1.12.1, marketplace metadata 1.13.0 → 1.13.1. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.13.0] — 2026-07-05
 
 ### New plugin

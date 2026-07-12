@@ -91,7 +91,7 @@ Every closed-set choice the user makes during the interview must be presented th
 
 - Setup §2.1/§2.2 — runtime correction (Single-conversation vs Claude Code) and mode override (Greenfield vs Patch) when the auto-detected value is wrong
 - Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward intent (MANDATORY — always configured). (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Gemini Live 3.1 per §3.1 step 8.)
-- Phase 2 — every "Show the draft, confirm or edit" prompt (§3.2.1 persona, §3.2.3 opening behavior, §3.2.4 opening announcement) → "Accept" / "Edit" (Edit branches into free-text capture)
+- Phase 2 — every "Show the draft, confirm or edit" prompt (§3.2.1 persona, §3.2.3 opening announcement, §3.2.4 opening behavior) → "Accept" / "Edit" (Edit branches into free-text capture)
 - Phase 2 — "Accept template default or override?" for inactive channels (§3.2.2)
 - Phase 2/3 boundary — "Pause for Deep Research or skip and proceed?" (§3.3)
 - Phase 3 — Response Type (RT=1/2/3/4); identifier naming when reject-and-suggest fires ("Use suggestion" / "Propose alternative")
@@ -102,6 +102,8 @@ Every closed-set choice the user makes during the interview must be presented th
 - Self-validation Check 6 — "Use snake_case suggestion `[name]`, or propose your own?"
 - Self-validation Check 7 — "Add an escalation transition?" (yes/no)
 - Self-validation Check 8 — "Collected upstream / typo for existing variable / different name?" (3 options)
+- Self-validation Check 16 — "Use suggested rewrite *(Recommended)*" / "Write my own question"
+- Self-validation Check 17 — "Apply aligned rewrite *(Recommended)*" / "Edit myself"
 - Section 2.4.A MCP fallback — "Install / Authenticate / Continue manually"
 
 **Iron rule:** if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. The only acceptable free-text prompts are open-ended ones (names, descriptions, free-form text content, integer/numeric values). **Ask exactly one question per turn:** present a single `AskUserQuestion` (or one free-text prompt) per message and wait for the answer before asking the next. Never batch multiple questions into one turn.
@@ -174,41 +176,53 @@ For each **inactive** channel: emit the templated default automatically per `tem
 If user accepts: write to spec preceded by `[default — not user-authored]`.
 If user overrides: capture the override; do not include the marker.
 
-#### 3.2.3 Draft `prompts.intentInstructions` (bot-level Opening Behavior)
+#### 3.2.3 Draft `prompts.openingAnnouncement`
 
-This is **pre-intent** — what the bot does at the very start of the call, before any specific intent has fired. It contains greeting, routing logic, and disambiguation rules. (Per Doc 1 §14.3.11, this is one of the most-misused fields.)
+This is the **first audible message** the caller hears (Doc 1 §3). One short utterance. It is elicited **before** the opening behavior (§3.2.4) because the opening behavior is authored around this announcement's closing question. (Interview order only — the spec still writes it to section 2.5, after section 2.4.)
 
-Ask: "When the call opens, what should the bot do? Greet how, then how does it figure out which intent to route to? What if the caller says something unclear?"
+**IRON RULE (house rule, v1.12.1 — hard, no override):** the opening announcement MUST end with a question mark (`?`; `؟` for Arabic bots — Hebrew uses `?`). Trailing quotes or whitespace after the mark are fine. Any engaging question passes; a statement never does. The question should **preferably ask for the first detail the bot collects** (typically the entry intent's first slot — caller's name, identity confirmation, "is it a good time to talk"), so the caller's very first answer is already useful data. Canonical examples:
+
+- "Hello, this is X's virtual assistant. Who am I speaking with?"
+- "Hey there, this is the virtual assistant of Y. Is it a good time to talk?"
+- "Hello, am I speaking with Z?"
+
+Ask: "What does the caller hear at the moment of pickup? It must end with a question — ideally asking for the first thing the bot needs from the caller (e.g., 'Hello, this is X. Who am I speaking with?')."
+
+Draft and show. If the user supplies a statement (no closing question), do NOT accept it — explain the iron rule, propose a question-ending rewrite that preserves their wording, and re-prompt. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening line", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text, re-apply the iron rule, and re-prompt until accepted.
+
+#### 3.2.4 Draft `prompts.intentInstructions` (bot-level Opening Behavior)
+
+This is **pre-intent** — what the bot does at the very start of the call, before any specific intent has fired. It contains the handling of the caller's answer to the opening question, routing logic, and disambiguation rules. (Per Doc 1 §14.3.11, this is one of the most-misused fields.)
+
+**IRON RULE (house rule, v1.12.1):** the opening announcement (§3.2.3) already greeted the caller and asked a question. The opening behavior's **first numbered step must handle the caller's answer to that question** (capture the name, branch on yes/no, confirm identity). The routine never greets again and never re-asks the opening question. Escape hatch: if the caller ignores the question and states a request directly, the routine routes on that request immediately and collects the skipped detail later if still needed.
+
+Ask: "The opening announcement just asked '[the §3.2.3 closing question]'. What should the bot do with the caller's answer, and how does it route to intents from there? What if the caller says something unclear?"
 
 Draft in **Conversation Routines style** (ALL-CAPS headers, numbered steps, IF/ELSE, IRON RULES). Example shape:
 
 ```
 OPENING BEHAVIOR
-1. Greet briefly.
-2. Ask what the caller needs.
-3. Route based on caller's response:
+(Opening announcement already played: "Hello, this is X's assistant. Who am I speaking with?")
+1. Capture the caller's answer to the opening question (the caller's name).
+2. Route based on what the caller needs:
    - Scheduling → trigger validate_customer_address.
    - Rescheduling → trigger reschedule_existing.
    - General questions → trigger general_inquiry.
+
+IF caller ignores the opening question and states a request directly:
+  - Proceed with routing; collect the skipped detail later if still needed.
 
 IF caller's intent is unclear:
   - Ask once for clarification.
   - If still unclear, route to transfer_to_human.
 
+IRON RULE: Never greet again or repeat the opening question.
 IRON RULE: Stay in scope. For pricing/billing/technical, route to transfer_to_human.
 ```
 
 Show the draft, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening behavior", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text and re-prompt until accepted.
 
 **Compass doctrine note (rule 5 — recency-slot language-lock).** The bot-level `intentInstructions` is the recency slot of the assembled systemInstruction (per "Lost in the Middle" + "Found in the Middle" U-shaped attention bias). For non-English bots, a known production bug (Gemini cookbook #1197) causes the model to code-switch based on the caller's name or accent even with English-only instructions. The doctrine's mitigation is to place an extreme negative constraint — equivalent to `"NEVER infer language from caller's name, accent, or tone."` — in the final third of `prompts.intentInstructions`. Skill 1's self-validation check 13 detects whether this constraint is present in the recency slot and, if not, offers to inject the standard line. See `../../references/voice-prompt-doctrine.md` rule 5 for the detection pattern and fix recipe.
-
-#### 3.2.4 Draft `prompts.openingAnnouncement`
-
-This is the **first audible message** the caller hears (Doc 1 §3). One short utterance.
-
-Ask: "What does the caller hear at the moment of pickup?"
-
-Draft and show. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening line", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text and re-prompt until accepted.
 
 **Write at end of Phase 2:** spec section 2 (all five fields).
 
@@ -421,7 +435,7 @@ If section 4.7 is empty or missing (the default), Skill 3 emits the safe default
 ### 3.6 Greenfield close-out
 
 1. **Role classification (Approach B, D2/D7).** Propose a `**Bot-intent role:**` for every section-4 intent:
-   - `entry` for each intent named as a routing target in the OPENING BEHAVIOR block (spec section 2.4, drafted in Phase 2 §3.2.3).
+   - `entry` for each intent named as a routing target in the OPENING BEHAVIOR block (spec section 2.4, drafted in Phase 2 §3.2.4).
    - `global` for each intent the user described as always-available / triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`.
    - `chained` for all others.
    Present the full proposed classification in one `AskUserQuestion` (per §2.4 tool conventions) for confirmation; on approval, write the explicit `**Bot-intent role:**` field into every section-4 intent. The inference lives here in Skill 1 — Skill 3 only reads the written field.
@@ -529,7 +543,7 @@ Open unknowns: <count from 7.4>
 
 - Edit `prompts.persona` (section 2.1 only)
 - Edit `prompts.voiceInstructions` or `prompts.chatInstructions`
-- Edit `prompts.openingAnnouncement`
+- Edit `prompts.openingAnnouncement` — Checks 16–17 re-run after the patch (as always); if the closing question changed, offer a §2.4 first-step alignment edit in the same patch so the opening behavior still consumes the answer
 - Edit non-structural intent metadata (display name, description, priority, max attempts, validation timeout)
 - Add a new intent (enters as `[structural]`; existing intents untouched)
 - Rename an intent identifier — Skill 1 updates all transition refs and Mustache refs; existing `[detailed]` content stays since the underlying logic is unchanged
@@ -542,7 +556,7 @@ Open unknowns: <count from 7.4>
 - Modify an intent's slots (add, remove, reorder, retype)
 - Delete an intent
 - Modify the transition graph beyond simple reordering
-- Edit `prompts.intentInstructions` (bot-level) routing destinations
+- Edit `prompts.intentInstructions` (bot-level) routing destinations — alignment with the §2.5 opening question is re-verified by Check 17
 - Change channel scope from two channels to one
 
 If the change spans both categories: classify as hard.
@@ -616,7 +630,7 @@ Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Apply patch?", 2 o
 
 Run on **every greenfield close-out** and **after every patch**, before declaring the spec ready.
 
-15 checks total: 8 blocking, 6 advisory (Checks 8 + 11–15, of which Checks 11–15 are Compass doctrine), 1 structural-correctness.
+17 checks total: 10 blocking, 6 advisory (Checks 8 + 11–15, of which Checks 11–15 are Compass doctrine), 1 structural-correctness. Checks 16–17 are house rules (v1.12.1) covering the opening announcement/behavior pair.
 
 Execute in the order below.
 
@@ -790,6 +804,24 @@ No user prompt required.
 **Remediation:** record user's decision per match in 7.3 — `Compass rule 7 advisory: stem "[X]" in [field] — user kept|removed`. Do not auto-remove.
 
 **Gating:** `[any]`.
+
+### Check 16 — Opening announcement ends with a question (house rule, v1.12.1) — blocking
+
+**Trigger:** spec section 2.5 (`prompts.openingAnnouncement`) does not end with a question mark (`?`, or `؟` for Arabic bots), ignoring trailing quotes and whitespace.
+
+**Failure message:**
+> The opening announcement "[current text]" does not end with a question. The first audible message must close with an engaging question — preferably asking for the first detail the bot collects (the entry intent's first slot, e.g., "Who am I speaking with?" / "Is it a good time to talk?"). A statement opening leaves the caller without a conversational hook. Suggested rewrite: "[current text reworked to end with a question derived from the entry intent's first slot, or an engaging question if no slot fits]".
+
+**Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening line", 2 options: "Use suggested rewrite *(Recommended)*" / "Write my own question" — free-text capture). Re-check until the announcement ends with a question. There is no pass-without-question path.
+
+### Check 17 — Opening behavior consumes the announcement's answer (house rule, v1.12.1) — blocking
+
+**Trigger:** spec section 2.4's (`prompts.intentInstructions`) first numbered step does not handle the caller's answer to the section 2.5 opening question, OR section 2.4 greets again, OR it re-asks the same question the announcement already asked.
+
+**Failure message:**
+> The opening behavior does not consume the opening announcement's question ("[the §2.5 question]"). [It re-greets / re-asks the question / ignores the caller's answer: "[quoted snippet]".] The announcement already greeted and asked; step 1 of OPENING BEHAVIOR must handle the caller's answer (capture the name, branch on yes/no, confirm identity) and never repeat the greeting or the question. Suggested aligned rewrite of the opening steps: "[rewrite]".
+
+**Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening behavior", 2 options: "Apply aligned rewrite *(Recommended)*" / "Edit myself" — free-text capture). Re-check until aligned.
 
 ---
 

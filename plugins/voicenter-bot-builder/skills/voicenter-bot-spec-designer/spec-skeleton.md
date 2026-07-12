@@ -41,11 +41,11 @@
 
 ### 2.4 Bot-Level Intent Instructions (Opening Behavior)
 
-[intentInstructions text in Conversation Routines style. Pre-intent. Greeting + routing logic + iron rules.]
+[intentInstructions text in Conversation Routines style. Pre-intent. Routing logic + iron rules. First numbered step handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it.]
 
 ### 2.5 Opening Announcement
 
-[openingAnnouncement text — single short utterance. The first audible message the caller hears.]
+[openingAnnouncement text — single short utterance. The first audible message the caller hears. MUST end with a question mark — an engaging question, preferably asking for the first detail the bot collects (e.g., "Who am I speaking with?").]
 
 ---
 

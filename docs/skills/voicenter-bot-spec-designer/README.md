@@ -74,7 +74,7 @@ Concretely, this covers:
 
 - **Setup** — runtime correction (Single-conversation vs Claude Code), mode override (Greenfield vs Patch), and the discard-existing-spec follow-up when forcing greenfield over an attached spec
 - **Phase 1** — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward intent (MANDATORY — always configured, no yes/no gate) (the identifier is **not** prompted — silently auto-derived from the Bot Name, transliterating non-ASCII; AI model config is **not** prompted either — silent default)
-- **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening behavior, and opening announcement; "Accept template default / Override" for inactive channels
+- **Phase 2** — every "Accept draft / Edit" prompt for `persona`, opening announcement, and opening behavior (elicited in that order as of v1.12.1 — the behavior is authored around the announcement's question); "Accept template default / Override" for inactive channels
 - **Phase 2/3 boundary** — pause vs skip Deep Research
 - **Phase 3** — Response Type (RT=1/2/3/4); intent-name "Use suggestion / Propose alternative" when reject-and-suggest fires
 - **Phase 4** — account selection (live list), layer selection (live list), POST vs GET, dial source (parameter vs static), per-slot `ParameterTypeId` (STRING / PHONE / BOOLEAN / ENUM / Other-fallback) and `IsRequired` (yes/no), RT=2 `silence` fallback intent reference (pick from the existing intent set), RT=4 `record` (yes/no), and the RT=4 rarity-warning confirmation
@@ -114,8 +114,8 @@ Captures section 2 (the 5-field `prompts` bundle):
 - `persona` — identity, role, tone, language, hard constraints
 - `voiceInstructions` — pacing, pronunciation, interruption handling
 - `chatInstructions` — formatting, message length, emoji policy
-- `intentInstructions` — bot-level opening behavior in Conversation Routines style
-- `openingAnnouncement` — the first audible message at pickup
+- `intentInstructions` — bot-level opening behavior in Conversation Routines style; its first step handles the caller's answer to the opening announcement's question, and it never re-greets or re-asks it (v1.12.1)
+- `openingAnnouncement` — the first audible message at pickup; MUST end with a question mark, preferably asking for the first detail the bot collects, e.g. "Who am I speaking with?" (v1.12.1). Elicited **before** the opening behavior, which is authored around it
 
 Iron rules enforced during this phase:
 
@@ -214,7 +214,7 @@ The cascade algorithm walks both Skill-1-territory references (RT=2 body / heade
 
 ## Self-validation checklist
 
-Run on every greenfield close-out and after every patch. 10 checks, executed in order:
+Run on every greenfield close-out and after every patch. 17 checks, executed in order (the Compass-doctrine advisories 11–15 are documented in the SKILL.md; the table below lists the core and house-rule checks):
 
 | # | Check | Severity |
 |---|---|---|
@@ -228,6 +228,8 @@ Run on every greenfield close-out and after every patch. 10 checks, executed in 
 | 8 | Mustache references resolve against section 4.5 + section 5 slots | Advisory |
 | 9 | Active-channel `prompts` fields populated | Blocking |
 | 10 | Inactive-channel `prompts` have templated defaults marked | Auto-fix |
+| 16 | Opening announcement ends with a question (house rule, v1.12.1) | Blocking |
+| 17 | Opening behavior consumes the announcement's answer — no re-greet, no re-ask (house rule, v1.12.1) | Blocking |
 
 Blocking failures pause the close-out until the user resolves them. Advisory check #8 records the user's resolution to section 7.3 and continues — Skill 3's check is the authoritative blocking version.
 
