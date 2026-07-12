@@ -1,6 +1,5 @@
 .claude/settings.local.json
 .vscode/
-references/test-artifacts/output/
 database
 docs/superpowers/
 docs/json-bag/
