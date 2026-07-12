@@ -73,7 +73,7 @@ Three corrections from Voicenter's voicebot lead, applied across the bot-builder
 
 ### Skills
 
-- **Skill 3 (JSON Assembler) — `silence_behaviour.intent` is never a negative placeholder (empirically confirmed 2026-06-23, Matan bot, AccountID 15832).** The Voicenter import procedure remaps negative placeholder IDs inside `intents[]` / `botIntents[]` / `intentRelations[]` to real positive IDs, but does **NOT** remap `silence_behaviour.intent`. A negative value survives verbatim into the imported bot, points at no real intent, and the silence forward silently breaks (UI shows it blank until set by hand). Skill 3 now resolves the field by priority: (1) a section-4.6 catalog/global intent → its real positive `IntentId` (e.g. `19`) verbatim — preferred; (2) a **bot-own** target (placeholder-only pre-import) → substitute the canonical system silence-forward global `19`, inject intent `19` + merge category `22`, banner-note it is re-pointable in the UI; (3) `-999` + banner only in the impossible case that id `19`'s definition is unavailable AND no real catalog target exists. Fixes a prior internal contradiction where Skill 1 (Spec Designer) step 9 said bot-own targets emit a `-999` sentinel while Skill 3 substituted `19`.
+- **Skill 3 (JSON Assembler) — `silence_behaviour.intent` is never a negative placeholder (empirically confirmed 2026-06-23, test bot, dev account).** The Voicenter import procedure remaps negative placeholder IDs inside `intents[]` / `botIntents[]` / `intentRelations[]` to real positive IDs, but does **NOT** remap `silence_behaviour.intent`. A negative value survives verbatim into the imported bot, points at no real intent, and the silence forward silently breaks (UI shows it blank until set by hand). Skill 3 now resolves the field by priority: (1) a section-4.6 catalog/global intent → its real positive `IntentId` (e.g. `19`) verbatim — preferred; (2) a **bot-own** target (placeholder-only pre-import) → substitute the canonical system silence-forward global `19`, inject intent `19` + merge category `22`, banner-note it is re-pointable in the UI; (3) `-999` + banner only in the impossible case that id `19`'s definition is unavailable AND no real catalog target exists. Fixes a prior internal contradiction where Skill 1 (Spec Designer) step 9 said bot-own targets emit a `-999` sentinel while Skill 3 substituted `19`.
 - **Skill 1 (Spec Designer) — silence-forward guidance aligned + import-limitation warning.** Step 9 now states the import limitation and that bot-own targets are auto-substituted with the canonical global `19` (never a negative sentinel), and recommends option (c) — a real catalog/global intent — for a self-contained deployable bot.
 - **`spec-skeleton.md` §4.6 — canonical system silence-forward global (`IntentId 19`)** verbatim block (captured from a real export; `IsSilenceIntent`, `AccountId 0`, category `22`) added, with usage note that it is a re-pointable dummy RT=2.
 
@@ -145,7 +145,7 @@ Three corrections from Voicenter's voicebot lead, applied across the bot-builder
 
 - Doc 1 (`voicenter-bot-json-schema-audit-v1.md`): §8.2 + G-10 rewritten — `BotIntentTypeID` is a discriminator (1=entry, 2=global); `botIntents[]` is a selective subset.
 - Doc 2 (`voicenter-bot-skills-architecture-v1.md`): botIntents emission note corrected.
-- `validation-report.md` §3.3 marked RESOLVED with the Brimag/Noa production evidence.
+- `validation-report.md` §3.3 marked RESOLVED with the customer-deployment/Noa production evidence.
 - `docs/skills/voicenter-bot-{spec-designer,json-assembler}/README.md` mirrors updated.
 
 ### Test artifacts
@@ -226,7 +226,7 @@ Three corrections from Voicenter's voicebot lead, applied across the bot-builder
 
 ### Internal
 
-- `references/test-artifacts/test-emitted-json-yuval.json` and `test-emitted-json-refua.json` regenerated to v1.5.0 shape. Placeholder IDs preserved.
+- `references/test-artifacts/test-emitted-json-yuval.json` and `test-emitted-json-customerb.json` regenerated to v1.5.0 shape. Placeholder IDs preserved.
 
 ### Plugin version bumps
 
@@ -281,7 +281,7 @@ Skill 3 (`voicenter-bot-json-assembler`) now emits the per-intent active flag **
 
 ### Test artifacts
 
-`references/test-artifacts/test-emitted-json-{yuval,refua}.json` predate this fix and may show the pre-v1.4.1 shape. Regeneration is deferred — these files are reference samples, not consumed by any runtime. The next genuine Skill 3 invocation against either spec will produce the corrected shape.
+`references/test-artifacts/test-emitted-json-{yuval,customerb}.json` predate this fix and may show the pre-v1.4.1 shape. Regeneration is deferred — these files are reference samples, not consumed by any runtime. The next genuine Skill 3 invocation against either spec will produce the corrected shape.
 
 ### Plugin version bumps (lockstep per CLAUDE.md)
 
@@ -374,7 +374,7 @@ The wire-format JSON Skill 3 emits is now consumable by the platform's `ImportBo
 - "Bot authoring (build-time)" entry in `docs/architecture.md` taxonomy + dedicated build-time pipeline section
 
 ### Fixed (Skill suite v1 patches surfaced by Conv 6 end-to-end test)
-- **Patch 1 — Identifier field.** Added `**Identifier:**` to spec section 1 so Skill 3 produces useful filenames for non-ASCII bot names. Pre-fix: Hebrew bot names produced `bot-bot-<date>.json`. Post-fix: `bot-yuval-<date>.json` / `bot-refua-<date>.json`.
+- **Patch 1 — Identifier field.** Added `**Identifier:**` to spec section 1 so Skill 3 produces useful filenames for non-ASCII bot names. Pre-fix: Hebrew bot names produced `bot-bot-<date>.json`. Post-fix: `bot-yuval-<date>.json` / `bot-customerb-<date>.json`.
 - **Patch 2 — RT-specific bold sub-labels.** spec-skeleton.md formalized section 4 RT-specific sub-labels (`**URL:**`, `**Method:**`, `**Headers:**`, `**Body:**`, `**API silence behavior:**`, `**Layer:**`); Skill 3 §3.1 strict-template parser enumeration extended; Skill 3 §3.3 deviation table added.
 - **RT=4 production-shape rewrite.** spec-skeleton.md, Skill 1 §3.5.1, Skill 3 §3.1, and Skill 3 §4.4 RT=4 emission table updated to match real production Configuration shape — dual modes (parameter / static), three phone slots, `selectdial_option`, `response_success.instructions`, optional announcement / loading announcement / post-execution instructions.
 

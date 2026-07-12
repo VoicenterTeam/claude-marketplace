@@ -161,7 +161,7 @@ A global/system catalog intent is a predefined platform intent the bot reference
 { "Name": "...", "IntentId": 19, "AccountId": 0, "IntentCategoryId": 22, "IntentParameters": [], "IntentScripts": [], "IntentResponces": { } }
 ```
 
-#### Canonical system silence-forward global (`IntentId 19`) — verbatim, captured from a real Voicenter export (Matan bot, 2026-06-23)
+#### Canonical system silence-forward global (`IntentId 19`) — verbatim, captured from a real Voicenter export (test bot, 2026-06-23)
 
 This is the platform's default `IsSilenceIntent` system global (`AccountId 0`, category `22` "Sales intents"). When a bot's silence failover would otherwise target a *bot-own* intent (whose placeholder ID does NOT survive import — see Skill 3 §4.2.5), declare THIS block in section 4.6 with `**Wiring:** silence-forward only` and set section 3's `silence failover intent` to `19`. It imports working with no manual step. **It is functionally a dummy** (an RT=2 to `/api/printer-support`) — a generic placeholder to keep the silence forward live; re-point it in the UI to the real human-transfer target afterward if desired. Skill 3 injects it verbatim into `intents[]` and merges category `22` into `intentCategories[]`.
 
