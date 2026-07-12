@@ -16,6 +16,7 @@ This document maps each flow and shows which skill performs each step.
 | **Agent & extension management** | Extension List, Login/Logout, Real-Time |
 | **Outbound dialer & compliance** | Productive Dialer, Blacklist |
 | **Live monitoring** | Active Calls, Real-Time |
+| **CRM integration scoping** | CRM Onboarding, GetCallHistory |
 | **Bot authoring (build-time)** | Agent Spec Designer, Intent Detail Author, JSON Assembler |
 
 Every skill is also classified by transport:

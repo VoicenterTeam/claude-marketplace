@@ -50,6 +50,8 @@ Each skill teaches Claude exactly how to help you build a specific Voicenter API
 | `/login-logout` | In/Out | Set agent login/logout and status from your CRM |
 | `/lead-tracker` | Incoming | Track which marketing campaign generated each call (JS SDK) |
 | `/active-calls` | In/Out | Snapshot of all live calls and queue activity |
+| `/crm-onboarding` | Guided | CRM integration scoping & onboarding: discovery, feasibility, API vs Chrome extension vs local BAT, Push vs Pull, screen-pop ownership |
+| `/get-call-history` | In/Out | Pull specific call data by CallID with AI analysis (summary, emotions, personality traits, insights) |
 
 ---
 

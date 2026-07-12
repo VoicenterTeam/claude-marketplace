@@ -30,13 +30,13 @@ docs/
   README.md, getting-started.md, architecture.md,
   authentication.md, glossary.md
   plugins/<plugin>.md               ← one page per plugin
-  skills/<skill-name>/README.md     ← deep reference per skill (18 total)
+  skills/<skill-name>/README.md     ← deep reference per skill (20 total)
 README.md   CHANGELOG.md   DEMO.md   LICENSE
 ```
 
 The 20 skills (1 in `voicenter-mcp`, 16 in `voicenter-api`, 3 in `voicenter-bot-builder`):
 
-> **API + MCP (15):** `setup` · `voicebot` · `click2call` · `popup-screen` · `cdr-notification` · `external-layer` · `call-log` · `blacklist` · `mute-recording` · `extension-list` · `real-time` · `productive-dialer` · `login-logout` · `lead-tracker` · `active-calls`
+> **API + MCP (17):** `setup` · `voicebot` · `click2call` · `popup-screen` · `cdr-notification` · `external-layer` · `call-log` · `blacklist` · `mute-recording` · `extension-list` · `real-time` · `productive-dialer` · `login-logout` · `lead-tracker` · `active-calls` · `crm-onboarding` · `get-call-history`
 >
 > **Bot-builder (3):** `voicenter-bot-spec-designer` · `voicenter-bot-intent-detail-author` · `voicenter-bot-json-assembler`
 

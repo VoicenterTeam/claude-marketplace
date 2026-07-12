@@ -71,6 +71,13 @@ Sorted by category. Each link goes to the dedicated docs page; the source SKILL.
 |---|---|---|
 | `active-calls` | One-shot snapshot of all live calls and queue depth | [docs](../skills/active-calls/README.md) |
 
+### CRM integration scoping
+
+| Skill | Description | Doc |
+|---|---|---|
+| `crm-onboarding` | Guided discovery/feasibility playbook for scoping a new CRM integration | [docs](../skills/crm-onboarding/README.md) |
+| `get-call-history` | Pull specific call data by CallID with AI analysis (no transcription) | [docs](../skills/get-call-history/README.md) |
+
 ---
 
 ## Authentication
