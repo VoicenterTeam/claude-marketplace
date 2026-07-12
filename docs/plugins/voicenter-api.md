@@ -19,7 +19,7 @@ Each skill teaches Claude exactly how to help you build one specific integration
 }
 ```
 
-Skills auto-discover from `plugins/voicenter-api/skills/`. There are 14 skill folders, each containing exactly one `SKILL.md`.
+Skills auto-discover from `plugins/voicenter-api/skills/`. There are 16 skill folders, each containing exactly one `SKILL.md`.
 
 ---
 

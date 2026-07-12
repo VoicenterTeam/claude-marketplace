@@ -53,7 +53,7 @@ Run:
 ```
 /plugin
 ```
-Point to `voicenter-api` with 14 skills + `voicenter-mcp`. *"These are pre-built API skills Claude can use — production-grade integrations, not toy examples."*
+Point to `voicenter-api` with its skills + `voicenter-mcp`. *"These are pre-built API skills Claude can use — production-grade integrations, not toy examples."*
 
 ---
 
@@ -192,7 +192,7 @@ their outcomes, and any custom data attached.
 
 ## 🎯 Talking points to weave throughout
 
-- *"14 APIs, zero docs reading."* The plugin teaches Claude every endpoint, request format, and gotcha.
+- *"Voicenter's APIs, zero docs reading."* The plugin teaches Claude every endpoint, request format, and gotcha.
 - *"From form to ringing phone in ~10 minutes of prompts."* What used to take a sprint.
 - *"Composable skills."* Click2Call → voicebot brief → CRM popup → smart routing → CDR analytics — all wired by AI.
 - *"Production-shaped from minute one."* Env vars, blacklist compliance, error handling — because the skills enforce best practice.
