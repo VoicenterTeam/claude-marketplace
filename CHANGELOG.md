@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-07-12
+
+### Marketplace
+- Removed `voicenter-dashboard` from the marketplace (beta; returns under its permanent name).
+- Removed internal `references/` scaffolding and purged it from git history.
+- Descriptions no longer carry skill counts.
+
+### voicenter-api 1.2.0
+- Documented two previously unlisted skills: `crm-onboarding`, `get-call-history` (README table + docs/skills pages).
+
+### voicenter-bot-builder 1.12.1
+- Skills are now fully self-contained: schema-audit reference and worked-example bot JSON ship inside the plugin (fixes broken paths on marketplace installs).
+
+### voicenter-mcp 1.1.8
+- Homepage now points to https://www.voicenter.com/API (was the raw MCP endpoint).
+- plugin.json enriched with keywords/author/homepage/license.
+
 ## [1.13.0] — 2026-07-05
 
 ### New plugin
