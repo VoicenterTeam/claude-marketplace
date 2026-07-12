@@ -2,7 +2,7 @@
 
 **Status:** v1 — Wire-format reference for the Voicenter platform's Bot JSON.
 **Audience:** anyone implementing or consuming the Bot JSON contract — Step 8 (Assembly) of the full Agent Generator, the three Claude skills (Flow Designer, Intent Detail Builder, JSON Assembler), and any future MCP integration.
-**Sources:** two production exports (`Yuval.json`, `Refua0_30.json`) + internal training doc *Voicenter Voice Bot Configuration Guide v1.0* (January 2026).
+**Sources:** two production exports (`Yuval.json`, `CustomerB0_30.json`) + internal training doc *Voicenter Voice Bot Configuration Guide v1.0* (January 2026).
 
 ---
 
@@ -35,7 +35,7 @@ This document is the canonical wire-format reference for the JSON configuration 
 
 **Sources of truth:**
 
-- **Two production exports** — `Yuval.json` (יובל — installation scheduling, NC, Hebrew, Gemini Live) and `Refua0_30.json` (a healthcare customer — pharmacy pickup-point finder, Hebrew, Gemini Live). Both are voice-driven agents with 6 intents each, currently active on the platform.
+- **Two production exports** — `Yuval.json` (יובל — installation scheduling, NC, Hebrew, Gemini Live) and `CustomerB0_30.json` (Customer B — pickup-point finder, Hebrew, Gemini Live). Both are voice-driven agents with 6 intents each, currently active on the platform.
 - **Training doc** — *Voicenter Voice Bot Configuration Guide v1.0* (January 2026), the internal training department's conceptual model of how the runtime system prompt is assembled.
 
 **Notation used throughout this document:**
@@ -157,14 +157,14 @@ Eleven fields, observed in both samples. This is the outermost JSON object.
 | `Description` | string | yes | Free text. Often duplicates `Name` in samples. |
 | `BotLanguages` | array | yes | Observed: empty `[]` in production. `[OPEN]` — schema not derivable from samples. |
 | `ModifiedDate` | string\|null | yes | Same format as CreatedDate, or `null`. |
-| `AiModelConfig` | object | yes | The model **catalog reference** — see §6.A (rewritten for production shape; differs from the prior Yuval/Refua doc baseline). |
+| `AiModelConfig` | object | yes | The model **catalog reference** — see §6.A (rewritten for production shape; differs from the prior Yuval/Customer-B doc baseline). |
 | `ActiveVersionInfo` | object | yes | The current version envelope — its prompts, voice, intents. See §5. |
 
 **Notes:**
 
 - The double `AiModelConfig` (top-level) vs. `AIModelConfig` (inside `ActiveVersionInfo`) is the single most confusing structural element. Top-level is *which model is registered*; inside-version is *the actual prompts/voice/silence config for this version*. They serve different purposes.
 - A bot can in principle have multiple versions, but the JSON export only ships the active one (`ActiveVersionInfo`). v1 generation produces a single version.
-- **Field ordering matters.** The platform's import procedure accepts any field order, but the production export emits `intentList` at position #4 (immediately after `AccountID`) and `Description` later in the wrapper. Skill 3 v1.5.0+ matches this ordering for round-trip cleanliness; older Yuval/Refua fixtures emitted `intentList` last and are scheduled for regeneration.
+- **Field ordering matters.** The platform's import procedure accepts any field order, but the production export emits `intentList` at position #4 (immediately after `AccountID`) and `Description` later in the wrapper. Skill 3 v1.5.0+ matches this ordering for round-trip cleanliness; older Yuval/Customer-B fixtures emitted `intentList` last and are scheduled for regeneration.
 
 ---
 
@@ -187,7 +187,7 @@ The version envelope. Ten fields, observed in both samples.
 
 **Critical:** `SystemPrompt` at this level is **not** the active system prompt. The active system prompt is dynamically assembled per §3 from `AIModelConfig.prompts` plus the active intent's `IntentResponces.Configuration`. Filling `SystemPrompt` with content has unknown effect — it's empty in both production samples.
 
-**Field ordering note (v1.5.0).** Production exports list these fields in the order shown above. The earlier Yuval/Refua doc baseline showed `BotVersionId` first; that ordering still imports cleanly, but Skill 3 v1.5.0+ matches the production order so the emitted JSON visually matches a re-exported sample.
+**Field ordering note (v1.5.0).** Production exports list these fields in the order shown above. The earlier Yuval/Customer-B doc baseline showed `BotVersionId` first; that ordering still imports cleanly, but Skill 3 v1.5.0+ matches the production order so the emitted JSON visually matches a re-exported sample.
 
 ---
 
@@ -214,7 +214,7 @@ This is the platform's model registry entry — *which configured model this bot
 | `AIModelConfig` | object | **Nested object** (capital I, distinct from the parent `AiModelConfig` lowercase i) containing only `{ "created": { "model": "<provider model string>" } }`. The bulk of the runtime config lives in §6.B; this nested copy carries only the model string. |
 | `AIModelConfigID` | int | Foreign key. Links the bot to the model config record (e.g., `139` for Gemini 3.1 Voice driven). |
 
-**v1.5.0 wire-format correction.** The earlier Yuval/Refua doc baseline emitted `AIModelConfigID, Name, Description, BaseUrl, AIModelTypeId, Type { … }, created { full generationConfig }` at this level. Production exports do not carry `Description`, `BaseUrl`, `Type`, or `AIModelTypeId` here, and the `created` payload is the lean shape above (only `{ model: "<provider string>" }`). The full generation config lives in the version-level AIModelConfig (§6.B). Skill 3 v1.5.0+ matches the production shape.
+**v1.5.0 wire-format correction.** The earlier Yuval/Customer-B doc baseline emitted `AIModelConfigID, Name, Description, BaseUrl, AIModelTypeId, Type { … }, created { full generationConfig }` at this level. Production exports do not carry `Description`, `BaseUrl`, `Type`, or `AIModelTypeId` here, and the `created` payload is the lean shape above (only `{ model: "<provider string>" }`). The full generation config lives in the version-level AIModelConfig (§6.B). Skill 3 v1.5.0+ matches the production shape.
 
 The nested `AIModelConfig` (capital I) inside the top-level `AiModelConfig` (lowercase i) is a known structural quirk — see §16 row 16.
 
@@ -253,7 +253,7 @@ All five are **strings** (often long, often Hebrew). Mustache variables (`{{call
 
 #### 6.B.2 — `created` (Raw LLM API Payload)
 
-Production exports of Gemini 3.1 Voice driven bots emit a much leaner `created` payload than the Yuval/Refua doc baseline suggested. The shape is:
+Production exports of Gemini 3.1 Voice driven bots emit a much leaner `created` payload than the Yuval/Customer-B doc baseline suggested. The shape is:
 
 ```
 created
@@ -271,17 +271,17 @@ That's it. No `model` (the model string lives in the top-level AiModelConfig.AIM
 
 **v1.5.0 wire-format correction.** The earlier doc baseline described a `created` block containing `model + full generationConfig + systemInstruction + tools`. That shape was inferred from the LLM provider's API documentation; the actual Voicenter export shape is the lean version above. Skill 3 v1.5.0+ emits the lean shape; Compass doctrine check 10 (Skill 3 §6.2) is rewritten to validate that no dropped fields are re-added.
 
-**Voice options observed:** `"Puck"` (Yuval, transport-planner), `"Orus"` (Refua). Full Gemini voice catalog is provider-managed; v1 supports any string the user supplies.
+**Voice options observed:** `"Puck"` (Yuval, transport-planner), `"Orus"` (Customer B). Full Gemini voice catalog is provider-managed; v1 supports any string the user supplies.
 
 **Language codes observed:** `"he-IL"` only. **Note:** the production export does NOT include `languageCode` inside `speechConfig` for Gemini 3.1 Voice driven — the runtime infers language from the persona text and platform-level settings. Earlier docs showed `speechConfig.languageCode`; v1.5.0 omits it.
 
 #### 6.B.3 — `silence_behaviour` (Bot-Level Caller Silence)
 
-When the **caller** (not the API) goes silent, what does the bot say? Observed only in Yuval; absent in Refua, suggesting it's optional.
+When the **caller** (not the API) goes silent, what does the bot say? Observed only in Yuval; absent in Customer B, suggesting it's optional.
 
 | Field | Type | Notes |
 |---|---|---|
-| `intent` | int | **Failover intent (resolved v1.8.0).** The `IntentId` the bot jumps to when `silence_loops` is exhausted — the bot-level analogue of `api_silence_behaviour.intent`. Emitted as the **first** key. A separate production export (a government-sector customer) carries `"intent": 7518` (a dedicated silence/end-call handler); the Yuval/Refua samples happened to omit it, which earlier hid this field. The target intent need NOT be a `botIntents[]` member (7518 is not). |
+| `intent` | int | **Failover intent (resolved v1.8.0).** The `IntentId` the bot jumps to when `silence_loops` is exhausted — the bot-level analogue of `api_silence_behaviour.intent`. Emitted as the **first** key. A separate production export (a government-sector customer) carries `"intent": 7518` (a dedicated silence/end-call handler); the Yuval/Customer-B samples happened to omit it, which earlier hid this field. The target intent need NOT be a `botIntents[]` member (7518 is not). |
 | `silence_duration` | int | Seconds of caller silence before the bot interjects. |
 | `silence_loops` | int | Max number of times the bot will interject before ending the call. |
 | `silence_sentence` | string | What the bot says on each interjection (Mustache supported). |
@@ -358,7 +358,7 @@ A skill that builds this must keep ID consistency end to end. v1 strategy: use s
 
 ### 8.2 `botIntents[]` — Bot-Level Intent Registry
 
-Which intents are registered as **top-level / globally-triggerable tools** on this bot. `botIntents[]` is a **selective registry**, not one-entry-per-intent: it contains only the bot's *entry* intents (directly triggerable from the opening behaviour) and its *global* intents (triggerable from anywhere — e.g. transfer-to-human, WhatsApp). *Chained* intents — reached only by transitioning from another intent — appear in `intents[]` and `intentRelations[]` but **not** here. Production evidence: the Brimag and Noa exports register only their entry + global intents (e.g. Noa has 9 intents but 4 `botIntents[]` entries).
+Which intents are registered as **top-level / globally-triggerable tools** on this bot. `botIntents[]` is a **selective registry**, not one-entry-per-intent: it contains only the bot's *entry* intents (directly triggerable from the opening behaviour) and its *global* intents (triggerable from anywhere — e.g. transfer-to-human, WhatsApp). *Chained* intents — reached only by transitioning from another intent — appear in `intents[]` and `intentRelations[]` but **not** here. Production evidence: the Noa export and a second customer-deployment export register only their entry + global intents (e.g. Noa has 9 intents but 4 `botIntents[]` entries).
 
 ```
 botIntents[] entry (production-aligned, v1.5.0):
@@ -491,7 +491,7 @@ The most important structural unit. 17 fields per intent, but the field that det
 | `Priority` | int | Observed: `1` in all samples. `[INFERRED]` likely a tie-breaker. v1 emits `1`. |
 | `AccountId` | int | **The bot's customer account ID** (mirrors `<root>.AccountID`). v1.5.0 added. |
 | `Description` | string | Plain-language description of what this intent does. Used by LLM for intent recognition. |
-| `MaxAttempts` | int | Max times the bot retries collecting parameters before giving up. Observed: `1` (transport-planner) or `3` (Yuval/Refua). v1 default `3` unless spec overrides. |
+| `MaxAttempts` | int | Max times the bot retries collecting parameters before giving up. Observed: `1` (transport-planner) or `3` (Yuval/Customer-B). v1 default `3` unless spec overrides. |
 | `IntentConfig` | object | Per-intent prompts: `llmDescription`, `validationPrompt`; plus optional `max_turns` (int) and `max_turns_sentence` (string). See §9.1. |
 | `IntentScripts` | array | Empty `[]`. `[v2]`. |
 | `IntentSources` | array | Channel-per-intent. **v1.5.0:** voice channel → `[{ SourceID: 1, SourceName: "VOICE", IntentSourceID: <int> }]`. Chat channel only → `[]` (no production sample). See Skill 3 SKILL.md Appendix D.7 for the per-channel emission rule. |
@@ -610,7 +610,7 @@ IntentResponces:
 
 **Observed in samples:**
 - Yuval: `transfer_to_human` intent transfers to `layer: 43`.
-- Refua: terminal intent transfers to `layer: 41`.
+- Customer B: terminal intent transfers to `layer: 41`.
 
 **Behavior:** This intent terminates the bot. There should be no `intentRelations[]` rows with this intent as `OriginIntentID` — the bot is gone.
 
@@ -649,7 +649,7 @@ IntentResponces:
 4. `IntentLoadingAnnouncement` (capital I) is **removed** from production exports. Earlier docs documented a "casing-bug pair" — production cleaned it up. Skill 3 v1.5.0+ emits only `intentLoadingAnnouncement` (lowercase).
 
 **Observed in samples:**
-- Refua: `get_nearest_collection_points` calls `https://example.com/webhook/...` with `{{address}}` → returns pickup points → announces them with `announcement`.
+- Customer B: `get_nearest_collection_points` calls `https://example.com/webhook/...` with `{{address}}` → returns pickup points → announces them with `announcement`.
 - Yuval: `validate_customer_address`, `get_available_slots` similar pattern.
 
 **Mustache resolution timing:**
@@ -685,7 +685,7 @@ IntentResponces:
 **v1.5.0 wire-format correction (RT=3):** `response_success` is now an object `{ "instructions": "" }`, not a bare string. Same correction as RT=2.
 
 **Observed in samples:**
-- Refua: `confirm_pickup_point` — caller has been told the available pickup points, this intent confirms which one they pick, announces confirmation, the conversation continues (typically toward end of call).
+- Customer B: `confirm_pickup_point` — caller has been told the available pickup points, this intent confirms which one they pick, announces confirmation, the conversation continues (typically toward end of call).
 - Yuval: `confirm_appointment` — confirms a chosen slot, announces booking, continues.
 
 **Behavior:** this is the most common pattern for "gather and proceed" steps. The intent collects its slots (per `IntentParameters[]`), executes (which here just means "validates and announces"), and the conversation continues — the LLM picks the next intent from `intentRelations[]`.
@@ -712,7 +712,7 @@ IntentResponces:
     └── intentLoadingAnnouncement string    spoken while dialing
 ```
 
-**Observed in samples:** present in the schema but not actively used in either Yuval or Refua's primary flows. Inferred from field names and platform context.
+**Observed in samples:** present in the schema but not actively used in either Yuval's or Customer B's primary flows. Inferred from field names and platform context.
 
 **v1 generation rules:**
 - `phone3`, `NEXT_VO_ID`, `selectdial_option` are **user-supplied platform values**. Generator never invents.
@@ -1095,21 +1095,21 @@ transfer_to_human (RT=1)
 
 ---
 
-#### §14.1.2 — Refua (a healthcare customer) — Pharmacy Pickup-Point Finder
+#### §14.1.2 — Customer B — Pickup-Point Finder
 
-**Source:** observed production export. **Account:** a healthcare customer. **Voice:** Orus. **Language:** he-IL.
+**Source:** observed production export. **Account:** Customer B. **Voice:** Orus. **Language:** he-IL.
 
-**Use case.** Patient calls in to find their nearest pharmacy pickup point and confirm collection of a prescription order.
+**Use case.** Caller dials in to find their nearest pickup point and confirm collection of an order.
 
 ##### Persona bundle (compact view; full structure mirrors §14.1.1)
 
 ```
 prompts.persona:
-  "את הקול של הלקוח. את עוזרת לחברי הקופה למצוא נקודות איסוף
-   קרובות, ולאשר איסוף תרופות.
-   את לא נותנת ייעוץ רפואי, לא משנה תרופות, לא מאשרת מרשמים —
-   אלה תפקידים של רוקח/ית מורשה.
-   ספק רפואי מצריך הפניה לנציג."
+  "את הקול של הלקוח. את עוזרת ללקוחות למצוא נקודות איסוף
+   קרובות, ולאשר איסוף הזמנות.
+   את לא נותנת ייעוץ מקצועי, לא משנה הזמנות, לא מאשרת בקשות חריגות —
+   אלה תפקידים של נציג מוסמך.
+   כל ספק מצריך הפניה לנציג."
 
 prompts.openingAnnouncement:
   "שלום, אני כאן מטעם הלקוח. איך אוכל לעזור?"
@@ -1278,7 +1278,7 @@ IntentConfig.prompts.validationPrompt: |
 IntentResponces:
   ResponseTypeId: 2
   Configuration:
-    url: "https://crm.[SHEM_HASOCHENUT].co.il/api/verify"
+    url: "https://example.com/api/verify"
     method: "POST"
     headers:
       Authorization: "Bearer {{ENV.CRM_API_TOKEN}}"   # placeholder, supplied at deploy
@@ -1468,7 +1468,7 @@ IntentConfig.prompts.validationPrompt: |
 IntentResponces:
   ResponseTypeId: 2
   Configuration:
-    url: "https://api.[STORE].com/orders/verify"
+    url: "https://example.com/orders/verify"
     method: "POST"
     headers:
       X-Api-Key: "{{ENV.STORE_API_KEY}}"
@@ -2735,7 +2735,7 @@ Always empty. Replaced in practice by `AIModelConfig.prompts`. Probable legacy f
 Always empty. Inferred to be a hook for custom JS/scripting per intent — currently inactive. v1 emits `{}`.
 
 **G-10 — `BotIntentTypeID` enum (resolved v1.8.0).**
-`1` = entry intent (directly triggerable from the bot's opening behaviour). `2` = global intent (triggerable from anywhere — transfer-to-human, WhatsApp, etc.). Production exports (Brimag, Noa) confirm both values and confirm `botIntents[]` is a selective subset of `intents[]`. A `global` (type 2) is also wired as a `NextIntentID` fan-out edge from every non-global intent (see §8.3). Values other than 1/2 remain unobserved.
+`1` = entry intent (directly triggerable from the bot's opening behaviour). `2` = global intent (triggerable from anywhere — transfer-to-human, WhatsApp, etc.). Production exports (Noa and a second customer deployment) confirm both values and confirm `botIntents[]` is a selective subset of `intents[]`. A `global` (type 2) is also wired as a `NextIntentID` fan-out edge from every non-global intent (see §8.3). Values other than 1/2 remain unobserved.
 
 **G-11 — `BotStatusId` enum.**
 Only value observed: `1`. Full enum unknown. v1 emits `1`.
@@ -2845,5 +2845,5 @@ All of these belong to the full Agent Generator pipeline (different project) or 
 
 **Document version:** 1.0
 **Date:** May 2026
-**Sources:** `Yuval.json`, `Refua0_30.json`, *Voicenter Voice Bot Configuration Guide v1.0*
+**Sources:** `Yuval.json`, `CustomerB0_30.json`, *Voicenter Voice Bot Configuration Guide v1.0*
 **Open questions:** see §17 (schema gaps) and §18 (lifecycle roadmap)
