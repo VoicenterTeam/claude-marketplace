@@ -5,7 +5,7 @@ This is the holistic, professional reference for every plugin and skill shipped 
 It is organized so you can:
 
 - **Get productive fast** — install the plugins and run your first integration in minutes.
-- **Understand the architecture** — see how the 14 Voicenter APIs fit together as a single telephony platform.
+- **Understand the architecture** — see how Voicenter's APIs fit together as a single telephony platform.
 - **Drill into any skill** — every skill has its own dedicated subfolder with API reference, examples, error handling, and troubleshooting.
 
 ---
@@ -17,7 +17,7 @@ It is organized so you can:
 | Document | Purpose |
 |---|---|
 | [Getting started](getting-started.md) | Install plugins, configure CPanel, send your first request |
-| [Architecture & call flows](architecture.md) | How the 14 APIs compose into incoming, outgoing, dialer, and dashboard flows |
+| [Architecture & call flows](architecture.md) | How the APIs compose into incoming, outgoing, dialer, and dashboard flows |
 | [Authentication](authentication.md) | OAuth, `code` parameter, webhooks, socket.io, and JS SDK auth — all in one place |
 | [Glossary](glossary.md) | Voicenter terminology (DID, CDR, ivrid, queue, layer, monitor server, …) |
 
@@ -26,7 +26,7 @@ It is organized so you can:
 | Plugin | Documentation |
 |---|---|
 | `voicenter-mcp` (live MCP server) | [plugins/voicenter-mcp.md](plugins/voicenter-mcp.md) |
-| `voicenter-api` (14 integration skills) | [plugins/voicenter-api.md](plugins/voicenter-api.md) |
+| `voicenter-api` (integration skills) | [plugins/voicenter-api.md](plugins/voicenter-api.md) |
 | `voicenter-bot-builder` (3-skill bot authoring pipeline) | [plugins/voicenter-bot-builder.md](plugins/voicenter-bot-builder.md) |
 
 ### Skills

@@ -1,7 +1,11 @@
 {
   "name": "voicenter-mcp",
   "description": "Live Voicenter API access via MCP server at mcp01.voicenter.co",
-  "version": "1.1.7",
+  "version": "1.1.8",
+  "author": { "name": "Voicenter" },
+  "homepage": "https://www.voicenter.com/API",
+  "license": "MIT",
+  "keywords": ["voicenter", "mcp", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"],
   "mcpServers": {
     "voicenter": {
       "type": "http",

@@ -1,6 +1,6 @@
 # Plugin: `voicenter-api`
 
-Integration skills for all 14 Voicenter APIs — VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls.
+Integration skills for Voicenter's APIs — VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls, CRM Onboarding, Get Call History.
 
 Each skill teaches Claude exactly how to help you build one specific integration: correct endpoints, real request/response examples, error matrices, and TypeScript scaffolding. Use this plugin when you want Claude to **write production code** that talks to Voicenter directly (as opposed to operating Voicenter live, which is the [`voicenter-mcp`](voicenter-mcp.md) plugin's job).
 
@@ -13,7 +13,7 @@ Each skill teaches Claude exactly how to help you build one specific integration
 ```json
 {
   "name": "voicenter-api",
-  "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls",
+  "description": "Integration skills for Voicenter's REST and webhook APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls, CRM Onboarding, Get Call History.",
   "version": "1.1.2",
   "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
 }
@@ -127,7 +127,7 @@ Verify:
 /plugin
 ```
 
-`voicenter-api` should be **Enabled** with **14 skills** registered.
+`voicenter-api` should be **Enabled** with **16 skills** registered.
 
 ---
 

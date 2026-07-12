@@ -3,7 +3,7 @@
 This repository ships **three Claude Code plugins** that integrate with the Voicenter telephony platform:
 
 - `voicenter-mcp` — live API access through the OAuth-protected MCP server at `mcp01.voicenter.co`.
-- `voicenter-api` — 14 integration skills (one folder per Voicenter API).
+- `voicenter-api` — 16 integration skills (one folder per Voicenter API).
 - `voicenter-bot-builder` — 3 build-time authoring skills that produce deployable Voicenter bot JSON via a Spec Designer → Intent Detail Author → JSON Assembler pipeline.
 
 The repo is **pure documentation and configuration** — no build, no tests, no runtime. Your job as an agent is to keep the marketplace, plugin manifests, source `SKILL.md` files, and the deep [`docs/`](docs/README.md) tree consistent with each other.
@@ -22,7 +22,7 @@ plugins/
     skills/setup/SKILL.md           ← OAuth setup skill
   voicenter-api/
     .claude-plugin/plugin.json      ← skills plugin manifest
-    skills/<skill-name>/SKILL.md    ← one folder per API (14 total)
+    skills/<skill-name>/SKILL.md    ← one folder per API (16 total)
   voicenter-bot-builder/
     .claude-plugin/plugin.json      ← bot-authoring plugin manifest
     skills/<skill-name>/SKILL.md    ← one folder per pipeline stage (3 total)

@@ -11,7 +11,7 @@ Official Claude Code plugins for integrating the Voicenter telephony platform in
 # 2. Install the live MCP plugin (direct API access from Claude)
 /plugin install voicenter-mcp@voicenter
 
-# 3. Install the API skills plugin (integration guides for all 14 APIs)
+# 3. Install the API skills plugin (integration guides for Voicenter's APIs)
 /plugin install voicenter-api@voicenter
 
 # 4. (Optional) Install the bot-builder plugin (design Voicenter Bots end-to-end)
@@ -30,7 +30,7 @@ Connects Claude Code directly to `https://mcp01.voicenter.co/mcp`. Authenticatio
 
 ---
 
-### `voicenter-api` — 14 API Integration Skills
+### `voicenter-api` — API Integration Skills
 
 Each skill teaches Claude exactly how to help you build a specific Voicenter API integration — correct endpoints, real request/response examples, and TypeScript code.
 
