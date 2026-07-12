@@ -16,9 +16,6 @@ Official Claude Code plugins for integrating the Voicenter telephony platform in
 
 # 4. (Optional) Install the bot-builder plugin (design Voicenter Bots end-to-end)
 /plugin install voicenter-bot-builder@voicenter
-
-# 5. (Optional) Install the Dashboard knowledge base (end-user reports & support-center docs)
-/plugin install voicenter-dashboard@voicenter
 ```
 
 ---
@@ -65,14 +62,6 @@ Design and emit deployable Voicenter Bot JSON through a guided interview. Build-
 | `/voicenter-bot-spec-designer` | 1 — Structural | Interview-driven design: identity, persona, intent graph, slots, RT specifics |
 | `/voicenter-bot-intent-detail-author` | 2 — Per-intent language | Slot descriptions, validationPrompt, RT-specific announcements, post-execution instructions (Conversation Routines style) |
 | `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs §15.4 cross-reference (7 blocking checks); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
-
----
-
-### `voicenter-dashboard` — End-user Support Center Knowledge Base
-
-A local, searchable snapshot of Voicenter's public support center (`voicenter.co.il/מרכז-תמיכה`), for answering "how does this feature/report work" questions — as opposed to `voicenter-api`, which covers developer API integration.
-
-**Skills:** `/voicenter-Dashboard` — 439 articles across 15 categories, including all 193 Dashboard monitoring report/chart templates (with template numbers). Ships with a crawl script to refresh the snapshot when the site changes (see [docs/plugins/voicenter-dashboard.md](docs/plugins/voicenter-dashboard.md)).
 
 ---
 

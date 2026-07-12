@@ -1,13 +1,12 @@
 # CLAUDE.md — agent guide for the Voicenter Claude Code marketplace
 
-This repository ships **four Claude Code plugins** that integrate with the Voicenter telephony platform:
+This repository ships **three Claude Code plugins** that integrate with the Voicenter telephony platform:
 
 - `voicenter-mcp` — live API access through the OAuth-protected MCP server at `mcp01.voicenter.co`.
 - `voicenter-api` — 14 integration skills (one folder per Voicenter API).
 - `voicenter-bot-builder` — 3 build-time authoring skills that produce deployable Voicenter bot JSON via a Spec Designer → Intent Detail Author → JSON Assembler pipeline.
-- `voicenter-dashboard` — 1 knowledge-base skill: a crawled snapshot of the public support center (`voicenter.co.il/מרכז-תמיכה`) for end-user "how does this report/feature work" questions. **Different contract from the other three** — it makes no runtime API calls, its `SKILL.md` is not paired with a terse/deep split (the shipped `references/*.md` files are the deep content), and it carries its own crawl scripts (`scripts/crawl.js`, `decode-nuxt.js`, `build-references.js`) plus a `data/` cache that is deliberately **not** committed. See [docs/plugins/voicenter-dashboard.md](docs/plugins/voicenter-dashboard.md) and [docs/skills/voicenter-Dashboard/README.md](docs/skills/voicenter-Dashboard/README.md) before touching it — do not force it into the API-skill section order below.
 
-The repo is **pure documentation and configuration** — no build, no tests, no runtime (except `voicenter-dashboard`'s standalone Node.js crawl scripts, which run offline to refresh that plugin's own snapshot and are not part of any request path). Your job as an agent is to keep the marketplace, plugin manifests, source `SKILL.md` files, and the deep [`docs/`](docs/README.md) tree consistent with each other.
+The repo is **pure documentation and configuration** — no build, no tests, no runtime. Your job as an agent is to keep the marketplace, plugin manifests, source `SKILL.md` files, and the deep [`docs/`](docs/README.md) tree consistent with each other.
 
 > Read the full reference under [`docs/`](docs/README.md). The most important pages: [docs/architecture.md](docs/architecture.md), [docs/authentication.md](docs/authentication.md), [docs/glossary.md](docs/glossary.md). Per-skill deep dives live under [docs/skills/](docs/skills/).
 
@@ -27,24 +26,19 @@ plugins/
   voicenter-bot-builder/
     .claude-plugin/plugin.json      ← bot-authoring plugin manifest
     skills/<skill-name>/SKILL.md    ← one folder per pipeline stage (3 total)
-  voicenter-dashboard/
-    .claude-plugin/plugin.json      ← knowledge-base plugin manifest
-    skills/voicenter-Dashboard/     ← SKILL.md + references/*.md + scripts/ (crawl cache `data/` gitignored)
 docs/
   README.md, getting-started.md, architecture.md,
   authentication.md, glossary.md
   plugins/<plugin>.md               ← one page per plugin
-  skills/<skill-name>/README.md     ← deep reference per skill (19 total)
+  skills/<skill-name>/README.md     ← deep reference per skill (18 total)
 README.md   CHANGELOG.md   DEMO.md   LICENSE
 ```
 
-The 19 skills (1 in `voicenter-mcp`, 14 in `voicenter-api`, 3 in `voicenter-bot-builder`, 1 in `voicenter-dashboard`):
+The 20 skills (1 in `voicenter-mcp`, 16 in `voicenter-api`, 3 in `voicenter-bot-builder`):
 
 > **API + MCP (15):** `setup` · `voicebot` · `click2call` · `popup-screen` · `cdr-notification` · `external-layer` · `call-log` · `blacklist` · `mute-recording` · `extension-list` · `real-time` · `productive-dialer` · `login-logout` · `lead-tracker` · `active-calls`
 >
 > **Bot-builder (3):** `voicenter-bot-spec-designer` · `voicenter-bot-intent-detail-author` · `voicenter-bot-json-assembler`
->
-> **Dashboard (1):** `voicenter-Dashboard`
 
 ---
 
@@ -79,7 +73,7 @@ Each `plugin.json` must conform to the official Claude Code plugin manifest sche
 
 Forbidden fields (removed in v1.1.0): `icon`, nested V2 marketplace duplicates.
 
-When bumping a version, update **all four** in lockstep:
+When bumping a version, update **all three** in lockstep:
 
 1. `.claude-plugin/marketplace.json` (`metadata.version` and each plugin's `version`)
 2. `plugins/voicenter-mcp/.claude-plugin/plugin.json` (`version`)
@@ -160,9 +154,9 @@ The Real-Time SDK connection URL also yields the **monitor server hostname** req
 
 ### Bump version
 
-1. Update all four `version` fields (marketplace metadata + each plugin entry inside marketplace.json + each plugin's own plugin.json).
+1. Update all three `version` fields (marketplace metadata + each plugin entry inside marketplace.json + each plugin's own plugin.json).
 2. Add a CHANGELOG entry.
-3. Confirm `/plugin` after install still reports all three plugins as **Enabled** with the right skill counts (1 + 14 + 3 = 18).
+3. Confirm `/plugin` after install still reports all three plugins as **Enabled** with the right skill counts (1 + 16 + 3 = 20).
 
 ### Validate locally
 
