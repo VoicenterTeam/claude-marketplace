@@ -18,6 +18,12 @@
 **Created by:** [bot author/owner name | omit if not set; defaults to empty string at emission]
 **Max call duration:** [int seconds; default 1200]
 **Record agent calls:** [`true` | `false`; default false. Skill 3 emits the STRING form per production wire format.]
+**Daily limit:** [int; optional (v1.13.0), default 600 — emitted to `AIModelConfig.daily_limit`]
+**Daily limit layer:** [int layer ID; optional (v1.13.0), default 3 — emitted to `AIModelConfig.dailyLimitLayerId`]
+**Max duration layer:** [int layer ID; optional (v1.13.0), default 3 — emitted to `AIModelConfig.maxDurationLayerId`]
+**Daily limit sentence:** [text; optional (v1.13.0) — spoken when the daily call-duration limit is reached; primary language, persona-gender matched. Skill 3 emits a production-derived English default if omitted.]
+**Max duration sentence:** [text; optional (v1.13.0) — spoken when max call duration is reached; same conventions.]
+**IVRLayerSelect_2:** [int; optional (v1.13.0), default 3 — emitted to `AIModelConfig.IVRLayerSelect_2`]
 
 ---
 
@@ -41,7 +47,7 @@
 
 ### 2.4 Bot-Level Intent Instructions (Opening Behavior)
 
-[intentInstructions text in Conversation Routines style. Pre-intent. Routing logic + iron rules. First numbered step handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it.]
+[intentInstructions text in Conversation Routines style. Pre-intent. Routing logic + iron rules. First numbered step handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it. v1.13.0 (FP-2/FP-4/FP-12): when the flow staggers off the opening, this section also carries the branch logic including any read-back and the next question the first flow intent will capture; any mandated spoken line uses the quote convention `<instruction text> : "<verbatim line>"`; whenever the flow collects a callback/scheduling time, include the FP-12 date/time interpretation block anchored on `{{todayHe}}`/`{{timeHe}}`.]
 
 ### 2.5 Opening Announcement
 
@@ -66,12 +72,16 @@
 ### Intent 1: [snake_case_identifier]
 
 - **Display name:** [human-readable, often Hebrew]
-- **Description:** [plain language, used by LLM at runtime for intent recognition]
+- **Description:** [short semantic English label naming the business step, e.g., "Verification of plan and premia" (v1.13.0, FP-10). This is the LLM's intent-recognition anchor AND the name other intents' instructions use for routing. NO stage/workflow markers ("Stage 2", "Gate C"), NO dialogue imperatives ("Ask…", "Read back…", "Explain…"), NO business logic — data points go to slot Descriptions, conversational content to announcement/instructions.]
 - **Tool name:** [same as identifier]
 - **Response Type:** [1 | 2 | 3 | 4]
 - **Purpose:** [one-line description for human review]
 - **Hard intent:** [`true` | `false`]
 - **Bot-intent role:** [`entry` | `global` | `chained`; default `chained`. `entry` = directly triggerable from the §2.4 opening behaviour; `global` = triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`. Skill 3 emits `entry`→`BotIntentTypeID 1`, `global`→`2`, `chained`→omitted from `botIntents[]`.]
+- **Captures answer to:** [optional (v1.13.0, FP-2) — the question whose answer this intent's slots capture, asked by the PREVIOUS intent's announcement/instructions or by the opening (§2.4/§2.5). Free text. Omit when not applicable (e.g., globals).]
+- **Asks next:** [optional (v1.13.0, FP-2) — the question this intent's announcement/instructions will pose for the NEXT intent to capture, or the literal `[none — terminal]`. Free text.]
+- **Terminal outcome:** [optional (v1.13.0, FP-8); RT=1 terminals only. Grammar: `<slot_name> = "<exact fixed value>"` (quoted ⇒ FIXED mode), or `<slot_name> = <free-text description of how the value is captured or composed per call>` (unquoted ⇒ CAPTURED/DYNAMIC mode). The named slot must appear in this intent's slot list. Drives Skill 2's outcome-value validationPrompt and Skill 3 check 20.]
+- **Sensitive:** [`true` | `false`; optional (v1.13.0), default `false`. Emitted to `IntentConfig.additional.sensitive`.]
 - **Completion status:** [structural]
 - **Transitions out:**
   1. [target intent identifier] (success path)
@@ -79,8 +89,8 @@
 - **Escalation target:** [identifier — typically `transfer_to_human`]
 - **Slots:**
   1. [slot_name] — `ParameterTypeId` [N], Required [`true`|`false`], Order [N], OptionList [if ENUM]
-- **Max turns:** [int; optional override. Skill 1 does NOT ask for this in the interview — Skill 3 applies smart defaults at emission time (RT=2 default `15`; RT=1/3/4 omit unless set). Spec authors hand-editing the spec may set this to override the Skill 3 default for a specific intent.]
-- **Max turns sentence:** [string; optional override. Skill 3 default for RT=2: `"אני חייב לסיים את השיחה בשלב הזה."` Spec authors may override here; otherwise Skill 3 emits the production default when `Max turns` is set.]
+- **Max turns:** [int; optional override. Skill 1 does NOT ask for this in the interview — Skill 3 applies smart defaults at emission time inside `IntentConfig.additional` (v1.13.0: RT=2 default `15`; all other RTs default `5`). Spec authors hand-editing the spec may set this to override the Skill 3 default for a specific intent.]
+- **Max turns sentence:** [string; optional override. v1.13.0 defaults inside `IntentConfig.additional`: RT=2 `"אני חייב לסיים את השיחה בשלב הזה."`, other RTs `""`. Spec authors may override here (e.g., the golden reference sets a Hebrew technical-difficulty fallback on its callback intent).]
 - **RT-specific:**
   - **URL:** [full URL or `<UNKNOWN: API URL>`]   (RT=2 only)
   - **Method:** [POST | GET]   (RT=2 only)
@@ -141,6 +151,14 @@
 
 `<intent_identifier>` returns:
 - `[dotted.path.to.field]`
+
+### 4.5.5 CustomData keys (per-call payload)
+
+[Optional section (v1.13.0, FP-11). The EXACT per-call CustomData keys the caller-data pipeline sends, collected from the user during the Skill 1 interview — one per line:]
+
+- `{{key}}` — [meaning]
+
+[NEVER invent keys. If the user cannot enumerate them: mark `<INCOMPLETE: CustomData keys unverified>` — any `{{reference}}` not matching 4.5.1–4.5.5 blocks at Skill 3 check 7. Platform context vars used in prompts (e.g., `{{todayHe}}`, `{{timeHe}}`) belong in 4.5.1. If this section is absent, the CustomData list is empty.]
 
 ---
 

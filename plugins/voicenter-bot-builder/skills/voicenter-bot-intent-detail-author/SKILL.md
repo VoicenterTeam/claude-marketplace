@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-intent-detail-author
-description: Authors the per-intent language content of a Voicenter Agent Spec — slot descriptions, validationPrompt, post-execution intentInstructions, and RT-specific Configuration text. Use this skill when an Agent Spec exists with section 5 entries marked `[structural]` or `[detailed-revisit]`, and the user wants to fill them in. Trigger phrases include "run Skill 2", "detail the intents", "fill in the per-intent fields", "Skill 2 (Intent Detail Author)", or any direct continuation from Skill 1's handoff hint. Walks intents in user-confirmed batches with a checkpoint after each batch. Reactivable — invoke as many times as needed; spec state is the resume point. Does NOT modify the structural skeleton (sections 1, 2, 3, 4, 4.5.1/.2/.4) — that's Skill 1 (Agent Spec Designer). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
+description: Authors the per-intent language content of a Voicenter Agent Spec — slot descriptions, capture-mapping validationPrompt (save/set logic only — never spoken scripts), announcement + intentLoadingAnnouncement spoken content, post-execution intentInstructions, and RT-specific Configuration text. Use this skill when an Agent Spec exists with section 5 entries marked `[structural]` or `[detailed-revisit]`, and the user wants to fill them in. Trigger phrases include "run Skill 2", "detail the intents", "fill in the per-intent fields", "Skill 2 (Intent Detail Author)", or any direct continuation from Skill 1's handoff hint. Walks intents in user-confirmed batches with a checkpoint after each batch. Reactivable — invoke as many times as needed; spec state is the resume point. Does NOT modify the structural skeleton (sections 1, 2, 3, 4, 4.5.1/.2/.4/.5) — that's Skill 1 (Agent Spec Designer). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
@@ -32,7 +32,7 @@ Before touching the spec, load context from these references.
 | Doc 1 §11 — RT=1/2/3/4 cross-RT field summary | Step 3 RT-specific authoring |
 | Doc 1 §11.2 — RT=2 api_silence_behaviour pairing | Step 3 RT=2 authoring |
 | Doc 1 §13 — Mustache + variable categories | Mustache resolvability check |
-| Doc 1 §14.3.2 — Conversation Routines style | Iron rule for validationPrompt + intentInstructions |
+| Doc 1 §14.3.2 — Conversation Routines style | Iron rule for intentInstructions (v1.13.0: validationPrompt uses the FP-5 capture-mapping form instead) |
 | Doc 1 §14.3.3 — Slot validation guidance | Step 1 + Step 2 |
 | Doc 1 §14.3.5 — Mustache referencing slots before collection | Mustache directional ordering |
 | Doc 1 §14.3.6 — RT=2 api_silence_behaviour completeness | Step 3 RT=2 |
@@ -42,8 +42,9 @@ Before touching the spec, load context from these references.
 | Doc 1 §14.3.14 — Field-purpose cheat sheet | Disambiguating misplacement |
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
-| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
-| `../../../../references/docs/voicenter-bot-json-schema-audit-v1.md` §11.2, §11.3 | RT=2 / RT=3 Configuration field shapes — v1.5.0 production-aligned (announcement / function_output object / response_success object) |
+| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting — spoken fields only, v1.13.0), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
+| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.13.0) — FP-1…FP-13; Skill 2 owns FP-3 (script home), FP-4 (quote convention), FP-5 (capture-mapping validationPrompt), FP-7 (RT=3 loading announcement), and the per-intent half of FP-6 (say-once) |
+| Skill 3 SKILL.md §4.4 | RT=1/2/3/4 Configuration field shapes at emission — v1.5.0 production-aligned (announcement / function_output object / response_success object). *(v1.13.0: replaces the retired external schema-audit doc reference.)* |
 
 Also load this file from this skill's package:
 
@@ -230,80 +231,74 @@ The user must either accept the type as-is (with appropriate v1-fallback validat
 
 ### 4.2 Step 2 — `validationPrompt` authoring
 
-The `validationPrompt` is the bot's primary lever for shaping how it collects slots. **Conversation Routines style is mandatory** per Doc 1 §14.3.2:
+**Doctrine (v1.13.0, FP-5 — this section was inverted; see `../../references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended (Compass rule 3 synergy); target-language text appears only as a quoted VALUE being saved.
 
-- ALL-CAPS section headers (e.g., `ADDRESS COLLECTION`, `IRON RULES`)
-- Numbered steps for the collection sequence
-- Explicit IF/ELSE for branching
-- IRON RULE blocks for non-negotiables
+Canonical form (golden reference, verbatim style):
 
-Free prose is forbidden. See `conversation-routines-style-guide.md` for templates and worked examples.
+```
+* If the customer confirms, save "true" in the parameter details_confirmed.
+* If the customer disapproves, save "false" in the parameter details_confirmed.
+```
+
+For an intent carrying a section-4 `**Terminal outcome:**`, write the form matching the declared **value mode**:
+
+- **fixed** (quoted value in the spec): pin the exact string —
+  `1. Set <slot> to exactly this value; do not translate, paraphrase, or alter it: "<the fixed string>"`
+  `2. Never ask the customer to choose or confirm this value — it is fixed for this outcome.`
+- **captured**: save the customer's utterance — `Save the callback time (day and hour) the customer stated in the parameter callback_time.`
+- **dynamic**: an explicit per-call composition instruction for the slot.
+
+**FORBIDDEN in validationPrompt (blocking — check 3, mirrored by Skill 3 check 16):** scripts to speak, questions to ask, greetings, turn-taking guards, routing instructions, ALL-CAPS "GATE" recipes with `Say…`/`Ask…` steps. The asking happens where the voice model can see it — in the **previous** intent's `announcement` (FP-2 staggering) or this intent's post-execution `intentInstructions` (step 4). See `conversation-routines-style-guide.md` §3 for the capture-mapping patterns (C1–C5).
 
 **Authoring procedure:**
 
-1. **Draft an initial prompt** from:
-   - The slot list and types (from step 1)
-   - The collection order (from section 4)
-   - The intent's purpose (from section 4 description)
-   - Any bot-level constraints in section 2.1 persona (e.g., language posture)
+1. **Read the intent's slots (step 1) and its section-4 `**Captures answer to:**`** — the question whose answer this intent stores was asked one step earlier (or by the opening). The mapping translates *that answer* into *this intent's slots*.
 
-2. **Ask the user about edge cases** before finalizing:
+2. **Draft the mapping bullets** — one line per collectable slot / per outcome of the captured question; for `**Terminal outcome:**` intents, the value-mode form above.
 
-   > For this intent, I want to nail down edge cases. What should the bot do if:
-   > - The user gives a partial answer (e.g., street name without house number for an address)?
-   > - The user gives an off-topic answer?
-   > - The user refuses to provide the slot?
-   > - [For v1-fallback slots] The user provides the value in an unexpected format?
-
-3. **Incorporate edge cases** into the prompt as IF branches and IRON RULE blocks.
+3. **Ask the user about capture edge cases** where relevant:
+   > When the caller answers "[the captured question]", how should edge answers map? E.g., a hesitant "אולי"/"maybe" — save as false, or leave the slot unfilled and let the instructions re-ask? A partial answer for `[slot]` — save what was given?
 
 4. **Show the draft to the user.** They confirm or edit.
 
 5. **Verify** before moving on:
-   - Every slot in the intent appears in the prompt
-   - Every v1-fallback slot has explicit format/range guidance
-   - At least one IRON RULE block exists for the most critical constraint
-   - If the intent has ≥2 collectable slots, the one-parameter-per-turn IRON RULE is present (see sequential-collection iron rule below) and the numbered steps ask for exactly one slot each, in `CollectionOrder`
-   - Prompt language matches the bot's primary language (Hebrew text for Hebrew bots, etc.)
+   - Every collectable slot in the intent has exactly one mapping line
+   - Every v1-fallback slot's mapping line carries its format/range constraint (e.g., "save only if a valid 9-digit ID, else leave unfilled")
+   - NO speech content: no ask/say/tell/greet/read-back imperatives, no question addressed to the caller, no turn-taking or "wait" guards, no routing
+   - For a `**Terminal outcome:**` intent: the mapping implements the declared value mode (fixed ⇒ the exact string appears verbatim)
    - Every Mustache reference resolves (see section 5 — Mustache resolvability mechanics)
 
 If any of these fail at end-of-step, return to authoring; do not advance to step 3.
 
-**Iron rule (sequential collection — fires during step 2, blocking):**
+**Iron rule (sequential collection — retargeted v1.13.0; fires during steps 2–4, blocking):**
 
-If the intent has **two or more collectable slots**, the `validationPrompt` must collect them one at a time. "Collectable" excludes values populated from an upstream RT=2 API response (e.g. a dynamic ENUM whose `OptionList` is filled at runtime) — those are not asked of the caller and do not count toward the threshold.
+If the intent has **two or more collectable slots**, the questions must still be asked one at a time — but the ASK sequence no longer lives in `validationPrompt` (the voice model never sees it). "Collectable" excludes values populated from an upstream RT=2 API response — those are not asked of the caller.
 
 Two conditions, both required:
 
-1. The numbered steps ask for **exactly one slot per step**, ordered by the slot's `CollectionOrder` (from section 4).
-2. The prompt carries an IRON RULE that forbids bundling multiple slot requests into a single utterance and requires the bot to wait for the caller's answer before requesting the next slot.
+1. The questions are authored where the voice model sees them — in the previous intent's `announcement`/instructions or this intent's `intentInstructions` (step 4) — **one question per turn**, ordered by `CollectionOrder`, each mandated line using the FP-4 quote convention.
+2. `validationPrompt` carries exactly one capture line per slot (no bundled "capture everything" line).
 
-If either condition is unmet, **block** — do not flip the intent to `[detailed]`. Seed the rule with this wording (localize to the bot's primary language):
-
-```
-IRON RULE: ask for exactly ONE parameter per turn, in collection order.
-Do NOT combine multiple requests into a single utterance.
-Wait for the caller's answer before asking for the next parameter.
-```
+If either condition is unmet, **block** — do not flip the intent to `[detailed]`.
 
 A single logical slot the caller answers in one breath (e.g. a `full address` STRING covering street + number + city) is still **one** slot and therefore one turn — the rule constrains across distinct declared slots, not the internal richness of one slot.
 
-Log on resolution to section 7.3: `Sequential-collection rule fired on [intent].validationPrompt — resolved`.
+Log on resolution to section 7.3: `Sequential-collection rule fired on [intent] — resolved`.
 
-**Iron rule (Compass rule 8 — TTS-safe formatting; fires during step 2, blocking on markdown/URLs and advisory on long digit runs):**
+**Iron rule (Compass rule 8 — TTS-safe formatting; retargeted v1.13.0; fires during steps 3–4, blocking on markdown/URLs and advisory on long digit runs):**
 
-For each `validationPrompt` field on a voice-active intent (section 1 `Channels Active` includes `voice`), run three detections:
+`validationPrompt` is EXEMPT from rule 8 — it is never vocalized (FP-5), and its canonical capture-mapping form legitimately uses `*` bullets. The three detections below run instead on every **spoken** field Skill 2 authors on a voice-active intent (`announcement`, `intentLoadingAnnouncement`, `fail_output`, `function_output`, and the FP-4 quoted lines inside post-execution `intentInstructions`):
 
 1. **Markdown formatting** — regex `(?m)^\s*[-*+]\s` (bullets), `(?m)^\s*#+\s` (headers), or `\[.*\]\(.*\)` (markdown links). If matched: **blocking** — voice will read these aloud literally ("dash space hello"). Surface:
-   > Line `[N]` of `validationPrompt` in `[intent]` contains markdown formatting (`[matched pattern]`). Per Compass §5 anti-pattern "Chat-agent boilerplate copied to voice", TTS reads markdown literally. Rewrite as natural-language prose before proceeding.
+   > Line `[N]` of `[spoken field]` in `[intent]` contains markdown formatting (`[matched pattern]`). Per Compass §5 anti-pattern "Chat-agent boilerplate copied to voice", TTS reads markdown literally. Rewrite as natural-language prose before proceeding.
 
 2. **URLs** — regex `https?://\S+`. If matched: **blocking** — TTS would read the URL aloud. Surface:
-   > Line `[N]` of `validationPrompt` in `[intent]` contains a URL (`[matched URL]`). Voice agents should not vocalize URLs. Replace with a description ("our website") or move the URL out of the prompt entirely.
+   > Line `[N]` of `[spoken field]` in `[intent]` contains a URL (`[matched URL]`). Voice agents should not vocalize URLs. Replace with a description ("our website") or move the URL out of the prompt entirely.
 
 3. **Long digit runs without spell-out instruction** — regex `\d{6,}` AND no `(?i)(digit by digit|spell|ספרה ספרה|חזרי ספרה)` instruction within 100 surrounding characters. If matched: **advisory** — surface:
-   > A long digit sequence (`[matched]`) appears in `validationPrompt` of `[intent]` without a nearby "spell digit-by-digit" instruction. Per Compass §6 voice output rules, long digit runs read awkwardly. Consider adding an explicit spell-out instruction (e.g., "חזרי ספרה ספרה" for Hebrew; "Read digit by digit" for English). Continue without fix, or pause to add?
+   > A long digit sequence (`[matched]`) appears in `[spoken field]` of `[intent]` without a nearby "spell digit-by-digit" instruction. Per Compass §6 voice output rules, long digit runs read awkwardly. Consider adding an explicit spell-out instruction (e.g., "חזרי ספרה ספרה" for Hebrew; "Read digit by digit" for English). Continue without fix, or pause to add?
 
-Log per-intent resolution to section 7.3: `Compass rule 8 advisory/blocking fired on [intent].validationPrompt — [resolved: yes/no]`.
+Log per-intent resolution to section 7.3: `Compass rule 8 advisory/blocking fired on [intent].[field] — [resolved: yes/no]`.
 
 **Iron rule (Compass rule 9 — date math in prompt; fires during step 2, advisory):**
 
@@ -347,7 +342,7 @@ Block authoring of this field until the user provides a compliant revision.
 
 Log per-intent on resolution: `Compass rule 11 blocking fired on [intent].[field] line [N] — resolved`.
 
-**TTS sanitization (voice-agent-llm v1.0.3+):** the service now sanitizes voice-active text before it reaches TTS, so unintended Markdown is no longer spoken literally. The existing authoring rule still applies: write plain conversational prose in `validationPrompt`, `announcement`, `fail_output`, `function_output`, and post-execution `intentInstructions`. The sanitizer is a belt-and-suspenders safeguard, not a substitute for clean authoring.
+**TTS sanitization (voice-agent-llm v1.0.3+):** the service now sanitizes voice-active text before it reaches TTS, so unintended Markdown is no longer spoken literally. The existing authoring rule still applies: write plain conversational prose in the spoken fields — `announcement`, `intentLoadingAnnouncement`, `fail_output`, `function_output`, and the quoted spoken lines of post-execution `intentInstructions`. (`validationPrompt` is exempt — never vocalized, v1.13.0 FP-5.) The sanitizer is a belt-and-suspenders safeguard, not a substitute for clean authoring.
 
 ### 4.3 Step 3 — RT-specific configuration
 
@@ -359,10 +354,12 @@ Required language fields:
 
 | Field | Meaning | Example (Hebrew) |
 |---|---|---|
-| `announcement` | What the bot says before transferring | "אני מעבירה אותך לנציג, רגע אחד" |
-| `intentLoadingAnnouncement` | Latency-cover utterance between announcement and the actual transfer | "המתן בבקשה" |
+| `announcement` | The outcome-specific FULL closing line for this terminal (v1.13.0, FP-8) — the compliance-grade farewell/handoff sentence spoken verbatim before the transfer/hang-up. One terminal per outcome ⇒ one closing line, here. | "מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב." |
+| `intentLoadingAnnouncement` | Latency-cover utterance between announcement and the actual transfer. Keep short; it must NOT duplicate the announcement's farewell (FP-6 say-once — check 14). | "יום טוב" (only if the farewell is not already in `announcement`) or "המתן בבקשה" |
 
 Layer ID is structural (declared in section 4). Skill 1 captures the real layer number from the MCP; if the spec omits a layer, Skill 3 defaults it to `0` (root layer) — there is no `-999` sentinel for layer (v1.12.0). Do not invent a specific layer.
+
+For a terminal carrying `**Terminal outcome:**`, step 2 already wrote the outcome-value capture mapping (check 17); step 3 confirms the closing line and loading filler only.
 
 #### RT=2 (API Call)
 
@@ -403,14 +400,15 @@ Required language fields:
 
 #### RT=3 (Continue)
 
-Required language fields:
+Required language fields (v1.13.0 — rewritten per FP-2/FP-3/FP-7):
 
 | Field | Meaning | Example (Hebrew) |
 |---|---|---|
-| `announcement` | What the bot says after slot collection completes | "מעולה. רשמתי לך תור ב-{{available_slots.0.display}} בכתובת {{address}}. נשלח לך SMS עם פרטים." |
+| `announcement` | The REAL spoken content delivered when this intent's tool completes: the read-back with `{{CustomData}}`/slot vars plus **the section-4 `**Asks next:**` question** — the question the NEXT intent's slots will capture (FP-2 staggering). NEVER filler ("תודה.", "קיבלתי.") — acknowledgment belongs in `intentLoadingAnnouncement`. MAY be intentionally empty ONLY when this intent's post-execution `intentInstructions` carry the speech instead (FP-3 exception — e.g., reading an API-response list under reading instructions with no fixed transition sentence); log to 7.3: `announcement intentionally empty on [intent] — speech carried by intentInstructions`. | "התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת. האם הפרטים נכונים?" |
+| `intentLoadingAnnouncement` | **MANDATORY, non-empty (FP-7 — check 12; Skill 3 check 17 backstops).** Short natural filler spoken while the tool executes, matching the persona's register and grammatical gender. An unconfigured value produces the default "." SAY directive — a verified production trigger for duplicated phrases and dead air. | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
 | `response_success` | **Response success instructions** [JSON field: `response_success` — object shape `{ "instructions": "<text or empty>" }`, v1.5.0 shape change]. Skill 2 prompts the user for any instructional text the runtime should use after RT=3 success (collect-and-continue). Empty string is the most common production shape (`{ "instructions": "" }`). User supplies the inner string; Skill 2 wraps it as the object. | `{ "instructions": "" }` |
 
-The `announcement` typically uses Mustache references against the intent's own collected slots and/or upstream API response paths.
+**Filler-announcement advisory (v1.13.0, fires during step 3):** an RT=3 `announcement` that contains no `{{…}}` reference, no question mark, and is ≤ ~15 characters (e.g., "תודה.") is almost certainly misplaced acknowledgment. Surface: "Acknowledgment belongs in `intentLoadingAnnouncement`; `announcement` must carry the read-back + the `**Asks next:**` question, or be intentionally empty per FP-3. Move it?"
 
 #### RT=4 (Dial-Out)
 
@@ -423,29 +421,37 @@ Required language fields:
 
 Other RT=4 fields (Phone destination, NEXT_VO_ID, etc.) are structural — declared in section 4 by Skill 1.
 
+#### Step-3 cross-RT iron rules (v1.13.0)
+
+**Iron rule (say-once, FP-6 — fires during step 3 + gate, blocking; check 14):** no sentence may be mandated as speech in two places — within this intent's fields (`announcement` vs `intentLoadingAnnouncement` vs a quoted line in `intentInstructions`), or between this intent and a bot-level prompt (persona / opening instructions / openingAnnouncement). Compare normalized text (trim, strip punctuation/niqqud, collapse whitespace). Duplicated speak-obligations are the diagnosed root cause of the bot saying things twice in production. On detection: keep the sentence in exactly one field (announcement for content, loading for acknowledgment) and remove the other.
+
+**Iron rule (routing anchor, FP-9 — fires during steps 3–4, blocking):** wherever an announcement or instruction references another intent, reference it by its section-4 **Description text** (e.g., "forward the call to confirming health declaration") — never by tool name, identifier, or an invented label. The Description is how the voice model identifies tools.
+
 ### 4.4 Step 4 — Post-execution `intentInstructions`
 
 This is the second Conversation Routines block per intent. It defines what the bot does **after** this intent has fired and slots have been collected.
 
 **Critical distinction (per Doc 1 §14.3.10, §14.3.12):**
 
-- `validationPrompt` is **pre-execution** — slot collection
-- `intentInstructions` (per-intent) is **post-execution** — what to do next
+- `validationPrompt` is the Intent-Agent capture mapping (v1.13.0, FP-5) — never spoken
+- `intentInstructions` (per-intent) is **post-execution** — delivered to the voice model after the tool completes: what to do next
 
-Skill 2 writes `intentInstructions` to cover:
+Skill 2 writes `intentInstructions` (v1.13.0) to cover:
 
-- Confirmation language (e.g., `POST-EXECUTION: address validated. Proceed to slot fetch.`)
+- **Post-answer routing by Description text** (FP-9): `* If the customer approves, forward the call to confirming health declaration.` / `* If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.`
+- **The explicit wait rule**: `After asking, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.`
+- **Optional mandated spoken lines via the FP-4 quote convention** — the sanctioned home for speech when the announcement is empty (FP-3 exception) or the step involves several short questions: `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב"` — then route.
 - Conditional next-intent routing if the intent's outcome varies (RT=2 with conditional success/failure paths)
 - Iron rules for what NOT to do post-execution (scope-creep prevention)
 
 **Authoring procedure:**
 
 1. Surface any staged notes for this intent from section 2.4 (the section 7.3 scan).
-2. Draft an initial `intentInstructions` block in Conversation Routines style.
+2. Draft an initial `intentInstructions` block in Conversation Routines style, routing by Description text, including the wait rule; add FP-4 quoted lines only where the announcement doesn't already carry the speech (FP-6 say-once).
 3. Show the draft. User confirms or edits.
-4. Verify against the four iron rules below.
+4. Verify against the iron rules below.
 
-**Iron rules (checks 5, 6, 7, 8 — fire during step 4, blocking):**
+**Iron rules (checks 5, 6, 7, 8, 13, 15 — fire during step 4, blocking):**
 
 | Rule | Source | Catch pattern |
 |---|---|---|
@@ -453,6 +459,8 @@ Skill 2 writes `intentInstructions` to cover:
 | Must NOT contain pre-execution slot collection logic | §14.3.12 | Sentences like "after collecting X, ensure it's…" or validation rules → relocate to `validationPrompt` |
 | Must NOT contain persistent policy that applies call-wide | §14.3.13 | Sentences about privacy, GDPR, retention, broad escalation policy → relocate to `prompts.persona` (raise to user; this is a Skill 1 patch) |
 | Must NOT contain bot-level disambiguation that runs before any intent fires | §14.3.11 | Sentences like "first figure out if the user wants X or Y…" → relocate to `prompts.intentInstructions` (bot-level; raise to user; this is a Skill 1 patch) |
+| Own-parameters only (v1.13.0, FP-8 — check 13) | FP-8 | Any parameter name mentioned in this intent's `validationPrompt` / `announcement` / `intentInstructions` must exist in THIS intent's slot list. "Set status_shikuf to …" on a gate that doesn't own `status_shikuf` is un-executable at runtime — either the parameter moves to this intent (Skill 1 patch) or the reference is removed. Raise to user; never author around it. |
+| Quote convention (v1.13.0, FP-4 — check 15) | FP-4 | Every mandated verbatim spoken line uses `<instruction text> : "<line>"` (colon before the quoted line). Unquoted inline speech or a quoted line with no instruction verb → reformat. |
 
 **Misplacement handling during drafting:**
 
@@ -519,17 +527,23 @@ Per intent, before flipping status to `[detailed]`. Each check has a timing clas
 
 | # | Check | Source | Severity | Timing |
 |---|---|---|---|---|
-| 1 | `validationPrompt` is non-empty and Conversation Routines styled | §14.3.2 | blocking | during step 2 + gate |
-| 2 | `validationPrompt` covers every slot in the intent | §14.3.2 | blocking | gate |
-| 3 | `validationPrompt` includes at least one IRON RULE block | §14.3.3 | blocking | gate |
+| 1 | `validationPrompt` is non-empty and capture-mapping styled (v1.13.0, FP-5 — short save/capture/set bullets; was "Conversation Routines styled" pre-v1.13) | FP-5 | blocking | during step 2 + gate |
+| 2 | `validationPrompt` covers every collectable slot in the intent (one mapping line per slot) | §14.3.2 / FP-5 | blocking | gate |
+| 3 | `validationPrompt` contains NO speech content — no ask/say/tell/greet/read-back imperatives, no question addressed to the caller, no turn-taking guards, no routing; quoted strings appear only as VALUES being saved (v1.13.0, FP-5 — replaces the pre-v1.13 "at least one IRON RULE block" check, which mandated the opposite pattern; mirrored by Skill 3 check 16) | FP-5 | blocking | during step 2 + gate |
 | 4 | Slot type matches purpose (no STRING for phone, etc.) | §14.3.3 | blocking | during step 1 |
 | 5 | `intentInstructions` is non-empty and Conversation Routines styled | §14.3.2 | blocking | during step 4 + gate |
 | 6 | `intentInstructions` does not contain slot collection logic | §14.3.12 | blocking | during step 4 |
 | 7 | `intentInstructions` does not contain persistent policy | §14.3.13 | blocking | during step 4 |
 | 8 | `intentInstructions` does not contain bot-level disambiguation | §14.3.11 | blocking | during step 4 |
-| 9 | All Mustache references resolve against section 4.5 + upstream slots, with directional ordering | §14.3.5 / §15.4 #7 | blocking | during steps 2/3/4 + gate |
+| 9 | All Mustache references resolve against section 4.5 (incl. 4.5.5 CustomData keys, v1.13.0) + upstream slots, with directional ordering | §14.3.5 / §15.4 #7 | blocking | during steps 2/3/4 + gate |
 | 10 | RT=2 only: `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`) all populated | §14.3.6 | blocking | during step 3 + gate |
 | 11 | RT=2 only: API silence behavior fully populated (`silence_sentence`, `silence_ending_sentence`, `silence_instructions`, plus the structural duration and loops from section 4) | §14.3.6 | blocking | during step 3 + gate |
+| 12 | RT=3 only: `intentLoadingAnnouncement` is non-empty, not `"."`, and matches the persona's register and grammatical gender (v1.13.0, FP-7) | FP-7 | blocking | during step 3 + gate |
+| 13 | Own-parameters only: every parameter name referenced in this intent's `validationPrompt` / `announcement` / `intentInstructions` exists in THIS intent's slot list (v1.13.0, FP-8) | FP-8 | blocking | during steps 2/4 + gate |
+| 14 | No duplicate speak-obligation: no normalized sentence is mandated in two of this intent's fields, or in this intent + a bot-level prompt (persona / opening instructions / openingAnnouncement) (v1.13.0, FP-6) | FP-6 | blocking | during steps 3/4 + gate |
+| 15 | Quote convention: every mandated verbatim spoken line in `intentInstructions` uses `<instruction text> : "<line>"` (v1.13.0, FP-4) | FP-4 | blocking | during step 4 + gate |
+| 16 | Staggered consistency (fires only when the section-4 fields exist, else skipped): the `validationPrompt` maps the answer to `**Captures answer to:**` into this intent's slots, AND the `**Asks next:**` question appears in exactly ONE of {this intent's `announcement`, an FP-4 quoted line in its `intentInstructions`} (v1.13.0, FP-2/FP-3) | FP-2 | blocking | gate |
+| 17 | Terminal outcome consistency (fires only when section-4 `**Terminal outcome:**` exists): the `validationPrompt` implements the declared value mode — fixed ⇒ the exact string pinned verbatim with the no-translate + never-ask lines; captured/dynamic ⇒ a matching save/compose instruction for the slot (v1.13.0, FP-5/FP-8) | FP-8 | blocking | during step 2 + gate |
 
 **Behavior on blocking failure at gate:** do NOT mark the intent `[detailed]`. Surface the failure to the user with the specific check number and remediation suggestion. The user fixes the field; Skill 2 re-runs the gate; on pass, status flips.
 
@@ -561,6 +575,7 @@ Skill 2 modifies a defined subset of the spec. Crossing these boundaries silentl
 - **Section 4.5.1** — Call-context variables. Skill 1's domain.
 - **Section 4.5.2** — Environment variables. Skill 1's domain.
 - **Section 4.5.4** — API response variables per RT=2 intent. Skill 1's domain.
+- **Section 4.5.5** — CustomData keys (v1.13.0). Skill 1's domain. Skill 2 consumes the list as a Mustache allowlist and NEVER adds to it — a missing real key routes to Skill 1 patch mode (FP-11).
 
 ### 7.3 4.5.3 regeneration mechanic
 
@@ -671,7 +686,11 @@ When the work queue is exhausted and section 7.5 reports zero pending:
 
 ## 10. Anti-list — what Skill 2 does NOT do
 
-- Modify spec sections 1, 2, 3, 4, 4.5.1, 4.5.2, 4.5.4 — Skill 1's domain. If a structural change is needed, raise to user, recommend Skill 1 patch mode, halt the current intent's authoring.
+- Modify spec sections 1, 2, 3, 4, 4.5.1, 4.5.2, 4.5.4, 4.5.5 — Skill 1's domain. If a structural change is needed, raise to user, recommend Skill 1 patch mode, halt the current intent's authoring.
+- Write speech content into `validationPrompt` — no scripts, questions, greetings, turn-taking guards, or routing (v1.13.0, FP-5). It is a capture mapping only.
+- Paste turn-taking / human-rep / disapproval rules into per-intent fields — call-wide rules live once, in persona (FP-6; Skill 1's domain).
+- Invent `{{…}}` placeholder names — only keys declared in 4.5.1–4.5.5 (FP-11).
+- Mandate the same sentence as speech in two fields (FP-6 — check 14).
 - Change an intent's Response Type. Structural — Skill 1 patch mode.
 - Add or remove intents. Skill 1.
 - Modify transitions. Skill 1.
@@ -691,13 +710,17 @@ When the work queue is exhausted and section 7.5 reports zero pending:
 
 | § | Name | Skill 2 enforcement |
 |---|---|---|
-| 14.3.2 | Free prose instead of Conversation Routines | Steps 2 + 4 authoring + checks 1 and 5 |
-| 14.3.3 | Slot definition missing validation guidance | Step 1 + check 4 + check 3 (IRON RULE block in validationPrompt) |
+| 14.3.2 | Free prose instead of Conversation Routines (intentInstructions; validationPrompt is capture-mapping styled since v1.13.0) | Steps 2 + 4 authoring + checks 1 and 5 |
+| 14.3.3 | Slot definition missing validation guidance | Step 1 + check 4 + the per-slot constraint lines in the capture mapping (v1.13.0) |
 | 14.3.5 | Mustache referencing slots before collection | Section 5 (Mustache resolvability) + check 9 |
 | 14.3.6 | RT=2 missing api_silence_behaviour | Step 3 RT=2 branch + checks 10 and 11 |
 | 14.3.11 | Bot-level disambiguation in per-intent fields | Step 4 + check 8 |
 | 14.3.12 | Slot validation in intentInstructions | Step 4 + check 6 |
 | 14.3.13 | Persistent policy in single intent | Step 4 + check 7 |
+| FP-5 | Spoken script inside validationPrompt (v1.13.0) | Step 2 doctrine + check 3; Skill 3 check 16 |
+| FP-6 | Duplicate speak-obligation (v1.13.0) | Step 3 say-once iron rule + check 14; Skill 3 check 19 |
+| FP-7 | Missing RT=3 intentLoadingAnnouncement (v1.13.0) | Step 3 RT=3 table + check 12; Skill 3 check 17 |
+| FP-8 | Foreign-parameter reference (v1.13.0) | Step 4 own-parameters rule + check 13; Skill 3 check 18 |
 
 Skill 1 owns: §14.3.1 (persona content), §14.3.4 (escalation transitions), §14.3.7 (capabilities ⊆ intents), §14.3.8 (naming), §14.3.9 (channel content placement), §14.3.10 (per-intent logic in persona).
 
@@ -709,10 +732,12 @@ Skill 3 owns: §14.3.5 authoritative cross-reference (§15.4 #7), plus all 7 cro
 
 Full templates and worked examples in `conversation-routines-style-guide.md`. This appendix is the brief.
 
-**Required elements:**
+**Scope (v1.13.0):** Conversation Routines style applies to `intentInstructions` (per-intent and bot-level). `validationPrompt` uses the FP-5 capture-mapping form instead — short `*` bullets in save/capture/set language (see the minimal example below and style guide §3).
 
-1. **ALL-CAPS section headers** anchor the structure. Examples: `ADDRESS COLLECTION`, `IRON RULES`, `POST-EXECUTION BEHAVIOR`, `OPENING BEHAVIOR`.
-2. **Numbered steps** for sequential collection or post-execution actions. Use `1.`, `2.`, `3.`, not bullets.
+**Required elements (intentInstructions):**
+
+1. **ALL-CAPS section headers** anchor the structure. Examples: `POST-EXECUTION BEHAVIOR`, `OPENING BEHAVIOR`, `IRON RULES`.
+2. **Numbered steps** for post-execution actions. Use `1.`, `2.`, `3.`, not bullets.
 3. **IF / ELSE branches** for conditional behavior. Indented under the step they condition.
 4. **IRON RULE blocks** for non-negotiables. Always at least one, typically at the end of the prompt.
 
@@ -723,23 +748,20 @@ Full templates and worked examples in `conversation-routines-style-guide.md`. Th
 - Channel-specific behavior in `validationPrompt` or `intentInstructions` (belongs in voiceInstructions / chatInstructions, section 2)
 - Persistent policy ("We're GDPR-compliant. We never share data.") in `intentInstructions` (belongs in persona, section 2.1)
 
-**Minimal valid `validationPrompt`:**
+**Minimal valid `validationPrompt` (v1.13.0, FP-5 — capture mapping only; the asking lives in the previous intent's announcement or this intent's instructions):**
 
 ```
-ADDRESS COLLECTION
-1. Ask the caller for their full address.
-2. Repeat the street and number back for confirmation.
-3. Confirm with caller.
-
-IRON RULE: do not accept partial addresses. Street name + house number + city are all required.
+* Save the customer's full address (street, house number, city) in the parameter address.
+* If any part is missing, leave the parameter unfilled.
 ```
 
-**Minimal valid post-execution `intentInstructions`:**
+**Minimal valid post-execution `intentInstructions` (v1.13.0 — wait rule + routing by Description text):**
 
 ```
 POST-EXECUTION BEHAVIOR
-1. Confirm the validated address back to the caller.
-2. Proceed to fetch available time slots.
+1. After asking, stop and wait for the customer's explicit answer. Do not proceed until the customer responds.
+2. If the address was captured, forward the call to Fetching available time slots.
+3. If the customer refuses or the address is unusable, forward the call to Transferring the call to a human representative.
 
 IRON RULE: do not discuss pricing or technical issues. Transfer to human for those.
 ```
@@ -754,7 +776,7 @@ What Skill 2 must populate in step 3 per RT.
 |---|---|---|
 | 1 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
 | 2 | `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`), `intentLoadingAnnouncement` (v1.5.0: capital-I `IntentLoadingAnnouncement` removed), `silence_sentence`, `silence_ending_sentence`, `silence_instructions` | Above + 4.5.4 dotted paths declared for THIS intent |
-| 3 | `announcement`, `response_success` (object `{ "instructions": "..." }`) | Slots from this intent + upstream + 4.5.1 + 4.5.2 + 4.5.4 from upstream RT=2 intents |
+| 3 | `announcement` (the read-back + `**Asks next:**` question, or intentionally empty per FP-3), `intentLoadingAnnouncement` (**mandatory, v1.13.0 FP-7**), `response_success` (object `{ "instructions": "..." }`) | Slots from this intent + upstream + 4.5.1 + 4.5.2 + 4.5.4 from upstream RT=2 intents + 4.5.5 CustomData keys |
 | 4 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
 
 Structural fields per RT (declared in section 4 by Skill 1 — not Skill 2's domain):

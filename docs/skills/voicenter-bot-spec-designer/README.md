@@ -19,11 +19,11 @@ Skill 1 fills these spec sections:
 
 | Section | Content |
 |---|---|
-| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls |
+| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls; optional limit fields (v1.13.0): daily limit, daily-limit layer, max-duration layer, limit sentences, `IVRLayerSelect_2` |
 | 2. Persona Bundle | `persona`, voice/chat instructions, opening behavior, opening announcement |
 | 3. Caller Silence Behavior | Mandatory (v1.11.0) — 4 silence fields (with defaults) + the silence forward intent |
-| 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields |
-| 4.5 Available Variables | Call-context, environment, slot, and API-response variable inventories |
+| 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields; v1.13.0 adds the staggering fields (`**Captures answer to:**` / `**Asks next:**`) and `**Terminal outcome:**` on RT=1 terminals |
+| 4.5 Available Variables | Call-context, environment, slot, API-response, and (v1.13.0) §4.5.5 CustomData-key variable inventories |
 | 4.6 Global/System Catalog Intents | Verbatim definitions of referenced platform intents (e.g. silence-forward target id=19), or `[none]` |
 | 5. Intent Details | **Stubs only**, marked `[structural]`. Skill 2 fills the rest. |
 | 6. Cross-References | Initial pass — Mustache usage, transition graph, escalation paths, ID placeholders |
@@ -114,14 +114,15 @@ Captures section 2 (the 5-field `prompts` bundle):
 - `persona` — identity, role, tone, language, hard constraints
 - `voiceInstructions` — pacing, pronunciation, interruption handling
 - `chatInstructions` — formatting, message length, emoji policy
-- `intentInstructions` — bot-level opening behavior in Conversation Routines style; its first step handles the caller's answer to the opening announcement's question, and it never re-greets or re-asks it (v1.12.1)
-- `openingAnnouncement` — the first audible message at pickup; MUST end with a question mark, preferably asking for the first detail the bot collects, e.g. "Who am I speaking with?" (v1.12.1). Elicited **before** the opening behavior, which is authored around it
+- `intentInstructions` — bot-level opening behavior in Conversation Routines style; its first step handles the caller's answer to the opening announcement's question, and it never re-greets or re-asks it (v1.12.1). **IRON RULE extension (v1.13.0, FP-2/FP-4/FP-12):** when the flow staggers off the opening, §2.4 carries the full branch content — including any read-back the caller must hear on the "proceed" branch and the next question the first flow intent will capture; a flow must NOT start with a dedicated yes/no gate intent (the opening question is the last sentence of §2.5 and the yes/no branch lives in §2.4 — enforced by Check 18); any mandated spoken line uses the FP-4 quote convention `<instruction text> : "<verbatim line>"`; and whenever the flow collects a callback/scheduling time, §2.4 must include the canonical FP-12 date/time interpretation block (anchor on `{{todayHe}}`/`{{timeHe}}`; relative time → compute silently; day without hour → ask only `"באיזו שעה ?"`; never re-ask provided info — enforced by Check 21)
+- `openingAnnouncement` — the first audible message at pickup; MUST end with a question mark, preferably asking for the first detail the bot collects, e.g. "Who am I speaking with?" (v1.12.1). Elicited **before** the opening behavior, which is authored around it. **Staggered-pipeline note (v1.13.0, FP-2):** the opening question is pipeline question #1 — its answer is captured by the FIRST flow intent's slots, not by any "opening gate" intent; it is recorded as that intent's `**Captures answer to:**`, and a dedicated yes/no intent whose only job is the opening question is forbidden (Check 18)
 
 Iron rules enforced during this phase:
 
 - No channel-specific behavior in `persona` (move voice-isms / chat-isms to the right field)
 - No per-intent procedural logic in `persona` (defer to Skill 2)
 - No persistent policy embedded in single intents (move to `persona`)
+- **Call-wide rules stated ONCE, in persona (v1.13.0, FP-6).** The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: *"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."*; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists. These rules are NEVER repeated in per-intent fields — enforced by Check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known.
 
 For inactive channels, Skill 1 emits templated defaults from `templates/voice-default.md` or `templates/chat-default.md`, marked `[default — not user-authored]`.
 
@@ -131,13 +132,27 @@ If the transcript triggers any of the four cues in `trigger-detection-rules.md`,
 
 ### Phase 3 — Flow Graph and Intent List
 
-Captures section 4 (intent rows) and section 4.5 stubs (call-context, environment, API-response variables):
+Captures section 4 (intent rows) and section 4.5 stubs (call-context, environment, API-response variables, and — v1.13.0 — the §4.5.5 CustomData keys):
 
 The declared response shape is provisional — Skill 2 hard-verifies it against the live API (a real `curl` returning 2xx with every declared dotted path present) before the RT=2 intent can be detailed; an unverifiable endpoint blocks.
 
 - Elicit the happy path
 - Expand fallbacks for each non-terminal intent
-- Per-intent capture: identifier (snake_case verb_object), display name, description, RT (1/2/3/4), transitions out (ordered), `**Bot-intent role:**`, hard-intent flag
+- Per-intent capture: identifier (snake_case verb_object), display name, description, RT (1/2/3/4), transitions out (ordered), `**Bot-intent role:**`, hard-intent flag; plus (v1.13.0) the staggering fields and terminal outcome, below
+
+**Description doctrine (v1.13.0, FP-10).** The Description is a **short semantic English label naming the business step** — e.g., "Verification of plan and premia", "confirming health declaration". It is both the LLM's intent-recognition anchor and the name other intents' instructions use for routing (FP-9). **Forbidden:** stage/workflow markers ("Stage 2", "Gate C"), dialogue imperatives ("Ask…", "Read back…", "Explain…"), business logic ("premium may change after further review"). Specific data points belong in slot Descriptions; conversational content belongs in announcement/instructions (Skill 2); business logic belongs in §2.4 or persona. If the user supplies a long descriptive sentence, Skill 1 distills it to the semantic label and confirms. (Check 12's English preference remains advisory; FP-10 recommends English by default.)
+
+**Staggering fields (v1.13.0, FP-2).** While walking the happy path, Skill 1 fills two fields per flow intent: the caller answers question Q(n-1) — asked by the previous intent's announcement or by the opening — and this intent's slots capture that answer; this intent's announcement will ask Q(n). Q(n-1) is recorded as `**Captures answer to:**` and Q(n) as `**Asks next:**` (terminals: `[none — terminal]`; both omitted on globals). Skill 1 records only the question text as a structural pointer — the announcement wording itself is Skill 2 territory.
+
+**Terminal outcome (v1.13.0, FP-8).** For each RT=1 terminal, Skill 1 captures the outcome slot and its **value mode** — *fixed* (one exact string, e.g., `shikuf_status = "הלקוח ביקש נציג אנושי"`), *captured* (save what the customer said), or *dynamic* (text composed per call). The mode is **inferred from the characterization/requirements material the user provided** when it determines the answer; Skill 1 asks (or confirms the inference) only when it doesn't. Written per the two-mode grammar in `spec-skeleton.md` §4.
+
+**Phase 3 iron rules — three new blocking rules (v1.13.0):**
+
+- **Per-outcome terminals (FP-8).** Every distinct call outcome named in the interview gets its OWN RT=1 terminal that owns an outcome slot (`**Terminal outcome:**`) and ends the call in one hop. **Forbidden:** a finalize→end_call two-intent chain; a single intent that computes the outcome via IF/ELSE-IF prose (non-deterministic — depends on LLM recall). On detection, Skill 1 proposes the per-terminal decomposition and blocks until resolved.
+- **Status ownership (FP-8).** The outcome/status parameter appears ONLY on terminals. Gates never carry, set, or mention it — an intent can only set its own slots; "Set status_X to …" on a gate is un-executable at runtime. Blocking.
+- **Minimal graph (FP-9).** Transitions exist only for the linear happy-path spine + true branches. Exception outcomes (human-rep request, decline/not-confirmed) are `global` terminals reachable from anywhere, driven by the persona's FP-6 call-wide rules — never wire an explicit edge from every gate (reinforces the v1.12.0 no-fan-out rule). Blocking.
+
+**§4.5.5 CustomData keys interview (v1.13.0, FP-11).** Skill 1 asks for the EXACT per-call CustomData keys the pipeline sends with each call (e.g., `firstnamelastname`, `nationalid`, `policies`, `insurer`, `monthlypremiumafterdiscount`) and records them verbatim in §4.5.5 — key names are **never invented**; any `{{placeholder}}` not on the list blocks assembly at Skill 3 check 7. If the user cannot enumerate: `<INCOMPLETE: CustomData keys unverified>`. When the flow reads per-call data or collects a callback time (Hebrew bots especially), Skill 1 also confirms the platform context vars `{{todayHe}}` / `{{timeHe}}` are available and adds them to 4.5.1.
 
 **Bot-intent role field (v1.8.0).** Each section-4 intent carries a `**Bot-intent role:**` field with one of three values:
 
@@ -147,7 +162,7 @@ The declared response shape is provisional — Skill 2 hard-verifies it against 
 | `global` | Triggerable from anywhere (transfer-to-human, WhatsApp); supersedes `entry` | 2 |
 | `chained` | Reached only via another intent's transition (default) | omitted from `botIntents[]` |
 
-Skill 1 **infers** roles from context in Phase 3 — it does NOT prompt per-intent. Roles are confirmed in one batch at §3.6 close-out. Authors must NOT hand-author transitions to `global` intents — Skill 3 auto-fans-out an edge from every non-global intent to each global at assembly time.
+Skill 1 **infers** roles from context in Phase 3 — it does NOT prompt per-intent. Roles are confirmed in one batch at §3.6 close-out. Authors must NOT hand-author transitions to `global` intents — a `global` is reachable from anywhere via its `botIntents[]` type-2 registration, so no explicit edge is needed (v1.12.0 — Skill 3 no longer fans out edges; FP-9's minimal-graph rule reinforces this).
 
 **Hard-intent criteria** — flag the intent as hard if any one applies:
 
@@ -164,12 +179,12 @@ Per-RT capture:
 
 | RT | Required fields |
 |---|---|
-| 1 (Layer transfer) | `Layer:` (int) — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]` and prompts via `AskUserQuestion` |
+| 1 (Layer transfer) | `Layer:` (int) — Skill 1 calls `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]` and prompts via `AskUserQuestion`. Additionally for terminals (v1.13.0, FP-8): the outcome slot named in `**Terminal outcome:**` must appear in the intent's slot list — typically STRING (ParameterTypeId 1) per FP-13; ENUM (19, with OptionList) only when the slot selects among multiple fixed values |
 | 2 (External API) | `URL:`, `Method:` (`AskUserQuestion` POST/GET), `Headers:`, `Body:`, `API silence behavior:` (six sub-fields) |
 | 3 (Conversational) | (none beyond slots — RT=3 fields are language-heavy, Skill 2 territory) |
 | 4 (Outbound dial) | `Dial source:` (`AskUserQuestion` parameter/static), then `Parameter phone:` OR `Phone1/2/3:`, plus `selectdial_option:`, `NEXT_VO_ID:`, `MAX_DIAL_DURATION:`, `Record:`, optional `Announcement:` / `Loading announcement:` / `Post-execution intent instructions:`, and `Response success:` |
 
-**Max turns / Max turns sentence (per-intent turn cap — v1.5.0):** Skill 1 does NOT ask about these in the interview. Skill 3 v1.5.0+ applies smart defaults at emission: RT=2 gets `max_turns: 15` and the standard Hebrew sentence; other RTs omit the fields. If a spec author needs to override a specific intent's cap, they can hand-edit spec section 4 with the optional `**Max turns:**` and `**Max turns sentence:**` fields documented in `spec-skeleton.md §4`.
+**Max turns / Max turns sentence (per-intent turn cap — v1.5.0, defaults updated v1.13.0):** Skill 1 does NOT ask about these in the interview. Skill 3 applies smart defaults at emission — now inside `IntentConfig.additional` (v1.13.0): RT=2 keeps `max_turns: 15` with the standard Hebrew sentence (`"אני חייב לסיים את השיחה בשלב הזה."`); all other RTs default to `max_turns: 5` with an empty sentence `""`. If a spec author needs to override a specific intent's cap, they can hand-edit spec section 4 with the optional `**Max turns:**` and `**Max turns sentence:**` fields documented in `spec-skeleton.md §4` (e.g., the golden reference sets a Hebrew technical-difficulty fallback sentence on its callback intent).
 
 The RT-specific sub-labels are **bold** in the spec — Skill 3's strict-template parser depends on this exact form. See [Skill 3's parser](../voicenter-bot-json-assembler/README.md#strict-template-parser) for the full grammar.
 
@@ -198,6 +213,8 @@ Used when the user wants to modify an existing spec.
 - Rename an intent identifier (transition refs and Mustache refs auto-update)
 - Edit caller-silence configuration
 - Expand channel scope (newly-active channel gets templated defaults)
+- Edit the §4.5.5 CustomData key list (v1.13.0) — Check 8 re-runs after the edit; Skill 3 check 7 re-validates every `{{reference}}` at assembly
+- Edit the §1 limit fields (Daily limit / layers / sentences / `IVRLayerSelect_2`) (v1.13.0)
 
 **Hard changes** (cascade reset to `[detailed-revisit]` for affected intents):
 
@@ -207,6 +224,8 @@ Used when the user wants to modify an existing spec.
 - Modify the transition graph beyond simple reordering
 - Edit bot-level opening behavior routing destinations
 - Reduce channel scope from two channels to one
+- Change an intent's `**Terminal outcome:**` (slot, value, or value mode) (v1.13.0) — the terminal's Skill-2 outcome-value validationPrompt must be redone
+- Change an intent's `**Captures answer to:**` / `**Asks next:**` (v1.13.0) — the staggering couples intent N's announcement to intent N+1's capture, so BOTH neighbors' Skill-2 content is affected; the previous and next flow intents join the cascade's affected set
 
 The cascade algorithm walks both Skill-1-territory references (RT=2 body / headers / response-shape inheritance) and Skill-2-territory references (validation prompts and post-execution instructions in `[detailed]` intents). Affected `[detailed]` intents reset to `[detailed-revisit]`; affected `[structural]` intents stay `[structural]`. The user confirms the cascade list before any change applies.
 
@@ -214,7 +233,7 @@ The cascade algorithm walks both Skill-1-territory references (RT=2 body / heade
 
 ## Self-validation checklist
 
-Run on every greenfield close-out and after every patch. 17 checks, executed in order (the Compass-doctrine advisories 11–15 are documented in the SKILL.md; the table below lists the core and house-rule checks):
+Run on every greenfield close-out and after every patch. 21 checks total — 14 blocking, 6 advisory (Checks 8 + 11–15, of which 11–15 are Compass doctrine), 1 structural-correctness — executed in order. Checks 16–17 are house rules (v1.12.1); checks 18–21 are field-placement doctrine rules (v1.13.0, FP-2/FP-8/FP-6/FP-12). The Compass-doctrine advisories 11–15 are documented in the SKILL.md; the table below lists the core, house-rule, and field-placement checks:
 
 | # | Check | Severity |
 |---|---|---|
@@ -225,11 +244,17 @@ Run on every greenfield close-out and after every patch. 17 checks, executed in 
 | 5 | Persona's claimed capabilities ⊆ intent set | Blocking |
 | 6 | snake_case verb_object naming on all intents | Blocking |
 | 7 | Every non-terminal intent has an escalation transition (auto-satisfied when a `global` intent exists — reachable from anywhere) | Blocking |
-| 8 | Mustache references resolve against section 4.5 + section 5 slots | Advisory |
+| 8 | Mustache references resolve against section 4.5 (4.5.1–4.5.4 + 4.5.5 CustomData keys, v1.13.0) + section 5 slots | Advisory |
 | 9 | Active-channel `prompts` fields populated | Blocking |
 | 10 | Inactive-channel `prompts` have templated defaults marked | Auto-fix |
 | 16 | Opening announcement ends with a question (house rule, v1.12.1) | Blocking |
 | 17 | Opening behavior consumes the announcement's answer — no re-greet, no re-ask (house rule, v1.12.1) | Blocking |
+| 18 | Opening-gate merge (v1.13.0, FP-2) — no dedicated intent exists only to ask the §2.5 opening question; the question is the last sentence of §2.5, the yes/no branch lives in §2.4, and the first flow intent captures the answer. Proposed restructure: delete the gate, move its branch logic into §2.4. "Keep" is an escape hatch only when the gate does more than the yes/no (justification logged to 7.3) | Blocking |
+| 19 | Terminal shape (v1.13.0, FP-8) — every distinct outcome has an owning RT=1 terminal with `**Terminal outcome:**` and its slot in the slot list; no terminal→anything chains (incl. finalize→end_call); no gate references an outcome/status slot it doesn't own; no centralized IF/ELSE outcome computation | Blocking |
+| 20 | Persona call-wide rules stated once (v1.13.0, FP-6) — turn-taking rule present (canonical wording); human-rep handling present when a human-rep `global` exists; disapproval handling present when a decline terminal exists; none of them duplicated into per-intent fields | Blocking |
+| 21 | Callback date/time machinery (v1.13.0, FP-12) — when any intent collects a callback/scheduling time, §2.4 must contain the `{{todayHe}}`/`{{timeHe}}` interpretation block and 4.5.1 must list `todayHe`/`timeHe` | Blocking (only fires when a callback/scheduling-time slot exists) |
+
+New in v1.13.0: check 8's resolution allowlist extends to §4.5.5, and its warning offers a third possibility — the reference is a real CustomData key missing from 4.5.5 (keys are never invented; if real, it is added to the list).
 
 Blocking failures pause the close-out until the user resolves them. Advisory check #8 records the user's resolution to section 7.3 and continues — Skill 3's check is the authoritative blocking version.
 
@@ -253,7 +278,7 @@ After role confirmation, Skill 1 revisits `silence_ending_sentence`: if a transf
 
 **On greenfield completion:**
 
-- Sections 1, 2, 3, 4, 4.5 fully filled; section 4.6 populated when a catalog intent is referenced, else `[none]`
+- Sections 1, 2, 3, 4, 4.5 fully filled — including (v1.13.0) the §1 limit fields (or defaults), the per-intent staggering fields (`**Captures answer to:**` / `**Asks next:**`), `**Terminal outcome:**` on RT=1 terminals, and §4.5.5 CustomData keys; section 4.6 populated when a catalog intent is referenced, else `[none]`
 - Section 5: stub entries per intent, all marked `[structural]`
 - Section 6: initial cross-references (subsections 6.1–6.5). Section 6.2 lists the authored `(origin → next)` transition pairs only (v1.12.0 — no fan-out; globals are reachable from anywhere via their `botIntents[]` type-2 registration), so section 6.2 exactly matches what Skill 3 will emit.
 - **Section 6.6: Mermaid `flowchart TD` of the intent graph** — generated at close-out, shown to the user with a refinement loop, and embedded in the spec for human comprehension. Skill 3 ignores this section.
@@ -309,6 +334,7 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 
 - Write `validationPrompt` text (Skill 2's territory)
 - Write per-intent post-execution `intentInstructions` text (Skill 2's territory)
+- Write per-intent `announcement` / `intentLoadingAnnouncement` text (Skill 2's territory) — Skill 1 records only the `**Asks next:**` question text as a structural pointer (v1.13.0)
 - Write detailed slot descriptions beyond name + minimum identification
 - Run the §15.4 cross-reference pass (Skill 3's territory)
 - Emit any wire-format JSON (Skill 3's territory)
@@ -336,6 +362,23 @@ Advisory warnings emitted at greenfield close-out, after intent count is final. 
 - **Caller-silence failover.** When a transfer-to-human `global` intent exists, `silence_ending_sentence` defaults to a "transferring you to a representative" line rather than a hang-up.
 - **Check 7 is auto-satisfied** when a `global` intent exists, because the global is reachable from anywhere, giving every non-global intent an escalation path by construction.
 - **Section 6.4** (escalation paths): when a global exists, each non-global intent's escalation path is the global itself, reachable from anywhere (no explicit edge; v1.12.0).
+
+---
+
+## v1.13.0 changes
+
+- **New required reading:** `plugins/voicenter-bot-builder/references/field-placement-doctrine.md` (FP-1…FP-13) joins Skill 1's §1 required-reading table. Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6, and checks 18–21. See *Field-placement doctrine integration* below.
+- **Persona iron rule (FP-6):** call-wide rules stated ONCE, in persona — the turn-taking rule (canonical wording), human-rep handling when a human-rep `global` exists, disapproval handling when a decline terminal exists. Never repeated in per-intent fields (Check 20).
+- **§3.2.3 staggered-pipeline note (FP-2):** the opening question is pipeline question #1 — captured by the FIRST flow intent's slots, not by an opening-gate intent. **§3.2.4 IRON RULE extension (FP-2/FP-4/FP-12):** staggered branch content lives in §2.4 (read-back + next question); the opening-gate merge rule (no dedicated yes/no gate intent); the FP-4 quote convention for mandated speech; the FP-12 callback date/time block.
+- **§3.4.3 per-intent capture:** Description becomes a short semantic English label (no stage markers, dialogue imperatives, or business logic — FP-10); new fields `**Captures answer to:**` / `**Asks next:**` (FP-2 staggering) and `**Terminal outcome:**` with value mode fixed / captured / dynamic (FP-8), the mode inferred from the user's characterization material and asked only when unclear.
+- **§3.4.4 three new blocking iron rules:** per-outcome terminals (no finalize→end_call chains, no centralized IF/ELSE status computation), status ownership (status params only on terminals), minimal graph (spine + true branches only; exception outcomes are persona-driven globals).
+- **§3.4.5 new interview question:** §4.5.5 CustomData keys — exact keys recorded verbatim, never invented; `{{todayHe}}`/`{{timeHe}}` availability confirmed and added to 4.5.1 when relevant.
+- **RT=1 capture:** the terminal outcome slot must appear in the terminal's slot list — STRING per FP-13; ENUM only for multi-value selection.
+- **Check 8** allowlist extended to §4.5.5.
+- **Checklist grows 17 → 21 checks (14 blocking):** new blocking checks 18 (opening-gate merge), 19 (terminal shape), 20 (persona call-wide rules once), 21 (callback date/time machinery — blocking only when a callback slot exists).
+- **Patch mode:** new easy changes (edit the §4.5.5 key list; edit the §1 limit fields); new hard changes (change `**Terminal outcome:**`; change `**Captures answer to:**` / `**Asks next:**` — cascades to both neighbor intents).
+- **Anti-list:** Skill 1 does not author `announcement` / `intentLoadingAnnouncement` text; it records only `**Asks next:**` as a structural pointer.
+- **spec-skeleton.md:** §1 gains optional limit fields (`Daily limit` default 600, `Daily limit layer` 3, `Max duration layer` 3, `Daily limit sentence` / `Max duration sentence`, `IVRLayerSelect_2` 3); §4 gains optional `**Captures answer to:**` / `**Asks next:**`, `**Terminal outcome:**` (two-mode grammar: quoted ⇒ FIXED, unquoted ⇒ CAPTURED/DYNAMIC), and `**Sensitive:**` (default `false`, emitted to `IntentConfig.additional.sensitive`); new §4.5.5 CustomData-keys section; updated `Description` and `Max turns` / `Max turns sentence` help text (emission now via `IntentConfig.additional`; default `5` for non-RT=2, RT=2 stays `15`).
 
 ---
 
@@ -371,6 +414,27 @@ Checks 11–15 extend the self-validation checklist (see table above) and run at
 **Rule-11 mirror on rewritten fields.** When Skill 1 patch mode rewrites any of `persona`, `voiceInstructions`, `chatInstructions`, or `intentInstructions`, it re-runs check 11 (English operational) on the rewritten content before accepting the change. This prevents a patch from accidentally introducing non-English bot-level prompt text.
 
 New Appendix D in the SKILL.md documents the full mapping between self-validation checks 11–15 and their corresponding doctrine rules. See the reference doc for detection methods and fix recipes.
+
+---
+
+## Field-placement doctrine integration (v1.13.0)
+
+A second shared doctrine reference, `plugins/voicenter-bot-builder/references/field-placement-doctrine.md`, joined Skill 1's §1 required-reading table in v1.13.0. Derived from a production root-cause analysis (pipeline-generated bot vs a hand-built, production-validated golden bot), it is the authority on **which prompt field carries which kind of content** — rules FP-1 through FP-13, spanning the three runtime consumers (live voice model, Intent Agent, platform/IVR layer).
+
+Skill 1 owns:
+
+| Rule | Name | Skill 1 hook |
+|---|---|---|
+| FP-2 | Staggered pipeline (structural half) | §3.2.3 note, §3.2.4 extension, §3.4.3 `**Captures answer to:**` / `**Asks next:**`, Check 18 |
+| FP-6 | Call-wide rules once (persona half) | Phase 2 persona iron rule, Check 20 |
+| FP-8 | Terminal doctrine | §3.4.3 `**Terminal outcome:**`, §3.4.4 per-outcome-terminals + status-ownership rules, RT=1 slot-list rule, Check 19 |
+| FP-9 | Minimal graph | §3.4.4 minimal-graph rule |
+| FP-10 | Description doctrine | §3.4.3 Description authoring rule |
+| FP-11 | CustomData keys never invented (interview half) | §3.4.5 §4.5.5 interview, Check 8 allowlist |
+| FP-12 | Callback date/time interpretation block | §3.2.4 extension, Check 21 |
+| FP-13 | ENUM doctrine | Appendix B mapping (single-value outcome slots stay STRING) |
+
+Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6; Skill 3 verifies via cross-reference checks 16–22.
 
 ---
 

@@ -93,8 +93,8 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 ### Rule 8 — TTS-safe formatting in voice output
 
 **Source:** Compass §5 anti-pattern "Chat-agent boilerplate copied to voice"; §6 "Output rules" canonical pattern.
-**Applies to:** per-intent `validationPrompt`, per-intent `announcement` (any RT), per-intent post-execution `intentInstructions`.
-**Owning skill:** Skill 2 (new iron rule wired into §4.2, §4.3, §4.4 step phases).
+**Applies to (v1.13.0):** the SPOKEN fields — per-intent `announcement` (any RT), `intentLoadingAnnouncement`, `fail_output`, `function_output`, and the quoted spoken lines of post-execution `intentInstructions`. Per-intent `validationPrompt` is EXEMPT — it is consumed only by the Intent Agent and never vocalized (field-placement doctrine FP-5), and its capture-mapping form legitimately uses `*` bullets.
+**Owning skill:** Skill 2 (iron rule wired into §4.3, §4.4 step phases).
 **Severity:** **blocking** on markdown bullets/headers/URLs in voice-active intent fields; advisory on raw long digit runs (≥6 consecutive digits without a spell-out instruction nearby).
 **Gating:** `[voice]`.
 **Detection method:**

@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-07-13
+
+Field-placement doctrine for the bot-builder pipeline (v1.13.0 of the plugin), derived from a root-cause comparison of pipeline output against a hand-built, production-validated golden bot (`בוט שיקוף – קבוצת קלי v0.0.17`). The core fix: content was being authored into fields the runtime consumer never reads.
+
+### New shared reference
+
+- **`references/field-placement-doctrine.md`** — the three-consumer runtime model (live voice model / Intent Agent / IVR platform) and rules FP-1…FP-13: the field-placement hard-rule table, the **staggered pipeline** (intent N's parameters capture the answer to the question asked by the PREVIOUS intent's announcement or the opening — the golden bot's deliberate one-step offset), script home + quote convention (`<instruction> : "<verbatim line>"`), capture-mapping validationPrompt, say-once/persona-once, mandatory RT=3 `intentLoadingAnnouncement`, per-outcome terminal doctrine, minimal graph, semantic Descriptions, never-invent CustomData keys, the callback date/time block, and ENUM-only-for-multi-value. Loaded by all three skills.
+
+### Skills
+
+- **Skill 2 — validationPrompt inverted (the critical fix).** `validationPrompt` is consumed ONLY by the Intent Agent — it is never spoken. Step 2 is rewritten from "author the collection script here" (the old doctrine that produced unspoken gates in production) to **capture mapping only**: 1–3 save/capture/set bullets, with fixed/captured/dynamic value modes for terminal outcome slots. Spoken content moves to `announcement` (read-back + next question; no "תודה." filler; may be intentionally empty when instructions carry the speech) and `intentLoadingAnnouncement` becomes **mandatory on RT=3**. Post-execution `intentInstructions` route by Description text, carry the explicit wait rule, and mandate speech only via the FP-4 quote convention. Checklist grows 11 → 17 checks (old check 3 — "at least one IRON RULE block in validationPrompt" — replaced by its opposite: NO speech content). `conversation-routines-style-guide.md` rewritten: patterns V1–V5 → capture-mapping C1–C5, new §3b announcement / §3c loading-announcement patterns, staggered worked example, pitfalls 5–8.
+- **Skill 1 — structure rules.** Semantic-label `Description` doctrine (no stage markers / dialogue imperatives / business logic); staggering captured as new optional section-4 fields `**Captures answer to:**` / `**Asks next:**`; `**Terminal outcome:**` per RT=1 terminal (value mode inferred from the user's characterization material, asked only when unclear); persona states the turn-taking / human-rep / disapproval rules exactly once; opening-gate merge rule (no dedicated yes/no opening intent); CustomData key interview into new spec §4.5.5; FP-12 callback date/time block. Four new blocking checks 18–21 (opening-gate merge, terminal shape, persona-rules-once, callback machinery); checklist 17 → 21.
+- **Skill 3 — wire-format completeness + 7 new cross-reference checks.** Emits `IntentConfig.additional` (`max_turns` — RT=2 default 15 preserved, others 5 — `sensitive`, `max_turns_sentence`) on every intent; `IntentResponces` gains `SuccessCondition: ""` (4-key golden order); RT=3 gains `intentLoadingAnnouncement`; `AIModelConfig` gains `daily_limit`/`dailyLimitLayerId`/`maxDurationLayerId`/`daily_limit_sentence`/`max_duration_sentence`/`IVRLayerSelect_2`; **ParameterType dictionary corrected from the golden export** (BOOLEAN `^(true|false|yes|no)$` / IsCustomValidationAllowed 0 / "Yes/No input"; ENUM "Selection from predefined options"; PHONE still unverified → banner). Cross-reference pass 15 → 22 checks: 16 validationPrompt-speech-free, 17 RT=3 loading present, 18 own-parameter references, 19 no duplicate speak-obligation, 20 terminal shape, 21 ParameterType byte-match (all blocking), 22 edges-into-globals (advisory); check 7 allowlist extended to §4.5.5. Parser grammar extended for all new spec fields (two-mode `**Terminal outcome:**`); stale check-count literals fixed.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-{spec-designer,intent-detail-author,json-assembler}/README.md` mirrors updated.
+
+### Versioning
+
+- voicenter-bot-builder 1.12.1 → 1.13.0, marketplace metadata 1.13.1 → 1.14.0. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.13.1] — 2026-07-12
 
 Bot-builder house rules for the call opening, applied to Skill 1 (Agent Spec Designer).

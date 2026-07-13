@@ -1,174 +1,173 @@
 # Conversation Routines Style Guide
 
-**Purpose:** concrete templates and worked examples for `validationPrompt` and post-execution `intentInstructions` in Voicenter Agent Specs. Supports Skill 2 (Intent Detail Author) — Skill 2 references this file during steps 2 and 4.
+**Purpose:** concrete templates and worked examples for the fields Skill 2 authors — the capture-mapping `validationPrompt`, the spoken `announcement` / `intentLoadingAnnouncement`, and post-execution `intentInstructions`. Supports Skill 2 (Intent Detail Author) — Skill 2 references this file during steps 2–4.
 
-**Scope:** the two Conversation Routines fields Skill 2 owns. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) is also Conversation Routines styled but is Skill 1's domain.
+**Scope (v1.13.0):** Conversation Routines style (headers / numbered steps / IF-ELSE / IRON RULES) applies to `intentInstructions`. `validationPrompt` uses the FP-5 **capture-mapping form** — it is consumed only by the Intent Agent and is never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) is Conversation-Routines styled but is Skill 1's domain. See `../../references/field-placement-doctrine.md` for the full placement doctrine.
 
-**Source:** Doc 1 §14.3.2 defines the style. This file expands with concrete patterns.
+**Source:** Doc 1 §14.3.2 defines the CR style; field-placement doctrine v1.13.0 defines what goes where. This file expands with concrete patterns.
 
 ---
 
-## 1. Required elements
+## 1. Required elements (intentInstructions)
 
 | Element | Form | Example |
 |---|---|---|
-| ALL-CAPS section headers | Bare line, no markdown | `ADDRESS COLLECTION` |
-| Numbered steps | `1.`, `2.`, `3.` (not bullets) | `1. Ask the caller for their address.` |
-| IF / ELSE branches | Inline or indented under their step | `IF caller refuses: transfer to human.` |
-| IRON RULE blocks | At least one per prompt | `IRON RULE: do NOT accept partial addresses.` |
+| ALL-CAPS section headers | Bare line, no markdown | `POST-EXECUTION BEHAVIOR` |
+| Numbered steps | `1.`, `2.`, `3.` (not bullets) | `1. After asking, stop and wait for the customer's explicit answer.` |
+| IF / ELSE branches | Inline or indented under their step | `IF customer refuses: forward the call to Transferring the call to a human representative.` |
+| IRON RULE blocks | At least one per prompt | `IRON RULE: do NOT discuss pricing.` |
+| FP-4 quote convention for mandated speech (v1.13.0) | `<instruction text> : "<verbatim line>"` | `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}"` |
 
 ## 2. Forbidden patterns
 
 | Pattern | Why bad | Where it belongs instead |
 |---|---|---|
+| Spoken script / question / greeting inside `validationPrompt` (v1.13.0, FP-5) | The Intent Agent is the only consumer — the caller NEVER hears it | `announcement` (or an FP-4 quoted line in `intentInstructions`) |
+| Turn-taking guard inside `validationPrompt` or repeated per intent (v1.13.0, FP-6) | Wrong layer (never seen by the voice model) + duplication bloat | `prompts.persona` — stated once |
 | Free prose ("Be helpful and friendly throughout.") | No anchors; LLM behavior drifts | Nowhere — delete or restructure |
 | Vague directives ("Make it clear what we offer.") | Unverifiable | Persona, with concrete scope language |
 | Channel-specific behavior ("Speak slowly and pause.") | Misplacement per §14.3.9 | `prompts.voiceInstructions` (section 2.2) |
 | Persistent policy ("We're GDPR-compliant.") | Misplacement per §14.3.13 | `prompts.persona` (section 2.1) |
-| Slot validation logic in `intentInstructions` | Misplacement per §14.3.12 — runs after slots are already collected | `validationPrompt` |
+| Slot validation logic in `intentInstructions` | Misplacement per §14.3.12 — runs after slots are already collected | `validationPrompt` (as capture-constraint lines) |
 | Pre-intent disambiguation in per-intent `intentInstructions` | Misplacement per §14.3.11 — runs after the intent has already fired | `prompts.intentInstructions` (bot-level, section 2.4) |
+| Referencing another intent's parameter ("Set status_x to …") (v1.13.0, FP-8) | Un-executable — an intent can only set its own slots | The parameter's owning terminal |
+| Routing by tool name / identifier (v1.13.0, FP-9) | The voice model identifies tools by their Description text | Route by section-4 Description text |
 
 ---
 
-## 3. `validationPrompt` patterns
+## 3. `validationPrompt` capture-mapping patterns (v1.13.0)
 
-The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. Pre-execution: it shapes how the bot collects the intent's slots from the caller.
+The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. It is read ONLY by the Intent Agent — its sole job is mapping the caller's answer (to the question asked one step earlier, per FP-2 staggering) into this intent's parameters. Short `*` bullets, save/capture/set language, English operational prose, target-language text only as quoted saved VALUES.
 
-### Pattern V1 — Minimal single-slot collection
+### Pattern C1 — Boolean gate (yes/no confirmation)
 
-Use when: the intent has one required slot, simple validation, no branching.
-
-```
-ADDRESS COLLECTION
-1. Ask the caller for their full address.
-2. Repeat the street name and house number back for confirmation.
-3. Confirm with caller before proceeding.
-
-IRON RULE: do NOT accept partial addresses. Street name, house number, and city are all required.
-```
-
-Hebrew variant:
+Use when: the intent captures a confirm/disapprove answer into a BOOLEAN slot. (Golden-reference verbatim style.)
 
 ```
-איסוף כתובת
-1. בקשי מהמתקשר את הכתובת המלאה.
-2. חזרי על שם הרחוב ומספר הבית לאישור.
-3. ודאי עם המתקשר לפני המשך.
+* If the customer confirms, save "true" in the parameter details_confirmed.
 
-חוק ברזל: אל תקבלי כתובות חלקיות. שם רחוב, מספר בית ועיר — כולם נדרשים.
+* If the customer disapproves, save "false" in the parameter details_confirmed.
 ```
 
-### Pattern V2 — Multi-slot with branching
+### Pattern C2 — Free-text capture (callback time, name, address)
 
-Use when: the intent has multiple slots, edge cases need explicit handling.
-
-```
-APPOINTMENT BOOKING
-1. Ask for the customer's full address.
-2. Repeat the street and number back; confirm.
-3. Ask for preferred time slot from the options offered.
-4. Confirm the slot back to the caller.
-
-IF caller gives a partial address (only street, no number):
-  - Ask for the missing piece specifically.
-  - Do not move on until both are present.
-
-IF caller asks for a time slot that wasn't offered:
-  - Apologize, restate the available options.
-  - If still no match, suggest scheduling for the next available day.
-
-IF caller refuses to provide an address:
-  - Explain it's required to confirm the appointment.
-  - If still refused, transfer to transfer_to_human.
-
-IRON RULES:
-- Ask for exactly ONE parameter per turn, in collection order. Do NOT combine the address and time-slot requests into one utterance. Wait for the caller's answer before the next ask.
-- Every appointment requires a complete address.
-- The selected time slot must be one of the offered options. No improvisation.
-- Do NOT discuss pricing — refer to transfer_to_human for billing.
-```
-
-### Pattern V3 — ENUM slot with static option list
-
-Use when: slot is `ParameterTypeId 19` (ENUM) with a known `OptionList`.
+Use when: the intent captures the caller's stated value into a STRING slot. Interpretation machinery (relative dates, "עוד שעה") does NOT go here — it lives in the bot-level opening instructions per FP-12 (Skill 1's domain).
 
 ```
-SERVICE TYPE SELECTION
-1. Ask the caller which service they need.
-2. Present the three options:
-   - Installation
-   - Repair
-   - Cancellation
-3. Wait for the caller to pick one.
-4. Confirm the selection by name.
-
-IF caller's answer doesn't clearly match one of the three:
-  - Ask once more, list the options again.
-  - If still unclear, transfer to transfer_to_human.
-
-IRON RULE: only the three offered options are valid. Do NOT improvise a fourth (e.g., "consultation" — this isn't a service we offer).
-```
-
-### Pattern V4 — ENUM with dynamic options (from upstream RT=2)
-
-Use when: slot is ENUM, `OptionList` is empty in the spec, options are populated at runtime from an upstream API response (typically declared in section 4.5.4).
-
-```
-TIME SLOT SELECTION
-1. Present the available time slots from the system response.
-   The slots are in {{available_slots}} as a list — read each one's display value.
-2. Ask the caller to pick one.
-3. Confirm the selected slot back using its exact display format.
-
-IF the system returned no slots:
-  - Apologize, explain none are available right now.
-  - Offer to transfer to a human to find an alternative.
-
-IF caller picks a slot not in the list:
-  - Restate the available options.
-  - If still no match, suggest the closest available alternative.
-
-IRON RULE: only slots present in {{available_slots}} are bookable. Do NOT confirm a slot that isn't in the list.
-```
-
-### Pattern V5 — v1-fallback slot (STRING storing a phone number, date, etc.)
-
-Use when: slot type is STRING (PT=1) but represents structured data (phone, date, email). v1 has limited ParameterTypeId coverage; the validation work moves into the prompt.
-
-```
-PHONE NUMBER COLLECTION
-1. Ask for the caller's phone number.
-2. Repeat the digits back, one at a time.
-3. Confirm with caller.
-
-IRON RULES:
-- Must be exactly 10 digits.
-- Strip dashes and spaces silently — do not require the caller to omit them.
-- Do NOT accept fewer than 10 digits. Ask again if shorter.
-- Do NOT accept letters or symbols. Ask again if present.
-- Valid prefixes: starts with 02-09, or 050-058. Other prefixes — ask once more, then transfer to human if still unmatched.
+Save the callback time (day and time - hour) in the parameter callback_time.
 ```
 
 ```
-DATE OF BIRTH COLLECTION
-1. Ask for the caller's date of birth.
-2. Repeat back as DD/MM/YYYY for confirmation.
-3. Confirm with caller.
-
-IF caller gives only a partial date (e.g., year only):
-  - Ask for the missing pieces specifically.
-
-IRON RULES:
-- Format: day, month, year. All three required.
-- Year must be 1900 or later, and not in the future.
-- If caller refuses, transfer to transfer_to_human — date of birth is required for verification.
+* Save the customer's full address (street, house number, city) in the parameter address.
+* If any part is missing, leave the parameter unfilled.
 ```
+
+### Pattern C3 — Terminal outcome slot (three value modes)
+
+Use when: the intent is an RT=1 terminal carrying a section-4 `**Terminal outcome:**`. Pick the sub-variant matching the declared value mode.
+
+**C3a — fixed** (the spec quotes an exact string):
+
+```
+1. Set shikuf_status to exactly this value; do not translate, paraphrase, or alter it: "הלקוח לא אישר משהו"
+2. Never ask the customer to choose or confirm this value — it is fixed for this outcome.
+```
+
+**C3b — captured** (save what the customer said):
+
+```
+Save the customer's stated reason for declining, in the customer's own words, in the parameter decline_reason.
+```
+
+**C3c — dynamic** (composed per call by instruction):
+
+```
+Compose a one-sentence Hebrew summary of the call outcome (which stages were confirmed, where it stopped) and save it in the parameter call_summary. Do not ask the customer anything to produce it.
+```
+
+### Pattern C4 — ENUM multi-choice capture
+
+Use when: slot is `ParameterTypeId 19` (ENUM) with an `OptionList` — the slot selects among MULTIPLE fixed values (FP-13). The presenting of options happens in the previous announcement; here only the mapping.
+
+```
+* Map the customer's answer to one of the OptionList values: installation / repair / cancellation.
+* Save the matched Value in the parameter service_type.
+* If the answer clearly matches none of the options, leave the parameter unfilled.
+```
+
+### Pattern C5 — Multi-slot capture
+
+Use when: the intent owns ≥2 collectable slots. One capture line per slot — and note the box below.
+
+```
+* Save the customer's full name in the parameter full_name.
+* Save the customer's phone number (digits only, exactly 10 digits; strip dashes and spaces) in the parameter phone_number. If fewer than 10 digits, leave unfilled.
+```
+
+> **The ASKING lives elsewhere.** The questions for these slots are asked one per turn where the voice model can see them — in the previous intent's `announcement` or this intent's `intentInstructions` (FP-4 quoted lines), ordered by `CollectionOrder`. Never write "Ask for…" here (sequential-collection iron rule, Skill 2 §4.2).
+
+Format/range constraints for v1-fallback slots (phone/date/email stored as STRING) ride on the slot's capture line, as in C5's phone example — constraint language ("save only if…", "strip silently", "leave unfilled if…"), never dialogue.
+
+---
+
+## 3b. `announcement` patterns (v1.13.0)
+
+`announcement` lives in `IntentResponces.Configuration.announcement` — the deterministic speech channel, spoken when the intent's tool completes. If a sentence is compliance-critical, it belongs here, verbatim.
+
+### Read-back + next question (RT=3 gate — the FP-2 staggered core)
+
+The announcement delivers this stage's scripted content and ends with the question the NEXT intent captures (`**Asks next:**`):
+
+```
+התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת של חברת הביטוח. האם הפרטים נכונים?
+```
+
+Rules: real `{{CustomData}}`/slot vars from sections 4.5.5/4.5.3 only (FP-11); ends with the question; NO filler ("תודה.") — acknowledgment goes to `intentLoadingAnnouncement`.
+
+### Terminal closing line (RT=1)
+
+The outcome-specific farewell, in full, exactly once (FP-6):
+
+```
+מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב.
+```
+
+### Intentionally empty announcement (FP-3 exception)
+
+Use when the speech is carried by the intent's `intentInstructions` instead — e.g., reading an API-response list under reading instructions, where a fixed transition sentence would get in the way:
+
+```
+announcement: ""
+intentInstructions:
+  POST-EXECUTION BEHAVIOR
+  1. Read each option in {{available_slots}} to the customer, one at a time, pausing between items.
+  2. Ask the customer : "איזה מהמועדים מתאים לך ?"
+  3. After asking, stop and wait for the customer's explicit answer.
+```
+
+Log to spec 7.3: `announcement intentionally empty on [intent] — speech carried by intentInstructions`.
+
+---
+
+## 3c. `intentLoadingAnnouncement` patterns (v1.13.0, FP-7)
+
+Spoken while the tool executes. **Mandatory on every RT=3 intent** — unset produces the default "." SAY directive (duplicated phrases / dead air in production). Short, natural, matching the persona's register and grammatical gender (female voice ⇒ "רושמת", not "רושם").
+
+| Context | Example |
+|---|---|
+| Gate acknowledgment (female persona) | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
+| Terminal goodbye | "יום טוב" — ONLY if the farewell is not already in the terminal's `announcement` (FP-6 anti-duplication; check 14) |
+| API wait (RT=2) | "רק רגע, אני בודקת במערכת" |
+
+Never put full content sentences here, and never duplicate a sentence that exists in `announcement`.
 
 ---
 
 ## 4. Post-execution `intentInstructions` patterns
 
-`intentInstructions` lives in `IntentResponces.Configuration.intentInstructions`. Post-execution: defines what the bot does *after* this intent has fired and slots have been collected.
+`intentInstructions` lives in `IntentResponces.Configuration.intentInstructions`. Post-execution: delivered to the voice model after the tool completes — routing, the wait rule, and (when needed) FP-4 quoted spoken lines.
+
+**FP-4 quote convention callout (v1.13.0):** every spoken line mandated in these instructions uses `<instruction text> : "<verbatim line>"` — e.g., `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב"`. The quoting doubles as Compass rule 11 RTL isolation. Route to other intents by their section-4 **Description text**, never by tool name (FP-9).
 
 ### Pattern I1 — Minimal single-path
 
@@ -176,64 +175,32 @@ Use when: the intent has one outcome and one next step.
 
 ```
 POST-EXECUTION BEHAVIOR
-1. Confirm the validated address back to the caller.
-2. Proceed to fetch available time slots.
+1. After asking, stop and wait for the customer's explicit answer. Do not save a value or proceed until the customer responds.
+2. If the customer answered, forward the call to Fetching available time slots.
 
-IRON RULE: do NOT discuss pricing or technical issues. Transfer to human for those.
+IRON RULE: do NOT discuss pricing or technical issues. Forward to Transferring the call to a human representative for those.
 ```
 
-Hebrew variant:
+### Pattern I2 — Branching on the captured answer (the FP-2 gate pattern; golden-reference shape)
+
+Use when: the announcement asked a yes/no question and the routing branches on the answer.
 
 ```
-התנהגות לאחר ביצוע
-1. אשרי את הכתובת שאומתה לאחר חזרה למתקשר.
-2. עברי לשליפת חלונות זמן זמינים.
+* Act according to the following instructions based on the caller's response :
 
-חוק ברזל: אל תדוני במחירים או בבעיות טכניות. העבירי לאדם עבור אלה.
+* After reading the details and asking the question, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
+
+  * If the customer approves, forward the call to confirming health declaration.
+
+  * If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.
 ```
 
-### Pattern I2 — Branching by intent outcome (typically RT=2)
+### Pattern I3 — Mandated spoken line + immediate route (FP-4)
 
-Use when: the intent's outcome can succeed or fail, and the next intent depends on which.
-
-```
-POST-EXECUTION BEHAVIOR
-1. Read the system response.
-2. IF the response indicates success:
-   - Read the confirmation details to the caller.
-   - Proceed to confirm_appointment.
-3. IF the response indicates failure (e.g., no available slots):
-   - Apologize.
-   - Offer to transfer to a human for alternatives.
-   - Proceed to transfer_to_human.
-
-IRON RULES:
-- Do NOT invent slots that aren't in the response.
-- Do NOT promise a callback unless the system response explicitly says one is scheduled.
-```
-
-### Pattern I3 — Confirmation + transition with explicit scope guard
-
-Use when: the intent is the last meaningful step before terminal, and scope-creep is a known risk.
+Use when: a short closing/confirmation line must be spoken and then the call routes on — typical when the announcement is empty or the line depends on a just-captured slot.
 
 ```
-POST-EXECUTION BEHAVIOR
-1. Confirm the appointment details: time, address, service type.
-2. Tell the caller they'll receive an SMS with the details.
-3. Ask if there's anything else they need.
-
-IF caller asks to change the appointment:
-  - Apologize for the back-and-forth.
-  - Transfer to reschedule_existing intent.
-
-IF caller asks unrelated questions:
-  - Answer briefly only if it's directly about this appointment (e.g., "what should I bring?").
-  - For pricing, billing, technical issues, account changes: transfer to transfer_to_human.
-
-IRON RULES:
-- Do NOT offer to book additional appointments in this turn — that's a separate flow.
-- Do NOT quote prices, even if asked. Transfer for any pricing question.
-- Do NOT discuss policy details (privacy, GDPR) — these live in the persona; defer to those.
+**Important -** Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב" And immediately forward the call to Ending the call by forwarding the call to a hangup layer.
 ```
 
 ### Pattern I4 — RT=2 with conditional API silence escalation
@@ -244,62 +211,62 @@ Use when: an RT=2 intent has a non-trivial API silence fallback path that should
 POST-EXECUTION BEHAVIOR
 1. IF the API responded successfully within the silence window:
    - Read the response details from {{response.summary}}.
-   - Proceed to confirm_appointment.
+   - Forward the call to Confirming the appointment details.
 2. IF the API silence_ending_sentence fired (the API took too long):
    - The silence handler already announced the delay.
-   - Transfer to transfer_to_human.
+   - Forward the call to Transferring the call to a human representative.
 
 IRON RULE: do NOT retry the API in this intent. The silence behavior owns retries; this intent is post-call.
 ```
 
 ---
 
-## 5. Worked example — complete intent
+## 5. Worked example — complete staggered intent (v1.13.0, golden-reference shape)
 
-Bringing it together: a complete RT=3 intent (`validate_customer_address`) with both fields filled.
+Bringing it together: an RT=3 gate (`verify_plan_and_premium`) in a staggered verification flow. Section 4 declares: **Description:** `Verification of plan and premia`; **Captures answer to:** the identity read-back question asked by the opening instructions ("האם הפרטים נכונים?"); **Asks next:** the plan/premium confirmation question.
 
-### Slot definitions (from step 1)
+### Slot definition (from step 1)
 
 ```
-Slot: address
-- Description: כתובת מלאה: רחוב, מספר בית, עיר. למשל: רחוב הרצל 14 רמת גן.
-- Type: STRING (ParameterTypeId 1)
+Slot: details_confirmed
+- Description: אישור הלקוח שפרטי הזיהוי שלו ושל המבוטחים הנוספים נכונים. כן/לא.
+- Type: BOOLEAN (ParameterTypeId 16)
 - Required: true
 - Collection order: 1
 ```
 
-### `validationPrompt` (from step 2)
+Note the deliberate offset: the slot captures the IDENTITY question (asked one step earlier, by the opening), while this intent's announcement asks the PLAN question — that's FP-2 staggering, not a naming mistake.
+
+### `validationPrompt` (from step 2 — capture mapping only, pattern C1)
 
 ```
-איסוף כתובת
-1. בקשי מהמתקשר את הכתובת המלאה (רחוב, מספר בית, עיר).
-2. חזרי על שם הרחוב ומספר הבית לאישור.
-3. ודאי עם המתקשר לפני המשך.
+* If the customer confirms, save "true" in the parameter details_confirmed.
 
-אם המתקשר נותן כתובת חלקית (רק רחוב, ללא מספר):
-  - בקשי את החלק החסר במפורש.
-  - אל תמשיכי עד ששני החלקים נוכחים.
-
-אם המתקשר מסרב לתת כתובת:
-  - הסבירי שזה נדרש כדי לקבוע את התור.
-  - אם עדיין מסרב, העבירי ל-transfer_to_human.
-
-חוקי ברזל:
-- שם רחוב, מספר בית ועיר — כל השלושה נדרשים.
-- אל תדוני במחירים. העבירי ל-transfer_to_human עבור שאלות חיוב.
+* If the customer disapproves, save "false" in the parameter details_confirmed.
 ```
 
-### Post-execution `intentInstructions` (from step 4)
+### `announcement` (from step 3 — read-back + the `**Asks next:**` question, §3b)
 
 ```
-POST-EXECUTION BEHAVIOR
-1. Confirm {{address}} back to the caller in clear Hebrew.
-2. Tell them you're now checking available time slots.
-3. Proceed to get_available_slots.
+התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת של חברת הביטוח. האם הפרטים נכונים?
+```
 
-IRON RULES:
-- Do NOT discuss pricing, billing, or technical issues. Transfer to transfer_to_human for those.
-- Do NOT make promises about appointment timing — wait for get_available_slots to return.
+### `intentLoadingAnnouncement` (from step 3 — mandatory on RT=3, §3c)
+
+```
+מצויין, אני רושמת
+```
+
+### Post-execution `intentInstructions` (from step 4 — pattern I2)
+
+```
+* Act according to the following instructions based on the caller's response :
+
+* After reading the plan and premium details and asking the question, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
+
+  * If the customer approves, forward the call to confirming health declaration.
+
+  * If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.
 ```
 
 ---
@@ -308,24 +275,22 @@ IRON RULES:
 
 ### Pitfall 1 — "Just be helpful" prose creeps in
 
-Bad:
+Bad — in `intentInstructions`:
 
 ```
-ADDRESS COLLECTION
-1. Ask the caller for their address.
-2. Be helpful and patient if they need to think.
-3. Repeat it back.
+POST-EXECUTION BEHAVIOR
+1. Be helpful and patient if the customer needs to think.
+2. Move on when ready.
 ```
 
-Why bad: step 2 is unverifiable prose. The LLM doesn't know what "helpful and patient" means concretely.
+Why bad: step 1 is unverifiable prose. The LLM doesn't know what "helpful and patient" means concretely.
 
 Fix: replace with a concrete behavior or remove.
 
 ```
-ADDRESS COLLECTION
-1. Ask the caller for their address.
-2. IF caller pauses or asks to think: wait without repeating the question for at least 3 seconds.
-3. Repeat the address back.
+POST-EXECUTION BEHAVIOR
+1. After asking, stop and wait for the customer's explicit answer. IF the customer pauses or asks to think: wait without repeating the question.
+2. If the customer answered, forward the call to Fetching available time slots.
 ```
 
 ### Pitfall 2 — Validation logic ends up post-execution
@@ -341,21 +306,19 @@ POST-EXECUTION BEHAVIOR
 
 Why bad: by the time `intentInstructions` runs, the phone is already collected. The validation rules never fire.
 
-Fix: move steps 1-2 to `validationPrompt`. Keep `intentInstructions` to genuinely-post-execution behavior.
+Fix: the constraints become capture-constraint lines in `validationPrompt` (pattern C5); the instructions keep only genuinely-post-execution behavior.
 
 `validationPrompt`:
 ```
-PHONE COLLECTION
-1. Ask for the phone number.
-2. Repeat digits back.
-3. IRON RULE: must be exactly 10 digits. Strip dashes silently.
+* Save the customer's phone number (digits only, exactly 10 digits; strip dashes and spaces silently) in the parameter phone_number.
+* If fewer than 10 digits or it contains letters, leave the parameter unfilled.
 ```
 
 `intentInstructions`:
 ```
 POST-EXECUTION BEHAVIOR
-1. Confirm the phone number back to the caller.
-2. Proceed to next step.
+1. After asking, stop and wait for the customer's explicit answer.
+2. If the phone number was captured, forward the call to the next step by its Description text.
 ```
 
 ### Pitfall 3 — Bot-level routing logic in per-intent fields
@@ -396,24 +359,95 @@ Why bad: the privacy policy applies to *every* intent. Putting it here means the
 
 Fix: move policy to `prompts.persona` (section 2.1). Skill 2 raises to user; Skill 1 patch mode handles the persona update.
 
+### Pitfall 5 — Spoken script inside `validationPrompt` (v1.13.0, FP-5 — the #1 production failure)
+
+Bad — in `validationPrompt` (real pipeline output, pre-v1.13):
+
+```
+GATE — PLAN & PREMIUM
+1. Read clearly: the plan {{policies}}; the insurer {{insurer}}; the premium {{premium_after_discount}}.
+2. Ask, in Hebrew:
+   "האם זו התוכנית שביקשת לרכוש, והאם העלות מקובלת עליך?"
+TURN-TAKING GUARD: wait for the customer's answer before proceeding...
+```
+
+Why bad: the Intent Agent is the ONLY consumer of `validationPrompt` — the voice model never sees it. The caller never hears the read-back or the question; the gate silently doesn't happen. The turn-taking guard is equally invisible.
+
+Fix: script + question → `announcement` (§3b); guard → persona, once (FP-6); `validationPrompt` keeps only the capture mapping (C1). Caught by Skill 2 check 3 and Skill 3 check 16.
+
+### Pitfall 6 — Setting another intent's parameter (v1.13.0, FP-8)
+
+Bad — in a gate's `intentInstructions`:
+
+```
+* If the customer disapproves, set status_shikuf to: "הלקוח לא אישר משהו" and proceed to finalize_verification.
+```
+
+Why bad: `status_shikuf` belongs to a different intent. An intent can only set its own `IntentParameters` — this line is un-executable; at best ignored, at worst vocalized or hallucinated around.
+
+Fix: the status lives on the terminal that represents this outcome, with its value written by that terminal's own `validationPrompt` (pattern C3). The gate just routes: `* If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.` Caught by Skill 2 check 13 and Skill 3 check 18.
+
+### Pitfall 7 — Duplicated farewell obligations (v1.13.0, FP-6)
+
+Bad — call end spread across two intents and three fields:
+
+```
+finalize_verification.validationPrompt: ...speak the outcome-specific closing line...
+finalize_verification.announcement: "תודה."
+end_call.intentLoadingAnnouncement: "יום טוב ולהתראות."
+```
+
+Why bad: three separate speech obligations at call end — the diagnosed mechanism behind farewell-said-twice bugs. Plus an extra tool round-trip through the chained terminal.
+
+Fix: ONE terminal per outcome; the full closing line in that terminal's `announcement`; a short goodbye in `intentLoadingAnnouncement` only if the announcement doesn't already say it. No terminal→terminal chains. Caught by Skill 2 check 14 and Skill 3 checks 19/20.
+
+### Pitfall 8 — "תודה." filler announcement (v1.13.0, FP-3)
+
+Bad:
+
+```
+announcement: "תודה."
+```
+
+Why bad: the announcement is the deterministic speech channel — wasting it on a contentless acknowledgment creates a stilted rhythm and one more speech obligation per turn, while the real script hides in the wrong field.
+
+Fix: acknowledgment belongs in `intentLoadingAnnouncement` ("מצויין, אני רושמת") where it naturally covers tool latency; `announcement` carries the read-back + the `**Asks next:**` question, or is intentionally empty per FP-3. Caught by the Skill 2 filler advisory and staggered-consistency check 16.
+
 ---
 
-## 7. Checklist: is my prompt Conversation Routines styled?
+## 7. Checklist: are my fields placed and styled correctly? (v1.13.0)
 
 Run through this before flipping an intent to `[detailed]`.
 
-- [ ] Has at least one ALL-CAPS section header
-- [ ] Steps are numbered (`1.`, `2.`, `3.`), not bulleted
-- [ ] All branching uses explicit IF / ELSE
-- [ ] At least one IRON RULE block exists
-- [ ] If the intent has ≥2 collectable slots: a one-parameter-per-turn IRON RULE is present and each numbered step asks for exactly one slot
+**validationPrompt (capture mapping, FP-5):**
+- [ ] Short `*` bullets in save/capture/set language — one line per collectable slot / outcome
+- [ ] NO speech: no ask/say/tell/greet/read-back imperatives, no question to the caller, no turn-taking guards, no routing
+- [ ] Quoted strings appear only as VALUES being saved
+- [ ] `**Terminal outcome:**` intents: the declared value mode is implemented (fixed ⇒ exact pinned string + never-ask line)
+
+**announcement / intentLoadingAnnouncement (FP-2/FP-3/FP-7):**
+- [ ] `announcement` carries the read-back + the `**Asks next:**` question (or is intentionally empty with the speech in `intentInstructions`, logged to 7.3)
+- [ ] No filler ("תודה.") in `announcement`
+- [ ] RT=3: `intentLoadingAnnouncement` non-empty, persona/gender-matched
+- [ ] No sentence appears in two fields (FP-6 say-once)
+
+**intentInstructions (CR style + FP-4/FP-9):**
+- [ ] Has at least one ALL-CAPS section header (or the golden bullet-routing shape of pattern I2)
+- [ ] Contains the explicit wait rule ("stop and wait for the customer's explicit answer")
+- [ ] All branching uses explicit IF / ELSE branches on the captured answer
+- [ ] Routes by section-4 Description text, never by tool name
+- [ ] Every mandated spoken line uses the FP-4 form `<instruction> : "<line>"`
+- [ ] References only THIS intent's parameters (FP-8)
+- [ ] If the intent asks ≥2 questions: one question per turn, in `CollectionOrder`
 - [ ] No paragraphs of free prose
 - [ ] No channel-specific behavior (pacing, formatting, emoji policy) — these belong in section 2.2 / 2.3
 - [ ] No persistent policy (privacy, GDPR, retention) — these belong in section 2.1
 - [ ] No bot-level disambiguation (greeting, routing) — this belongs in section 2.4
-- [ ] No slot validation logic in `intentInstructions` — that belongs in `validationPrompt`
-- [ ] All Mustache references resolve (per Skill 2 §5 mechanics)
-- [ ] Prompt language matches the bot's primary language
+- [ ] No slot validation logic — constraints ride the capture lines in `validationPrompt`
+
+**Cross-field:**
+- [ ] All Mustache references resolve (per Skill 2 §5 mechanics; CustomData keys from 4.5.5 only)
+- [ ] Text language matches the bot's primary language for spoken content; capture mapping in English operational prose
 
 Pass on every line → safe to mark `[detailed]`.
 
@@ -425,11 +459,11 @@ Pass on every line → safe to mark `[detailed]`.
 
 ## TTS-safety addendum (Compass rule 8 + rule 11)
 
-These rules apply to all language fields Skill 2 authors when the bot has an active voice channel.
+These rules apply to the **spoken** fields Skill 2 authors when the bot has an active voice channel: `announcement`, `intentLoadingAnnouncement`, `fail_output`, `function_output`, and the FP-4 quoted lines of post-execution `intentInstructions`. (`validationPrompt` is exempt from rule 8 since v1.13.0 — it is never vocalized, and its capture-mapping form legitimately uses `*` bullets. Rule 11 RTL isolation still applies to every field.)
 
 ### No markdown formatting in voice fields
 
-Markdown bullets (`-`, `*`, `+`), headers (`#`), and links (`[text](url)`) are read aloud literally by TTS. Forbidden in `validationPrompt`, `announcement`, `fail_output`, `function_output`, post-execution `intentInstructions` of voice-active intents.
+Markdown bullets (`-`, `*`, `+`), headers (`#`), and links (`[text](url)`) are read aloud literally by TTS. Forbidden in the spoken fields listed above.
 
 **Don't:**
 
@@ -463,10 +497,10 @@ Per Compass §4 "Sanity rule": Unicode bidirectional marks tokenize to garbage w
 IRON: say שלום to the caller when they arrive.
 ```
 
-**Do:**
+**Do (FP-4 quote convention — instruction, colon, quoted verbatim line):**
 
 ```
-IRON: greet the caller when they arrive. Say exactly: "שלום".
+IRON: greet the caller when they arrive. Say to the customer : "שלום".
 ```
 
 Or:
@@ -475,3 +509,5 @@ Or:
 IRON: greet the caller when they arrive. Say:
 שלום
 ```
+
+The FP-4 form satisfies rule 11 by construction — the RTL content is always inside quotes.
