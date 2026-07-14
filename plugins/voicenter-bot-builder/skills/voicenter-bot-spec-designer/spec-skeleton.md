@@ -20,9 +20,9 @@
 **Record agent calls:** [`true` | `false`; default false. Skill 3 emits the STRING form per production wire format.]
 **Daily limit:** [int; optional (v1.13.0), default 600 — emitted to `AIModelConfig.daily_limit`]
 **Daily limit layer:** [int layer ID; optional (v1.13.0), default 3 — emitted to `AIModelConfig.dailyLimitLayerId`]
-**Max duration layer:** [int layer ID; optional (v1.13.0), default 3 — emitted to `AIModelConfig.maxDurationLayerId`]
+**Max duration layer:** [int layer ID; optional, default **0** (v1.14.0) — emitted to `AIModelConfig.maxDurationLayerId`. When the MCP is connected, Skill 1 asks the user which layer, offering the live layer list; with no MCP account, silently default 0.]
 **Daily limit sentence:** [text; optional (v1.13.0) — spoken when the daily call-duration limit is reached; primary language, persona-gender matched. Skill 3 emits a production-derived English default if omitted.]
-**Max duration sentence:** [text; optional (v1.13.0) — spoken when max call duration is reached; same conventions.]
+**Max duration sentence:** [text; optional — spoken when max call duration is reached. v1.14.0 default (production-derived): `"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "`. Skill 1 confirms the default with the user in one Phase-1 question (keep or replace); Skill 3 emits the default if omitted.]
 **IVRLayerSelect_2:** [int; optional (v1.13.0), default 3 — emitted to `AIModelConfig.IVRLayerSelect_2`]
 
 ---
@@ -59,7 +59,7 @@
 
 [Caller-silence handling is MANDATORY (v1.11.0) — this section is always populated. Each field has a default the author may accept or override. Defaults: `silence_duration` 5, `silence_loops` 3, `silence_sentence` a polite re-prompt in the primary language, `silence_ending_sentence` a transfer line (if the forward target transfers) or a polite hang-up.]
 
-- **silence failover intent:** [intent identifier from section 4, OR a global/system catalog intent's real `IntentId` declared in section 4.6 — the intent to route to when `silence_loops` is exhausted; Skill 3 emits it as `silence_behaviour.intent`. Default to the transfer-to-human `global` when one exists; else a section-4.6 catalog intent, an end-call intent, or `<UNKNOWN: silence failover intent>`.]
+- **silence failover intent:** [intent identifier from section 4 — the intent to route to when `silence_loops` is exhausted; Skill 3 emits it as `silence_behaviour.intent`. v1.14.0: this is normally the **dedicated bot-own silence-forwarding intent Skill 1 ALWAYS creates** — an RT=1 terminal with `**IsSilenceIntent:** true` whose outcome the user chose (Hang up or Human rep). EXCEPTION: when the user asks for the caller to return to an existing flow intent (e.g., "main menu"), point at that existing intent instead — no new intent is created. A section-4.6 catalog intent's real `IntentId` is allowed only when the user supplies one. If unresolvable: `<UNKNOWN: silence failover intent>`.]
 - **silence_duration:** [int seconds]
 - **silence_loops:** [int]
 - **silence_sentence:** [text, Mustache OK]
@@ -81,7 +81,8 @@
 - **Captures answer to:** [optional (v1.13.0, FP-2) — the question whose answer this intent's slots capture, asked by the PREVIOUS intent's announcement/instructions or by the opening (§2.4/§2.5). Free text. Omit when not applicable (e.g., globals).]
 - **Asks next:** [optional (v1.13.0, FP-2) — the question this intent's announcement/instructions will pose for the NEXT intent to capture, or the literal `[none — terminal]`. Free text.]
 - **Terminal outcome:** [optional (v1.13.0, FP-8); RT=1 terminals only. Grammar: `<slot_name> = "<exact fixed value>"` (quoted ⇒ FIXED mode), or `<slot_name> = <free-text description of how the value is captured or composed per call>` (unquoted ⇒ CAPTURED/DYNAMIC mode). The named slot must appear in this intent's slot list. Drives Skill 2's outcome-value validationPrompt and Skill 3 check 20.]
-- **Sensitive:** [`true` | `false`; optional (v1.13.0), default `false`. Emitted to `IntentConfig.additional.sensitive`.]
+- **Sensitive:** [`true` | `false`; optional, default `false`. Emitted to `IntentConfig.additional.sensitive`. v1.14.0 placement rule: `true` ONLY on the intent where the COLLECTION is configured — in the ask-in-N / collect-in-N+1 stagger (FP-2), that is the collecting intent N+1, never the asking intent — and ONLY when the collected data is truly sensitive (ID number, credit card / CVV / expiry / cardholder ID, medical information). When set, the skill ALWAYS proactively informs the user: sensitive-data handling is enabled on this intent for information security — the values can still be used in API calls configured on this same intent, but they will NOT be saved in LOGS/TRACES.]
+- **IsSilenceIntent:** [`true` | `false`; optional (v1.14.0), default `false`. Set `true` only on the dedicated silence-forwarding intent (section 3 failover target). Emitted to the intent-root `IsSilenceIntent` as integer 1/0.]
 - **Completion status:** [structural]
 - **Transitions out:**
   1. [target intent identifier] (success path)
@@ -89,8 +90,8 @@
 - **Escalation target:** [identifier — typically `transfer_to_human`]
 - **Slots:**
   1. [slot_name] — `ParameterTypeId` [N], Required [`true`|`false`], Order [N], OptionList [if ENUM]
-- **Max turns:** [int; optional override. Skill 1 does NOT ask for this in the interview — Skill 3 applies smart defaults at emission time inside `IntentConfig.additional` (v1.13.0: RT=2 default `15`; all other RTs default `5`). Spec authors hand-editing the spec may set this to override the Skill 3 default for a specific intent.]
-- **Max turns sentence:** [string; optional override. v1.13.0 defaults inside `IntentConfig.additional`: RT=2 `"אני חייב לסיים את השיחה בשלב הזה."`, other RTs `""`. Spec authors may override here (e.g., the golden reference sets a Hebrew technical-difficulty fallback on its callback intent).]
+- **Max turns:** [int; optional override, emitted to `IntentConfig.additional.max_turns`. NEVER asked in the interview — the skills decide autonomously. v1.14.0 defaults: `5` for ALL response types; Skill 1 sets `10` on conversation-heavy intents — where extended speaking back-and-forth between the bot and the caller is expected (multi-slot collection, search-with-retries, sensitive-detail collection). The `10` goes on the intent where the actual conversation happens: in the ask-in-N / collect-in-N+1 stagger that is the asking/speaking intent, not automatically the downstream collecting intent. A turn counts each side's utterance; 5 or 10 covers both together.]
+- **Max turns sentence:** [string; optional override, emitted to `IntentConfig.additional.max_turns_sentence`. v1.14.0: Skill 2 authors one default sentence per bot, adjusted to the persona's register and grammatical gender, modeled on `"מתנצל אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"` (feminine: `"מתנצלת…"`). If the field is absent, Skill 3 falls back to the masculine model sentence for every RT.]
 - **RT-specific:**
   - **URL:** [full URL or `<UNKNOWN: API URL>`]   (RT=2 only)
   - **Method:** [POST | GET]   (RT=2 only)
@@ -102,7 +103,7 @@
     - silence_sentence: [string]
     - silence_ending_sentence: [string]
     - silence_instructions: [string, often `""`]
-    - fallback intent: [intent identifier from section 4]
+    - fallback intent: [intent identifier from section 4. v1.14.0 default: the **dedicated API-timeout forwarding intent** Skill 1 always creates once per bot (outcome per the user: Hang up or Human rep, RT=1) — unless the user asked for an existing flow intent (e.g., main menu) or overrides per intent.]
   - **Layer:** [int — the real layer number fetched from the MCP (§2.4.A); defaults to 0 (root layer) if omitted]   (RT=1 only)
   - **Dial source:** [`parameter` | `static`]   (RT=4 only — chooses whether the dialed number comes from a slot or is hard-coded)
   - **Parameter phone:** [slot identifier from this intent's slot list]   (RT=4 only, dial-source=parameter)
@@ -176,58 +177,10 @@ A global/system catalog intent is a predefined platform intent the bot reference
 - **Definition:**
 
 ```json
-{ "Name": "...", "IntentId": 19, "AccountId": 0, "IntentCategoryId": 22, "IntentParameters": [], "IntentScripts": [], "IntentResponces": { } }
+{ "Name": "...", "IntentId": 42, "AccountId": 0, "IntentCategoryId": 22, "IntentParameters": [], "IntentScripts": [], "IntentResponces": { } }
 ```
 
-#### Canonical system silence-forward global (`IntentId 19`) — verbatim, captured from a real Voicenter export (Matan bot, 2026-06-23)
-
-This is the platform's default `IsSilenceIntent` system global (`AccountId 0`, category `22` "Sales intents"). When a bot's silence failover would otherwise target a *bot-own* intent (whose placeholder ID does NOT survive import — see Skill 3 §4.2.5), declare THIS block in section 4.6 with `**Wiring:** silence-forward only` and set section 3's `silence failover intent` to `19`. It imports working with no manual step. **It is functionally a dummy** (an RT=2 to `/api/printer-support`) — a generic placeholder to keep the silence forward live; re-point it in the UI to the real human-transfer target afterward if desired. Skill 3 injects it verbatim into `intents[]` and merges category `22` into `intentCategories[]`.
-
-```json
-{
-  "Name": "Some global Intent",
-  "IntentId": 19,
-  "IsActive": 1,
-  "Priority": 1,
-  "AccountId": 0,
-  "Description": "Some Dummy Global Intent",
-  "MaxAttempts": 3,
-  "IntentConfig": {},
-  "IntentScripts": [
-    { "IsActive": 1, "LanguageCode": "en-US", "ScriptTypeId": 1, "ScriptContent": "I'll help you check your account balance.", "IntentScriptId": 100 },
-    { "IsActive": 1, "LanguageCode": "en-US", "ScriptTypeId": 2, "ScriptContent": "Please provide your account number.", "IntentScriptId": 103 }
-  ],
-  "IntentSources": [],
-  "IntentToolName": null,
-  "IntentResponces": {
-    "IsActive": 1,
-    "Configuration": { "method": "POST", "endpoint": "/api/printer-support" },
-    "ResponseTypeId": 2,
-    "SuccessCondition": null
-  },
-  "IsSilenceIntent": 1,
-  "IntentCategoryId": 22,
-  "IntentParameters": [
-    {
-      "Name": "account_number", "Schema": null, "IntentId": 19, "IsActive": 1, "CreatedBy": "SYSTEM",
-      "IsRequired": 1, "ModifiedBy": null, "OptionList": null, "CreatedDate": "2025-01-21 11:25:25",
-      "Description": "Customer account number", "ParameterId": 52, "DefaultValue": null, "ModifiedDate": null,
-      "ParameterType": { "Name": "INTEGER", "IsActive": 1, "CreatedBy": "SYSTEM", "ModifiedBy": null, "CreatedDate": "2025-01-21 11:25:25", "Description": "Whole number input", "ModifiedDate": null, "ParameterTypeId": 4, "ValidationPattern": "^[0-9]+$", "IsCustomValidationAllowed": 1 },
-      "CollectionOrder": 1, "ParameterTypeId": 4, "ValidationRules": { "required": true, "min_length": 5 }
-    }
-  ],
-  "ValidationTimeout": 30,
-  "HandlingInstructions": null
-}
-```
-
-And its category for `intentCategories[]`:
-
-```json
-{ "Name": "Sales intents", "IsActive": 1, "AccountId": 0, "PriorityId": 1, "Description": "Sales Intents predefined by the system which everyone can use", "IntentCategoryId": 22 }
-```
-
-(The real export also carried a second `data`/JSON parameter on intent 19; it is optional and omitted here to keep the injected block lean. The `account_number` parameter above is sufficient for the import to resolve the silence-forward reference.)
+[v1.14.0: the pre-v1.14 "canonical system silence-forward global (IntentId 19)" block was REMOVED. Silence forwarding always targets a dedicated bot-own intent (or a user-chosen existing flow intent) per section 3; catalog intents remain available only for genuinely user-supplied platform intents.]
 
 ---
 

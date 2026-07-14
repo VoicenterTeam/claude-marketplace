@@ -1,10 +1,10 @@
-# Field-placement doctrine — Voicenter bot-builder reference (v1.13.0)
+# Field-placement doctrine — Voicenter bot-builder reference (v1.14.0)
 
-**Source:** production root-cause analysis comparing a pipeline-generated bot against a hand-built, production-validated golden bot for the same use case, plus the user-confirmed design decisions of v1.13.0. This file is the authority on **which prompt field carries which kind of content**. Where any older doc phrasing implies a different placement, this file wins.
+**Source:** production root-cause analysis comparing a pipeline-generated bot against a hand-built, production-validated golden bot for the same use case, plus the user-confirmed design decisions of v1.13.0, plus the v1.14.0 two-reference-bot ground-truth pass (terminal farewell placement, dedicated silence/API-timeout forwarding intents, mandatory off-topic handling, sensitive-flag placement). This file is the authority on **which prompt field carries which kind of content**. Where any older doc phrasing implies a different placement, this file wins.
 
 **Read this when:** loaded by Skill 1, Skill 2, and Skill 3 at invocation per their §1 required-reading tables.
 
-**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6. Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies (cross-reference checks 16–22).
+**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6 (including the v1.14.0 off-topic rule). Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies (cross-reference checks 16–23).
 
 **One-line doctrine:**
 
@@ -37,14 +37,19 @@ Severity legend matches `voice-prompt-doctrine.md`: **blocking** = the owning sk
 
 | Field | Consumer | Allowed content | Forbidden content |
 |---|---|---|---|
-| `Configuration.announcement` | Spoken to the caller when the intent completes | The scripted content the caller must hear: read-back with `{{CustomData}}` vars + the next question (FP-2/FP-3) or, on terminals, the outcome-specific closing line | Routing logic, capture rules, filler ("תודה.") |
+| `Configuration.announcement` | Spoken to the caller when the intent completes | The scripted content the caller must hear: read-back with `{{CustomData}}` vars + the next question (FP-2/FP-3) | Routing logic, capture rules, filler ("תודה."); **any content at all on RT=1 terminals (v1.14.0 — RT=1 never carries `announcement`; see the trigger rule below the table and FP-8)** |
 | `IntentConfig.prompts.validationPrompt` | Intent Agent ONLY — never spoken, never seen by the voice model | Capture mapping, 1–3 bullets (FP-5); terminal outcome-value instruction per its mode | Scripts to speak, questions to ask, greetings, turn-taking guards, routing |
 | `Configuration.intentInstructions` (per-intent) | Voice model, after tool completion | Post-answer routing by Description text + the wait rule; mandated spoken lines via the FP-4 convention when needed | Setting/referencing parameters of other intents; call-wide rules (persona's job); re-mandating a sentence already in `announcement` |
-| `Configuration.intentLoadingAnnouncement` | Spoken while the tool executes | Short natural persona/gender-matched filler; on terminals a brief goodbye (if no farewell elsewhere) | Full content sentences; duplicate farewells |
+| `Configuration.intentLoadingAnnouncement` | Spoken while the tool executes | Short natural persona/gender-matched filler; on RT=1 terminals this is the intent's ONLY utterance — a short "יום טוב"-style line ("יום טוב!", "מעביר לנציג אנושי.") (v1.14.0) | Full content sentences; full farewell sentences; duplicate farewells |
 | `prompts.persona` (bot-level) | Voice model, always | Identity, language, register + call-wide rules stated ONCE (FP-6) | Per-gate scripts |
 | `prompts.intentInstructions` (bot-level — the opening instructions, spec §2.4) | Voice model, always | Opening-answer branching, identity read-back + next question when staggered (FP-2), FP-12 callback block | Re-greeting; per-gate capture logic |
 | `prompts.openingAnnouncement` | First thing spoken | Greeting + purpose + recording disclosure + **the first question as the last sentence** | — |
 | Intent `Description` | Voice model (tool declaration) + routing anchor | Short semantic label (FP-10) | Stage numbers, dialogue imperatives, business logic |
+
+**RT=1 farewell trigger rule (v1.14.0, blocking).** The rule fires on a precise condition: **whenever an intent has a transition INTO an RT=1 (IVR / layer-transfer) intent.** In that case:
+- The **predecessor's** `intentInstructions` MUST carry the ending/farewell sentence as the **LAST spoken line** (FP-4 quoted), said **immediately before forwarding** — without waiting for a caller answer, and without telling the caller the call is being transferred to a layer.
+- The **RT=1 intent itself** then speaks ONLY its short `intentLoadingAnnouncement` ("יום טוב!"-style); it never carries an `announcement`.
+- Production-verbatim shape (reference bot): `עלייך לומר את המשפט הבא ללקוח מיד : "ההודעה נשלחה, שמחתי לעזור… שתהיה נסיעה בטוחה". מיד לאחר מכן עלייך להעביר את השיחה מיד לסיום השיחה ללא המתנה לתגובה מהלקוח. אסור לך לומר ללקוח שאתה מעביר לשכבת ניתוק.`
 
 ### FP-2 — Staggered pipeline (BINDING; supersedes any conflicting phrasing in older docs)
 
@@ -73,7 +78,14 @@ Structural encoding in the spec: section 4 fields `**Captures answer to:**` and 
 
 ### FP-3 — Script home (blocking, Skill 2)
 
-`announcement` is the primary home for spoken content. Per-intent `intentInstructions` may ALSO carry speech (via FP-4) when the step involves several questions or short mandated lines. `announcement` MAY be intentionally **empty** with the speech carried entirely by `intentInstructions` — e.g., reading an API-response list under reading instructions, where no fixed transition sentence is wanted; log the choice to spec §7.3. Never author filler ("תודה.", "קיבלתי.") into `announcement`: acknowledgment belongs in `intentLoadingAnnouncement`.
+`announcement` is the primary home for spoken content. Per-intent `intentInstructions` may ALSO carry speech (via FP-4) when the step involves several questions or short mandated lines. `announcement` MAY be intentionally **empty** in EXACTLY two cases (v1.14.0 — both verified in production reference bots; log the choice to spec §7.3):
+
+- **(a) API list read-out:** an RT=2 intent whose API response returns a list of items the bot must start reading immediately — the read-out lives entirely under the intent's `intentInstructions` reading instructions, and no fixed transition sentence is wanted.
+- **(b) Pre-terminal farewell-in-instructions:** the intent immediately before the final RT=1 terminal, with **no splits to other intents** — its farewell is an FP-4 quoted line in its own `intentInstructions` (the RT=1 farewell trigger rule, FP-1/FP-8).
+
+**Corollary (structural, Skill 1):** if the intent before the final RT=1 DOES have splits/transitions to other intents, Skill 1 must create a **dedicated pre-IVR intent whose only job is saying the ending sentence** before the terminal — case (b) never applies to a splitting intent.
+
+Never author filler ("תודה.", "קיבלתי.") into `announcement`: acknowledgment belongs in `intentLoadingAnnouncement`.
 
 ### FP-4 — Quote convention for mandated speech (blocking, Skill 2; Skill 1 for §2.4/persona)
 
@@ -112,18 +124,19 @@ Every speak-obligation exists exactly once across all fields. Call-wide behavior
 - the turn-taking rule — golden wording: **"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."**
 - human-rep request handling (what to say + where to route), when a human-rep global exists
 - disapproval/decline handling (what to say + where to route), when a decline terminal exists
+- **off-topic handling (v1.14.0 — MANDATORY on every bot):** a persona section forbidding talk about subjects unrelated to the bot's purpose. On the **first** off-topic occurrence the bot says one deflection line + a redirect question back to the flow (e.g., `"מתנצל אבל אני כאן לעזור רק לגביי X, תרצה שנמשיך ?"`). If the caller **persists for N loops** (N is user-chosen in the Skill 1 interview, default 2), the bot says an FP-4 quoted ending line and forwards to the **dedicated off-topic global terminal**, referenced by its Description. The rule should warn against confusing a domain word/product with an off-topic subject.
 
 Never paste these into per-intent fields; duplicated obligations are the diagnosed root cause of the bot saying things twice.
 
 ### FP-7 — intentLoadingAnnouncement mandatory on every RT=3 intent (blocking, Skill 2; verified by Skill 3 check 17)
 
-An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directive — a verified production trigger for duplicated phrases and dead air. Author a short natural filler in the bot's persona and grammatical gender ("מצויין, אני רושמת", "אין בעיה, שניה רושמת"). On terminals a brief goodbye ("יום טוב") is fine — but then the farewell must not ALSO appear in another field (FP-6).
+An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directive — a verified production trigger for duplicated phrases and dead air. Author a short natural filler in the bot's persona and grammatical gender ("מצויין, אני רושמת", "אין בעיה, שניה רושמת"). On RT=1 terminals the loading announcement is the intent's **ONLY spoken content** (v1.14.0) — a short "יום טוב"-style goodbye ("יום טוב!", "מעביר לנציג אנושי.") — NEVER the full farewell, which lives in the previous intent's `intentInstructions` per the RT=1 farewell trigger rule (FP-1/FP-8).
 
 ### FP-8 — Terminal doctrine (blocking, Skill 1; verified by Skill 3 checks 18/20)
 
 - One terminal intent per distinct call outcome: `ResponseTypeId: 1` with a real `layer`, one hop to hang-up/transfer.
 - Each terminal **owns** its status/outcome parameter. The value mode is per-terminal, understood from the characterization material the user sent or asked when unclear: **fixed** exact string, **captured** customer utterance, or **dynamic** per-call text (see FP-5).
-- The outcome-specific closing line lives in the terminal's own `announcement`.
+- **The outcome-specific closing line lives in the PREVIOUS intent's `intentInstructions` (v1.14.0 — RT=1 farewell trigger rule).** It applies to EVERY intent whose transition target is RT=1: the ending sentence is the LAST spoken line there, an FP-4 quoted line followed by the instruction to forward immediately — without waiting for an answer and without announcing the transfer. The terminal itself carries **NO `announcement`**, only a short `intentLoadingAnnouncement` ("יום טוב!" / "מעביר לנציג אנושי."). If the predecessor splits to several intents, a dedicated pre-IVR farewell intent is created instead (FP-3 corollary).
 - **Forbidden:** finalize→end_call two-intent chains; a single intent computing the status via IF/ELSE-IF prose (forces LLM recall of the whole call — non-deterministic); any transition whose origin is an RT=1 terminal.
 - **Gates NEVER reference or set another intent's parameter.** An intent can only set its own `IntentParameters` — "Set status_X to …" on a gate that doesn't own status_X is un-executable.
 - The "call dropped mid-way" outcome is the *absence* of any terminal having set the status (handled downstream, e.g., in n8n) — the bot never sets it.
@@ -182,3 +195,5 @@ ENUM (ParameterTypeId 19, with `OptionList`) is used only when a parameter selec
 | Stage markers / dialogue / business logic in Description | Degrades tool routing; leaks workflow into the tool layer | FP-10 | Skill 1 §3.4.3 authoring rule |
 | Re-authored ParameterType blocks | Schema drift vs the platform's system dictionary | — | Skill 3 check 21 |
 | "תודה." filler announcements | Stilted rhythm; extra speech obligation per turn | FP-3 | Skill 2 filler advisory |
+| Full farewell inside an RT=1 terminal's `announcement` / loading announcement (v1.14.0) | Double farewell + farewell spoken from the wrong layer; predecessor forwards mid-sentence | FP-8 | Skill 2 check 18; Skill 3 check 20 |
+| No off-topic rule in persona / no dedicated off-topic global intent (v1.14.0) | Bot chats off-scope indefinitely; no escape hatch when the caller won't return to the flow | FP-6 | Skill 1 checks 20/22; Skill 3 check 23 |

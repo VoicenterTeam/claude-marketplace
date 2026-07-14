@@ -33,7 +33,7 @@ Before any user interaction, load context from these references. Path convention
 | Doc 2 §3 — Agent Spec template | What Skill 1 writes |
 | Doc 2 §4 — Skill 1 architecture | What Skill 1 does |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 1 owns checks 11–15 (rules 3–7) and the rule 11 mirror |
-| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.13.0) — FP-1…FP-13; Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6, and checks 18–21 |
+| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.14.0) — FP-1…FP-13; Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6 (incl. the v1.14.0 off-topic rule), and checks 18–24 |
 
 Also load these files from this skill's package:
 
@@ -91,7 +91,9 @@ The **model catalog and voice catalog are NOT fetched live** — both remain har
 Every closed-set choice the user makes during the interview must be presented through `AskUserQuestion` — never plain free-text. This applies to every "pick one" or "yes/no" step, including (but not limited to):
 
 - Setup §2.1/§2.2 — runtime correction (Single-conversation vs Claude Code) and mode override (Greenfield vs Patch) when the auto-detected value is wrong
-- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward intent (MANDATORY — always configured). (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Gemini Live 3.1 per §3.1 step 8.)
+- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward outcome (MANDATORY — always configured), max-duration sentence confirm, max-duration layer (via MCP when connected). (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Gemini Live 3.1 per §3.1 step 8. Per-intent `max_turns` is NEVER prompted — the skills decide autonomously per §3.4.3.)
+- Phase 2 — off-topic policy (§3.2.5): forward outcome (Human rep / Hang up / Other), loop count, and the "Accept example wording / Edit" prompt
+- Phase 3/4 — API-timeout forward outcome (once per bot, §3.5.1)
 - Phase 2 — every "Show the draft, confirm or edit" prompt (§3.2.1 persona, §3.2.3 opening announcement, §3.2.4 opening behavior) → "Accept" / "Edit" (Edit branches into free-text capture)
 - Phase 2 — "Accept template default or override?" for inactive channels (§3.2.2)
 - Phase 2/3 boundary — "Pause for Deep Research or skip and proceed?" (§3.3)
@@ -108,6 +110,9 @@ Every closed-set choice the user makes during the interview must be presented th
 - Self-validation Check 18 — "Apply restructure *(Recommended)*" / "Keep the intent" (v1.13.0)
 - Self-validation Check 20 — "Inject missing rule *(Recommended)*" / "Edit" (v1.13.0)
 - Self-validation Check 21 — "Inject canonical block *(Recommended)*" / "Edit" (v1.13.0)
+- Self-validation Check 22 — "Add the off-topic global *(Recommended)*" / "Edit" (v1.14.0)
+- Self-validation Check 23 — "Create the dedicated forwarding intent *(Recommended)*" / "Pick an existing intent" (v1.14.0)
+- Self-validation Check 24 — "Set Sensitive: true *(Recommended)*" / "Keep false" (v1.14.0)
 - Phase 3 §3.4.3 — terminal outcome value mode when the characterization material doesn't determine it ("Fixed value" / "Save what the customer said" / "Composed per call") (v1.13.0)
 - Section 2.4.A MCP fallback — "Install / Authenticate / Continue manually"
 
@@ -141,12 +146,18 @@ Ask, in order:
    - **a. Agent gender.** Prompt via `AskUserQuestion` (header: "Agent voice", 2 options: "Female" / "Male"). **Always ask this explicitly — NEVER infer gender from the bot name.** Names are frequently unisex; guessing risks offering only male voices when the user wanted a female agent (or vice versa). Written to spec section 1 as `**Agent Gender:**`. (Selection aid only — not emitted to the JSON by Skill 3.)
    - **b. Voice name.** Read the `model-catalog.md` voice catalog and prompt via `AskUserQuestion` presenting **only voices whose `Gender` matches step (a)** for the active model family (default Gemini, since the default model is Gemini 3.1 Voice driven). E.g. Female → `Kore`, `Leda`, `Aoede`; Male → `Puck`, `Orus`, `Charon`. Neutral voices (e.g. `alloy`) may appear under either gender. `Other` lets the user supply any provider-supported string.
 8. **AI model config: do NOT prompt.** Silently default to the most relevant model — **Gemini Live (Voice driven 3.1)** → `AIModelConfigID=139`, `AIModelTypeId=18` (per `model-catalog.md` canonical default). Write it to spec section 1 without asking. **Override only if the user volunteers a different model** (e.g. "use the OpenAI realtime one" or supplies raw `AIModelConfigID` + `AIModelTypeId`): map by name via `model-catalog.md`, or accept the raw IDs directly. Only mark `<UNKNOWN: AI Model Config>` if the user explicitly defers the choice (e.g. "leave it blank, platform team will fill in").
-9. **Caller silence (MANDATORY — v1.11.0).** Caller-silence handling is always configured; do NOT ask whether to enable it. Collect each field via `AskUserQuestion` with a "Use default *(Recommended)*" option (free-text override allowed): `silence_duration` (default **5** s), `silence_loops` (default **3**), `silence_sentence` (default: a polite re-prompt in the bot's primary language, e.g. Hebrew "האם אתם עדיין על הקו?"), `silence_ending_sentence` (default per the forward target — see below). Then **explicitly ask** (via `AskUserQuestion`, header "Silence forward"): *"After the silence loops are exhausted, which intent should the call forward to?"* Options: (a) the transfer-to-human `global` *(Recommended, when one exists)*; (b) another of the bot's own intents; (c) **a global/system catalog intent (e.g. id=19)**. **Silence-exhaustion failover (D8 — structural):** the chosen intent is emitted by Skill 3 as `silence_behaviour.intent`. If the user picks (c), capture the catalog intent's full verbatim definition + `**Wiring:**` flag into **spec section 4.6** (per `spec-skeleton.md`), and set section 3's `silence failover intent` to that catalog intent's real `IntentId`. Default `silence_ending_sentence` to a "transferring you to a representative" line when the target transfers; else a polite hang-up. Section 3 is never `[not configured]`. Roles are finalized in §3.6 — revisit there if the global set changed. **IMPORT-LIMITATION WARNING (empirically confirmed 2026-06-23, Matan bot):** the Voicenter import procedure does **NOT** remap placeholder IDs inside `silence_behaviour.intent` (unlike `intents[]`/`botIntents[]`/`intentRelations[]`). Therefore options **(a)** and **(b)** — a *bot-own* intent — cannot be expressed with a pre-import placeholder ID (it would survive verbatim into the imported bot, point at no real intent, and the silence forward would silently break). For these targets Skill 3 **substitutes the canonical system silence-forward global `19`** at emission (a positive real `IntentId` that imports working) rather than emitting any negative value — `silence_behaviour.intent` is **never** a negative placeholder or `-999` sentinel in normal operation. Option **(c)** — a **real catalog/global intent** with a positive `IntentId` (e.g. `19`) — imports working with no manual step and is the **preferred** target, so prefer (c) when the user wants a self-contained deployable bot. **Default behavior (user decision 2026-06-23, "use 19 anyway"):** when the user has no real human-transfer catalog intent to point at, default the silence forward to the **canonical system silence-forward global `19`** — declare it in section 4.6 via the verbatim "Canonical system silence-forward global" block in `spec-skeleton.md` §4.6 (`**Wiring:** silence-forward only`) and set section 3's failover to `19`. It imports working; note to the user that `19` is a generic placeholder (a dummy RT=2) they can re-point in the UI to a real human transfer later. If the user instead insists on a **bot-own** target (a/b), state the tradeoff (Skill 3 will auto-substitute `19` at emission since the bot-own placeholder cannot survive import) and record the choice in section 7.3.
+9. **Caller silence (MANDATORY — v1.11.0; reworked v1.14.0).** Caller-silence handling is always configured; do NOT ask whether to enable it. Collect each field via `AskUserQuestion` with a "Use default *(Recommended)*" option (free-text override allowed): `silence_duration` (default **5** s), `silence_loops` (default **3**), `silence_sentence` (default: a polite re-prompt in the bot's primary language, e.g. Hebrew "האם אתם עדיין על הקו?"), `silence_ending_sentence` (default per the forward outcome — see below). Then **explicitly ask** (via `AskUserQuestion`, header "Silence forward"): *"After the silence loops are exhausted, what should happen to the call?"* Options: (a) **"Hang up *(Recommended)*"**; (b) **"Transfer to a human representative"**; (c) **"Return to an existing flow intent (e.g., main menu)"**.
+   - **Options (a)/(b) — the normal case:** Skill 1 **ALWAYS creates a dedicated bot-own silence-forwarding intent** — an RT=1 terminal (role `chained`, free-floating), `**IsSilenceIntent:** true`, layer captured in Phase 4 via MCP (hang-up/disconnect layer for (a), human-rep layer for (b)), short "יום טוב"-style loading announcement only (FP-8). Stage it now; materialize it in Phase 3 alongside the user's flow intents. Section 3's `silence failover intent` points at it.
+   - **Option (c) — the exception:** point section 3's failover at the chosen **existing** flow intent. Do NOT create a new intent.
+   - Default `silence_ending_sentence` to a "transferring you to a representative" line when the outcome is (b); else a polite hang-up line. Section 3 is never `[not configured]`. Roles are finalized in §3.6.
+   - **IMPORT-LIMITATION NOTE (empirically confirmed 2026-06-23):** the Voicenter import procedure does NOT remap placeholder IDs inside `silence_behaviour.intent` (unlike `intents[]`/`botIntents[]`/`intentRelations[]`). Skill 3 therefore emits the placeholder plus a MANDATORY banner line instructing the operator to set the silence forward in the UI post-import (the target is identifiable by `IsSilenceIntent: 1`). Mention this once to the user; no further action needed during the interview. (v1.14.0 removed the pre-v1.14 "substitute catalog intent 19" mechanism.)
 10. **Created by:** bot author/owner name (free text). Optional — Skill 1 prompts via `AskUserQuestion` per Section 2.4.B (header: "Created by", 2 options: "Skip (default: empty)" / "Provide a name"). If user picks "Provide a name", capture as free text. Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` in the emitted JSON (production-required audit field).
 11. **Max call duration (seconds):** integer. Default `1200`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Max call duration", 2 options: "Use default 1200 *(Recommended)*" / "Set a different value"). If different, capture as free-text integer. Written to spec section 1 as `**Max call duration:**`.
-12. **Record agent calls:** boolean. Default `false`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Record calls", 2 options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this in the JSON as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
+12. **Max duration sentence (v1.14.0):** prompt via `AskUserQuestion` (header: "Max duration sentence"): *"When the call hits max duration, the bot says: 'נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית'. Keep this default?"* Options: "Use default *(Recommended)*" / "Write my own" (free-text capture). Written to spec section 1 as `**Max duration sentence:**` (omit the field when the default is kept — Skill 3 emits the default).
+13. **Max duration layer (v1.14.0):** if MCP is available per §2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]`, display the layers as an id+name table, then prompt via `AskUserQuestion` (header: "Max-duration layer"): *"Which layer should receive the call when max duration is reached?"* Written to spec section 1 as `**Max duration layer:**`. If MCP is unavailable or the user already declined MCP: **silently default `0`** — do NOT ask, do NOT re-run the §2.4.A install/auth offer; log to 7.3. `dailyLimitLayerId` and `IVRLayerSelect_2` are NOT asked and keep their default `3` (out of scope).
+14. **Record agent calls:** boolean. Default `false`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Record calls", 2 options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this in the JSON as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
 
-**Write at end of Phase 1:** spec sections 1, 3, and 4.6 (if a catalog intent was chosen as the silence failover).
+**Write at end of Phase 1:** spec sections 1, 3, and 4.6 (only if the user supplied a catalog intent).
 
 ### 3.2 Phase 2 — Persona Bundle
 
@@ -166,7 +177,7 @@ Draft a `persona` from the user's answer. Show it, then prompt via `AskUserQuest
 | No channel-specific behavior in persona. | §14.3.9 | Catch voice-isms (pacing, pronunciation, interruption, audio cues) and chat-isms (formatting, message length, emojis). Offer to move them to `voiceInstructions` or `chatInstructions`. |
 | No per-intent procedural logic in persona. | §14.3.10 | Catch "when validating address, repeat back..." or "after getting available slots, present in order..." — these are per-intent. Offer to move to per-intent `intentInstructions` (Skill 2 will write the actual text). |
 | No persistent policy embedded in single intents. | §14.3.13 | Defer this check to Phase 3 boundary, where intents exist to compare against. But ask now: "Are there any policies that apply call-wide (privacy, GDPR, retention, escalation policy)?" — capture into persona directly. |
-| Call-wide rules stated ONCE, in persona (v1.13.0, FP-6). | FP-6 | The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: **"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."**; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists. These rules are NEVER repeated in per-intent fields — enforced by check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known; stage a 7.3 note if authored earlier. |
+| Call-wide rules stated ONCE, in persona (v1.13.0, FP-6). | FP-6 | The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: **"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."**; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists; (d) **off-topic handling (v1.14.0 — MANDATORY on every bot)** — authored in §3.2.5 from the user's answers. These rules are NEVER repeated in per-intent fields — enforced by check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known; stage a 7.3 note if authored earlier. |
 
 **Compass doctrine note (rules 3 and 7).** For non-English bots, the doctrine recommends writing operational prose in English (~3× token savings on the static prompt; preserves function-calling and instruction-following accuracy that degrades in Hebrew/Arabic/CJK). Verbatim utterances the agent must speak stay in the target language. Skill 1's self-validation check 11 fires advisory if a bot-level prompt field is ≥30% non-Latin characters. Independently, check 15 flags generic GDPR/HIPAA/PII boilerplate that isn't derived from the bot's domain — these belong in the data plane (Presidio, dialplan, etc.), not the persona. See `../../references/voice-prompt-doctrine.md` rules 3, 4, 7 for fix recipes.
 
@@ -239,6 +250,28 @@ Show the draft, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Op
 
 **Compass doctrine note (rule 5 — recency-slot language-lock).** The bot-level `intentInstructions` is the recency slot of the assembled systemInstruction (per "Lost in the Middle" + "Found in the Middle" U-shaped attention bias). For non-English bots, a known production bug (Gemini cookbook #1197) causes the model to code-switch based on the caller's name or accent even with English-only instructions. The doctrine's mitigation is to place an extreme negative constraint — equivalent to `"NEVER infer language from caller's name, accent, or tone."` — in the final third of `prompts.intentInstructions`. Skill 1's self-validation check 13 detects whether this constraint is present in the recency slot and, if not, offers to inject the standard line. See `../../references/voice-prompt-doctrine.md` rule 5 for the detection pattern and fix recipe.
 
+#### 3.2.5 Off-topic policy (v1.14.0, FP-6(d) — MANDATORY on every bot)
+
+Every bot gets a persona rule for callers who talk about subjects the bot must not discuss, plus a dedicated global terminal that ends the loop. Elicit it with three one-per-turn prompts:
+
+1. **Forward outcome.** `AskUserQuestion` (header: "Off-topic outcome"): *"If the caller keeps raising unrelated topics after the bot's redirects, where should the call end up?"* Options: "Human representative *(Recommended)*" / "Hang up" / "Other ending" (Other captures a custom outcome).
+2. **Loop count.** `AskUserQuestion` (header: "Off-topic loops"): *"How many off-topic deflections before the bot says the ending line and forwards?"* Options: "2 *(Recommended)*" / "3" (Other for a custom count).
+3. **Example wording.** OFFER a drafted persona block, templated on the production reference bots, adjusted to the bot's domain, persona register, and grammatical gender — deflection line + redirect question for the first occurrence, ending line for loop exhaustion. Model (Hebrew, masculine):
+
+   ```
+   איסור דיבור על נושאים אחרים
+   אסור לך, תחת שום נסיבות, לדבר על נושאים שאינם קשורים ל-[domain]
+   (לדוגמא : "פוליטיקה", "עניינים רפואיים", "צבא").
+   כאשר המתקשר מעלה נושא כזה, tell the customer : "מתנצל, אבל אני כאן לעזור רק לגביי [domain]. תרצה שנמשיך ?"
+   אם המתקשר ממשיך לדבר על נושאים לא קשורים [N] פעמים, you must say : "[ending line]"
+   ואז להעביר את השיחה אל [the off-topic terminal, referenced by its Description].
+   שים לב לא להתבלבל בין מילה מתחום ה-[domain] לבין נושא שאינו קשור.
+   ```
+
+   Prompt via `AskUserQuestion` (header: "Off-topic wording", 2 options: "Accept example *(Recommended)*" / "Edit" — free-text capture, re-prompt until accepted). Inject the accepted block into §2.1 persona (it is FP-6 rule (d) — stated once, never per-intent).
+
+**Structural companion (materialized in Phase 3):** Skill 1 ALWAYS adds a **dedicated off-topic global intent** — role `global` (⇒ `botIntents` type 2, reachable from anywhere), RT=1 with the layer matching the chosen outcome (captured via MCP in Phase 4), display name modeled on the production reference (`"סיום השיחה במקרה של דיבור על נושא לא קשור יותר מ-[N] פעמים"`), short loading announcement only (default `"יום טוב !"`), per the FP-8 terminal rules. Enforced by check 22.
+
 **Write at end of Phase 2:** spec section 2 (all five fields).
 
 ### 3.3 Phase 2 / Phase 3 boundary — Deep Research nudge
@@ -291,6 +324,8 @@ For each intent in the list, capture:
 - **Transitions out:** ordered list of (target intent, role). Role is "success path" / "fallback" / "escalation". **Do NOT hand-author transitions to `global` intents** (e.g. transfer-to-human) — a `global` is reachable from anywhere via its `botIntents[]` type-2 registration, so no explicit transition edge is needed (v1.12.0 — Skill 3 no longer fans out edges to globals). List only flow transitions to entry/chained intents.
 - **Bot-intent role:** `entry` | `global` | `chained` (default `chained`). Captured here as a first pass — **infer from context; do NOT prompt the user for this field per-intent during Phase 3.** It is confirmed in one batch at §3.6. `entry` = the §2.4 opening behaviour routes to it directly; `global` = triggerable from anywhere (transfer-to-human, WhatsApp); `chained` = reached only via another intent's transition. `global` supersedes `entry`.
 - **Hard-intent flag:** Skill 1 evaluates per the four criteria below; mark `true` or `false`.
+- **Sensitive (v1.14.0):** when an intent COLLECTS truly sensitive data — ID / national-ID number, credit card (number, CVV, expiry, cardholder ID), or medical information — set `**Sensitive:** true` on that intent. Placement rule: the flag goes ONLY on the intent where the collection is configured (in the FP-2 ask-in-N / collect-in-N+1 stagger, that is the collecting intent N+1 — never the asking intent), and only for genuinely sensitive data. When setting it, **ALWAYS proactively tell the user** (do not wait to be asked): *"Because this intent collects sensitive details, I'm enabling sensitive-data handling on it (`sensitive: true`) to keep Information Security. The details can still be used in API calls configured on this same intent, but they will NOT be saved in the LOGS/TRACES."* Never flag intents collecting non-sensitive data.
+- **Max turns (v1.14.0 — NEVER ask the user; decide autonomously):** default is `5` for every intent (Skill 3 emits it). Set `**Max turns:** 10` on **conversation-heavy intents** — where extended speaking back-and-forth between the bot and the caller is expected: multi-slot collection, search/retry loops, sensitive-detail collection. The `10` goes on the intent where the actual conversation happens — in the FP-2 stagger, the asking/speaking intent, not automatically the downstream collecting intent. A turn counts each side's utterance; 5 or 10 covers both together. Do NOT prompt the user for this field.
 
 **Hard-intent criteria (decision A — flag if any one applies):**
 
@@ -306,7 +341,9 @@ For each intent in the list, capture:
 | Every non-terminal intent has at least one transition to an escalation intent. | §14.3.4 | If missing: "Intent `[name]` has no fallback path. Per Doc 1 §14.3.4, every non-terminal intent must have a transition to (typically) `transfer_to_human`. Add one?" Block until resolved. |
 | Naming convention: snake_case verb_object. | §14.3.8 | Reject violations; propose snake_case alternative. |
 | Persona's claimed capabilities ⊆ intent set. | §14.3.7 | Now possible to check (intents exist). For each capability claim in `persona`, look for a matching intent. If a claim has no matching intent: "Persona claims `[capability]`, but no intent handles that. Either add an intent or trim the persona." Block until resolved. |
-| Per-outcome terminals (v1.13.0, FP-8). | FP-8 | Every distinct call outcome named in the interview gets its OWN RT=1 terminal that owns an outcome slot (`**Terminal outcome:**`) and ends the call in one hop. **Forbidden:** a finalize→end_call two-intent chain; a single intent that computes the outcome via IF/ELSE-IF prose (non-deterministic — depends on LLM recall). On detection: propose the per-terminal decomposition (one terminal per outcome, closing line in each terminal's announcement). Block until resolved. |
+| Per-outcome terminals (v1.13.0, FP-8; farewell placement reworked v1.14.0). | FP-8 | Every distinct call outcome named in the interview gets its OWN RT=1 terminal that owns an outcome slot (`**Terminal outcome:**`) and ends the call in one hop. **Forbidden:** a finalize→end_call two-intent chain; a single intent that computes the outcome via IF/ELSE-IF prose (non-deterministic — depends on LLM recall). On detection: propose the per-terminal decomposition (one terminal per outcome; the closing line lives in each terminal's PREDECESSOR intent's `intentInstructions` per the v1.14.0 RT=1 farewell trigger rule — the terminal itself keeps only a short loading announcement). Block until resolved. |
+| Pre-IVR farewell placement (v1.14.0, FP-3 corollary / FP-8). | FP-8 | For EVERY intent that transitions into an RT=1 terminal, the ending sentence must be planned as the last spoken line of that predecessor's `intentInstructions` (Skill 2 authors the wording). If the predecessor has splits/transitions to other intents, Skill 1 must create a **dedicated pre-IVR intent whose only job is the ending sentence** before the terminal. Block until the structure supports the placement. |
+| Mandatory structural intents (v1.14.0). | FP-6/FP-8 | The bot must contain: the dedicated **off-topic global** intent (§3.2.5), the dedicated **silence-forwarding** intent (§3.1 step 9 — unless the user chose an existing flow intent), and the dedicated **API-timeout forwarding** intent (§3.5.1 — when any RT=2 exists; unless the user chose an existing flow intent). Block until present. |
 | Status ownership (v1.13.0, FP-8). | FP-8 | The outcome/status parameter appears ONLY on terminals. Gates never carry, set, or mention it — an intent can only set its own slots; "Set status_X to …" on a gate is un-executable at runtime. Block until resolved. |
 | Minimal graph (v1.13.0, FP-9). | FP-9 | Transitions exist only for the linear happy-path spine + true branches. Exception outcomes (human-rep request, decline/not-confirmed) are `global` terminals reachable from anywhere, driven by the persona's FP-6 call-wide rules — never wire an explicit edge from every gate (reinforces the v1.12.0 no-fan-out rule in §3.4.3). Block until resolved. |
 
@@ -345,8 +382,8 @@ Additionally for RT=1 terminals (v1.13.0, FP-8): ensure the outcome slot named i
 - Headers structure (user-described; defaults to `{}`)
 - Body structure with Mustache references (user-described)
 - API response shape declaration → already captured in 4.5.4 (provisional; Skill 2 hard-verifies it against the live API before the intent can be detailed)
-- API silence behavior fields: `silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions` (text or empty), and **fallback intent reference** — pick from the existing intent set via `AskUserQuestion` per Section 2.4.B (header: "Fallback intent"; show the full intent list as a reference table first if it exceeds 4 items, then top candidates with Other for the long tail)
-- **Max turns / Max turns sentence (per-intent turn cap):** Skill 1 does NOT capture these in the interview. Skill 3 v1.5.0+ applies smart defaults at emission — RT=2 gets `max_turns: 15` and the standard Hebrew sentence; other RTs omit. If the spec author needs to override a specific intent's cap (e.g., set RT=1 unrelated-topic to `max_turns: 1` like the transport-planner production sample), they can hand-edit spec section 4 with the optional `**Max turns:**` field documented in `spec-skeleton.md` §4.
+- API silence behavior fields: `silence_duration`, `silence_loops`, `silence_sentence`, `silence_ending_sentence`, `silence_instructions` (text or empty), and **fallback intent reference**. **v1.14.0 default: the dedicated API-timeout forwarding intent.** The FIRST time any RT=2 intent is captured, ask once per bot via `AskUserQuestion` (header: "API-timeout forward"): *"When an API call stalls and the silence loops exhaust, where should calls go by default?"* Options: "Human representative *(Recommended)*" / "Hang up" / "An existing flow intent (e.g., main menu)". The first two ⇒ Skill 1 ALWAYS creates ONE dedicated bot-own API-timeout forwarding intent (RT=1, role `chained` free-floating, layer via MCP in Phase 4, short loading announcement only) and defaults every RT=2 intent's fallback to it. The third ⇒ point at the chosen existing intent; NO new intent. A per-intent override remains possible via `AskUserQuestion` (header: "Fallback intent") when the user wants a specific RT=2 intent to fall back elsewhere (e.g., a retry/continue intent).
+- **Max turns / Max turns sentence (per-intent turn cap, v1.14.0):** NEVER captured from the user. Skill 3 emits `additional.max_turns: 5` for ALL RTs by default; Skill 1 autonomously sets `**Max turns:** 10` on conversation-heavy intents per §3.4.3. `**Max turns sentence:**` is authored by Skill 2 (persona-register, gender-matched); Skill 3 falls back to the masculine model sentence when absent. Spec authors hand-editing the spec may still override either field per `spec-skeleton.md` §4.
 
 **RT=3:** no structural fields beyond slots. Announcement and post-execution `intentInstructions` are language-heavy — Skill 2 territory.
 
@@ -459,14 +496,14 @@ If section 4.7 is empty or missing (the default), Skill 3 emits the safe default
 
 1. **Role classification (Approach B, D2/D7).** Propose a `**Bot-intent role:**` for every section-4 intent:
    - `entry` for each intent named as a routing target in the OPENING BEHAVIOR block (spec section 2.4, drafted in Phase 2 §3.2.4).
-   - `global` for each intent the user described as always-available / triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`.
-   - `chained` for all others.
+   - `global` for each intent the user described as always-available / triggerable from anywhere (transfer-to-human, WhatsApp). `global` supersedes `entry`. **The dedicated off-topic intent (§3.2.5) is ALWAYS `global` (v1.14.0).**
+   - `chained` for all others. **The dedicated silence-forwarding and API-timeout forwarding intents (v1.14.0) are `chained` free-floating** — reachable only via `silence_behaviour.intent` / `api_silence_behaviour.intent`, never via `botIntents[]` or transitions.
    Present the full proposed classification in one `AskUserQuestion` (per §2.4 tool conventions) for confirmation; on approval, write the explicit `**Bot-intent role:**` field into every section-4 intent. The inference lives here in Skill 1 — Skill 3 only reads the written field.
    Then revisit §3 `silence_ending_sentence` (D8): if a transfer-to-human `global` exists and the current ending is a hang-up, offer to switch it to a failover-to-representative line.
 2. Run the **self-validation checklist** (Section 5 of this SKILL.md).
 3. Generate **spec section 6** initial pass:
    - 6.1: Mustache variable usage (every `{{...}}` reference, where used, what it resolves via).
-   - 6.2: Intent transition graph — list the authored `(origin → next)` pairs **only**, so section 6 matches what Skill 3 will emit (v1.12.0 — no global fan-out; a `global`, including a `triggerable global` catalog intent, is reachable from anywhere via its `botIntents[]` type-2 registration, so no edges to it are listed). A `silence-forward only` catalog intent produces NO transition rows (it is reachable only via `silence_behaviour.intent`).
+   - 6.2: Intent transition graph — list the authored `(origin → next)` pairs **only**, so section 6 matches what Skill 3 will emit (v1.12.0 — no global fan-out; a `global`, including a `triggerable global` catalog intent, is reachable from anywhere via its `botIntents[]` type-2 registration, so no edges to it are listed). The dedicated silence-forwarding and API-timeout forwarding intents (v1.14.0), like any `silence-forward only` catalog intent, produce NO transition rows — they are reachable only via `silence_behaviour.intent` / `api_silence_behaviour.intent`.
    - 6.3: RT=2 API silence pairings (per RT=2 intent: Skill 3 will pair its embedded `api_silence_behaviour` with an `apiSilenceRelations[]` registry entry; section 6.3 lists which RT=2 intents need pairing).
    - 6.4: Escalation paths — when a `global` transfer-to-human exists, it is every non-global intent's escalation path by virtue of being reachable from anywhere (no explicit edge; v1.12.0). This satisfies §5 Check 7 for every intent whenever a global exists.
    - 6.5: ID assignments — placeholders, sequential negative integers per Doc 1 §15.3 Option A. Per intent: `-1`, `-2`, `-3`, ...
@@ -574,6 +611,7 @@ Open unknowns: <count from 7.4>
 - Edit channel scope from one channel to two (newly-active channel gets templated defaults)
 - Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that Skill 3 check 7 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / IVRLayerSelect_2) (v1.13.0)
+- Edit `**Sensitive:**` / `**Max turns:**` / `**Max turns sentence:**` / `**IsSilenceIntent:**` on an intent (v1.14.0) — re-run Checks 23/24 after the edit
 
 **Hard-change taxonomy** (cascade reset required — see 4.5):
 
@@ -657,7 +695,7 @@ Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Apply patch?", 2 o
 
 Run on **every greenfield close-out** and **after every patch**, before declaring the spec ready.
 
-21 checks total: 14 blocking, 6 advisory (Checks 8 + 11–15, of which Checks 11–15 are Compass doctrine), 1 structural-correctness. Checks 16–17 are house rules (v1.12.1) covering the opening announcement/behavior pair. Checks 18–21 are field-placement doctrine rules (v1.13.0, FP-2/FP-8/FP-6/FP-12).
+24 checks total: 16 blocking, 7 advisory (Checks 8 + 11–15 + 24, of which Checks 11–15 are Compass doctrine), 1 structural-correctness. Checks 16–17 are house rules (v1.12.1) covering the opening announcement/behavior pair. Checks 18–21 are field-placement doctrine rules (v1.13.0, FP-2/FP-8/FP-6/FP-12); Checks 22–24 are v1.14.0 rules (off-topic global / dedicated forwarding targets / sensitive placement).
 
 Execute in the order below.
 
@@ -867,19 +905,20 @@ No user prompt required.
 - an RT=1 terminal lacks `**Terminal outcome:**`, or its named slot is missing from the intent's slot list;
 - a transition's origin is an RT=1 terminal (terminal→anything chains, incl. finalize→end_call);
 - a non-terminal intent's captured fields or staged notes reference an outcome/status slot it doesn't own;
-- an intent's purpose is centralized outcome computation (IF/ELSE-IF prose choosing between outcome values).
+- an intent's purpose is centralized outcome computation (IF/ELSE-IF prose choosing between outcome values);
+- (v1.14.0) an RT=1 terminal's predecessor has multiple outbound transitions AND no dedicated pre-IVR farewell intent exists between them — the ending sentence has no valid home (the FP-3 corollary).
 
 **Failure message:**
-> Terminal-shape violation: [specifics]. Per FP-8, every outcome gets its OWN one-hop RT=1 terminal that owns its outcome slot (value mode: fixed / captured / dynamic); gates never mention the outcome slot; no intent computes the outcome by recalling the call. Proposed restructure: [per-terminal decomposition / remove the gate's status reference / merge the finalize→end_call chain into per-outcome terminals].
+> Terminal-shape violation: [specifics]. Per FP-8, every outcome gets its OWN one-hop RT=1 terminal that owns its outcome slot (value mode: fixed / captured / dynamic); gates never mention the outcome slot; no intent computes the outcome by recalling the call; the farewell is spoken by the terminal's PREDECESSOR's `intentInstructions` (v1.14.0), so a splitting predecessor needs a dedicated pre-IVR farewell intent. Proposed restructure: [per-terminal decomposition / remove the gate's status reference / merge the finalize→end_call chain into per-outcome terminals / insert a dedicated pre-IVR farewell intent].
 
 **Remediation:** route to the Phase 3 restructure; re-check until clean.
 
 ### Check 20 — Persona call-wide rules stated once (v1.13.0, FP-6) — blocking
 
-**Trigger (any of):** persona lacks the turn-taking rule; persona lacks the human-rep handling rule while a human-rep `global` exists; persona lacks the disapproval/decline handling rule while a decline terminal exists; OR any of these rules' text is ALSO staged into per-intent notes / section 4 fields (duplication).
+**Trigger (any of):** persona lacks the turn-taking rule; persona lacks the human-rep handling rule while a human-rep `global` exists; persona lacks the disapproval/decline handling rule while a decline terminal exists; **(v1.14.0) persona lacks the FP-6(d) off-topic handling section (deflect + redirect on first occurrence; ending line + forward to the off-topic global after N loops)**; OR any of these rules' text is ALSO staged into per-intent notes / section 4 fields (duplication).
 
 **Failure message:**
-> Persona call-wide rules issue: [missing rule X / rule X duplicated into intent `[name]`]. Per FP-6, the turn-taking rule, human-rep handling, and disapproval handling are each stated exactly once, in persona — the layer the voice model always sees. Canonical turn-taking wording: "You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."
+> Persona call-wide rules issue: [missing rule X / rule X duplicated into intent `[name]`]. Per FP-6, the turn-taking rule, human-rep handling, disapproval handling, and off-topic handling (v1.14.0) are each stated exactly once, in persona — the layer the voice model always sees. Canonical turn-taking wording: "You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer." [If the off-topic section is missing: propose the §3.2.5 injection — run the §3.2.5 elicitation if its answers were never collected.]
 
 **Remediation:** inject the missing rule (AskUserQuestion accept/edit) or remove the duplicate; re-check.
 
@@ -891,6 +930,38 @@ No user prompt required.
 > The flow collects a callback time (`[slot]` on `[intent]`) but the opening behavior has no date/time interpretation machinery. Without the `{{todayHe}}`/`{{timeHe}}` anchor and relative-expression rules, downstream automation cannot reliably convert the answer to a dial time, and the bot re-asks what the caller already said. Proposed injection into §2.4: [the FP-12 canonical block].
 
 **Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Callback block", 2 options: "Inject canonical block *(Recommended)*" / "Edit"); add `todayHe`/`timeHe` to 4.5.1; re-check.
+
+### Check 22 — Off-topic global exists (v1.14.0, FP-6) — blocking
+
+**Trigger:** no section-4 intent is the dedicated off-topic terminal (an RT=1 intent with `**Bot-intent role:** global` whose purpose is ending/forwarding the call after repeated off-topic talk), OR the persona's FP-6(d) off-topic rule does not route to it by its Description, OR more than one such intent exists.
+
+**Failure message:**
+> Every bot must carry exactly one dedicated off-topic global intent (v1.14.0): role `global`, RT=1 with the layer matching the user-chosen outcome, short loading announcement only (e.g., "יום טוב !"), and the persona's off-topic rule must forward to it by Description. Currently: [missing / persona routes to "[X]" which doesn't match / duplicates: [list]].
+
+**Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Off-topic global", 2 options: "Add the off-topic global *(Recommended)*" / "Edit"). Adding runs the §3.2.5 elicitation for any answers not yet collected (outcome / loops / wording); re-check.
+
+### Check 23 — Dedicated forwarding targets (v1.14.0) — blocking
+
+**Trigger (any of):**
+- section 3's `silence failover intent` does not resolve to either (i) the dedicated silence-forwarding intent (`**IsSilenceIntent:** true`, RT=1) or (ii) an existing flow intent the user explicitly chose (7.3-logged);
+- `**IsSilenceIntent:** true` appears on zero intents while (i) was chosen, or on more than one intent;
+- any RT=2 intent's API-silence fallback is missing, or does not resolve to the dedicated API-timeout forwarding intent / a user-chosen existing intent / a 7.3-logged per-intent override.
+
+**Failure message:**
+> Silence / API-timeout forwarding issue: [specifics]. Per v1.14.0, the bot always carries a dedicated silence-forwarding intent and a dedicated API-timeout forwarding intent (one each, usually RT=1 Hang-up or Human-rep terminals), unless the user explicitly chose an existing flow intent (e.g., main menu) for that role.
+
+**Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Forwarding target", 2 options: "Create the dedicated forwarding intent *(Recommended)*" / "Pick an existing intent"). Re-run the §3.1 step 9 / §3.5.1 outcome question if never asked; re-check.
+
+### Check 24 — Sensitive placement (v1.14.0) — advisory
+
+**Trigger (either):**
+- `**Sensitive:** true` appears on an intent that does not collect truly sensitive data (ID number, credit card / CVV / expiry / cardholder ID, medical info), or on the ASKING intent of an FP-2 stagger instead of the collecting intent;
+- an intent's slots collect sensitive-looking data (slot semantics: national ID, credit card, CVV, medical details) but the intent lacks `**Sensitive:** true`.
+
+**Warning message:**
+> Sensitive-flag placement: [intent `[name]` collects [what] but is not flagged / intent `[name]` is flagged but collects nothing sensitive / the flag sits on the asking intent — it belongs on the collecting intent `[N+1 name]`]. When flagged, the details remain usable in API calls configured on that intent but are NOT saved in LOGS/TRACES (Information Security).
+
+**Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Sensitive flag", 2 options: "Set Sensitive: true *(Recommended)*" / "Keep false"). On setting the flag, ALWAYS deliver the §3.4.3 disclosure message. Record the resolution in 7.3; continue either way.
 
 ---
 
@@ -907,7 +978,7 @@ No user prompt required.
 ### 6.1 What Skill 1 writes to the spec
 
 **On greenfield completion:**
-- Sections 1, 2, 3, 4, 4.5 fully filled — including (v1.13.0) the §1 limit fields (or defaults), the per-intent staggering fields (`**Captures answer to:**` / `**Asks next:**`), `**Terminal outcome:**` on RT=1 terminals, and §4.5.5 CustomData keys
+- Sections 1, 2, 3, 4, 4.5 fully filled — including (v1.13.0) the §1 limit fields (or defaults), the per-intent staggering fields (`**Captures answer to:**` / `**Asks next:**`), `**Terminal outcome:**` on RT=1 terminals, and §4.5.5 CustomData keys; and (v1.14.0) the persona off-topic rule + dedicated off-topic global intent, the dedicated silence-forwarding intent (`**IsSilenceIntent:** true`) and API-timeout forwarding intent (or the user-chosen existing targets), `**Sensitive:** true` on sensitive-collecting intents, and autonomous `**Max turns:** 10` on conversation-heavy intents
 - Section 5: stub entries per intent, all marked `[structural]`
 - Section 6: initial pass (subsections 6.1–6.5) derived from sections 4-5
 - Section 6.6: Mermaid `flowchart TD` of the intent graph (per §3.6.1) — for human comprehension; not consumed by Skill 3 or the import proc

@@ -124,17 +124,21 @@ The announcement delivers this stage's scripted content and ends with the questi
 
 Rules: real `{{CustomData}}`/slot vars from sections 4.5.5/4.5.3 only (FP-11); ends with the question; NO filler ("תודה.") — acknowledgment goes to `intentLoadingAnnouncement`.
 
-### Terminal closing line (RT=1)
+### Pre-terminal farewell (v1.14.0, FP-8)
 
-The outcome-specific farewell, in full, exactly once (FP-6):
+**The RT=1 terminal itself has NO `announcement`.** The outcome-specific farewell, in full and exactly once (FP-6), is an FP-4 quoted line in the **predecessor's** `intentInstructions` — the last spoken line before the forward, with the no-wait / no-reveal instruction (pattern I3 is the canonical shape):
 
 ```
-מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב.
+POST-EXECUTION BEHAVIOR
+1. Say to the customer : "מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב."
+2. Immediately forward the call to Ending the call by transferring to a human representative — do not wait for an answer, and do not tell the customer the call is being transferred to a layer.
 ```
 
-### Intentionally empty announcement (FP-3 exception)
+The terminal keeps only its short loading goodbye ("יום טוב!"). If the predecessor splits to several intents, the farewell gets its own dedicated pre-IVR intent (FP-3 corollary — structural, Skill 1).
 
-Use when the speech is carried by the intent's `intentInstructions` instead — e.g., reading an API-response list under reading instructions, where a fixed transition sentence would get in the way:
+### Intentionally empty announcement (FP-3 — exactly two cases, v1.14.0)
+
+**(a) API-list read-out:** the speech is carried by the intent's `intentInstructions` reading instructions — e.g., reading an API-response list, where a fixed transition sentence would get in the way:
 
 ```
 announcement: ""
@@ -145,7 +149,9 @@ intentInstructions:
   3. After asking, stop and wait for the customer's explicit answer.
 ```
 
-Log to spec 7.3: `announcement intentionally empty on [intent] — speech carried by intentInstructions`.
+**(b) Pre-terminal farewell-in-instructions:** the intent immediately before the final RT=1 terminal, with **no splits to other intents** — its farewell lives in its own `intentInstructions` per the pattern above.
+
+Log to spec 7.3: `announcement intentionally empty on [intent] — FP-3 case (a|b)`. No other empty-announcement case is allowed.
 
 ---
 
@@ -156,10 +162,12 @@ Spoken while the tool executes. **Mandatory on every RT=3 intent** — unset pro
 | Context | Example |
 |---|---|
 | Gate acknowledgment (female persona) | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
-| Terminal goodbye | "יום טוב" — ONLY if the farewell is not already in the terminal's `announcement` (FP-6 anti-duplication; check 14) |
+| Terminal goodbye (RT=1) | "יום טוב!" / "מעביר לנציג אנושי." — the terminal's ONLY utterance (v1.14.0); NEVER the full farewell, which lives in the predecessor's instructions (FP-8; checks 14/18) |
 | API wait (RT=2) | "רק רגע, אני בודקת במערכת" |
 
 Never put full content sentences here, and never duplicate a sentence that exists in `announcement`.
+
+**`max_turns_sentence` (v1.14.0):** authored once per bot in the same register/gender discipline — masculine `"מתנצל אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"`, feminine `"מתנצלת אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"`.
 
 ---
 
@@ -399,7 +407,7 @@ end_call.intentLoadingAnnouncement: "יום טוב ולהתראות."
 
 Why bad: three separate speech obligations at call end — the diagnosed mechanism behind farewell-said-twice bugs. Plus an extra tool round-trip through the chained terminal.
 
-Fix: ONE terminal per outcome; the full closing line in that terminal's `announcement`; a short goodbye in `intentLoadingAnnouncement` only if the announcement doesn't already say it. No terminal→terminal chains. Caught by Skill 2 check 14 and Skill 3 checks 19/20.
+Fix (v1.14.0): ONE terminal per outcome; the full closing line as an FP-4 quoted line in the **predecessor's** `intentInstructions` (last spoken line, then forward immediately — no wait, no reveal); the terminal keeps only the short loading goodbye. No terminal→terminal chains. Caught by Skill 2 checks 14/18 and Skill 3 checks 19/20.
 
 ### Pitfall 8 — "תודה." filler announcement (v1.13.0, FP-3)
 
@@ -425,10 +433,13 @@ Run through this before flipping an intent to `[detailed]`.
 - [ ] Quoted strings appear only as VALUES being saved
 - [ ] `**Terminal outcome:**` intents: the declared value mode is implemented (fixed ⇒ exact pinned string + never-ask line)
 
-**announcement / intentLoadingAnnouncement (FP-2/FP-3/FP-7):**
-- [ ] `announcement` carries the read-back + the `**Asks next:**` question (or is intentionally empty with the speech in `intentInstructions`, logged to 7.3)
+**announcement / intentLoadingAnnouncement (FP-2/FP-3/FP-7/FP-8):**
+- [ ] `announcement` carries the read-back + the `**Asks next:**` question (or is intentionally empty per one of the two FP-3 cases — API-list read-out / pre-terminal farewell-in-instructions — logged to 7.3)
 - [ ] No filler ("תודה.") in `announcement`
+- [ ] RT=1: NO `announcement` at all (v1.14.0); loading announcement is a short "יום טוב"-style line; the farewell exists exactly once, on the predecessor's instructions
+- [ ] Any intent transitioning into an RT=1: its instructions end with the FP-4 quoted farewell + immediate-forward / no-wait / no-reveal instruction
 - [ ] RT=3: `intentLoadingAnnouncement` non-empty, persona/gender-matched
+- [ ] `max_turns_sentence` written once per bot, persona/gender-matched (v1.14.0)
 - [ ] No sentence appears in two fields (FP-6 say-once)
 
 **intentInstructions (CR style + FP-4/FP-9):**

@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-intent-detail-author
-description: Authors the per-intent language content of a Voicenter Agent Spec — slot descriptions, capture-mapping validationPrompt (save/set logic only — never spoken scripts), announcement + intentLoadingAnnouncement spoken content, post-execution intentInstructions, and RT-specific Configuration text. Use this skill when an Agent Spec exists with section 5 entries marked `[structural]` or `[detailed-revisit]`, and the user wants to fill them in. Trigger phrases include "run Skill 2", "detail the intents", "fill in the per-intent fields", "Skill 2 (Intent Detail Author)", or any direct continuation from Skill 1's handoff hint. Walks intents in user-confirmed batches with a checkpoint after each batch. Reactivable — invoke as many times as needed; spec state is the resume point. Does NOT modify the structural skeleton (sections 1, 2, 3, 4, 4.5.1/.2/.4/.5) — that's Skill 1 (Agent Spec Designer). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
+description: Authors the per-intent language content of a Voicenter Agent Spec — slot descriptions, capture-mapping validationPrompt (save/set logic only — never spoken scripts), announcement + intentLoadingAnnouncement spoken content, post-execution intentInstructions, and RT-specific Configuration text. Use this skill when an Agent Spec exists with section 5 entries marked `[structural]` or `[detailed-revisit]`, and the user wants to fill them in. Trigger phrases include "run Skill 2", "detail the intents", "fill in the per-intent fields", "Skill 2 (Intent Detail Author)", or any direct continuation from Skill 1's handoff hint. Walks intents in user-confirmed batches with a checkpoint after each batch. Reactivable — invoke as many times as needed; spec state is the resume point. Does NOT modify the structural skeleton (sections 1, 2, 3, 4, 4.5.1/.2/.4/.5) — that's Skill 1 (Agent Spec Designer) — with one narrow v1.14.0 exception: it authors the section-4 `**Max turns sentence:**` language field (gender-matched, once per bot). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
@@ -43,7 +43,7 @@ Before touching the spec, load context from these references.
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting — spoken fields only, v1.13.0), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
-| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.13.0) — FP-1…FP-13; Skill 2 owns FP-3 (script home), FP-4 (quote convention), FP-5 (capture-mapping validationPrompt), FP-7 (RT=3 loading announcement), and the per-intent half of FP-6 (say-once) |
+| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.14.0) — FP-1…FP-13; Skill 2 owns FP-3 (script home + the two intentional-empty cases), FP-4 (quote convention), FP-5 (capture-mapping validationPrompt), FP-7 (RT=3 loading announcement), FP-8's pre-terminal farewell authoring (v1.14.0), and the per-intent half of FP-6 (say-once) |
 | Skill 3 SKILL.md §4.4 | RT=1/2/3/4 Configuration field shapes at emission — v1.5.0 production-aligned (announcement / function_output object / response_success object). *(v1.13.0: replaces the retired external schema-audit doc reference.)* |
 
 Also load this file from this skill's package:
@@ -229,6 +229,12 @@ Slot: time_slot
 
 The user must either accept the type as-is (with appropriate v1-fallback validation in step 2) or pause and patch via Skill 1.
 
+**Iron rule (sensitive backstop — v1.14.0; fires during step 1, advisory):** if this intent's slots collect truly sensitive data (national ID / ID number, credit card number / CVV / expiry / cardholder ID, medical information) and section 4 does NOT carry `**Sensitive:** true` on it, raise to the user:
+
+> Intent `<name>` collects `<what>` but is not flagged `**Sensitive:** true`. The flag belongs on the COLLECTING intent (this one). Recommend: pause and set it via Skill 1 patch mode — Skill 2 never edits section-4 flags.
+
+Whenever an intent IS (or becomes) sensitive-flagged, ALWAYS deliver the disclosure — even if the user didn't ask: *"This intent has sensitive-data handling enabled for Information Security — the collected details can still be used in API calls configured on this same intent, but they will NOT be saved in the LOGS/TRACES."* Log to 7.3.
+
 ### 4.2 Step 2 — `validationPrompt` authoring
 
 **Doctrine (v1.13.0, FP-5 — this section was inverted; see `../../references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended (Compass rule 3 synergy); target-language text appears only as a quoted VALUE being saved.
@@ -350,16 +356,23 @@ The Configuration shape and required language fields differ by Response Type. Se
 
 #### RT=1 (Layer Transfer)
 
-Required language fields:
+**v1.14.0 hard rule — RT=1 has NO `announcement`. Never author one.** The ending/farewell sentence is authored while detailing the terminal's **PREVIOUS** intent (or the dedicated pre-IVR farewell intent Skill 1 created when the predecessor splits): an FP-4 quoted line as the LAST spoken line of that predecessor's post-execution `intentInstructions`, immediately followed by the instruction to forward to this terminal (by its Description) **without waiting for a caller answer and without telling the caller the call is being transferred to a layer**. Production-verbatim shape:
+
+```
+עלייך לומר את המשפט הבא ללקוח מיד : "ההודעה נשלחה, שמחתי לעזור, שיהיה יום נהדר".
+מיד לאחר מכן עלייך להעביר את השיחה מיד ל-[terminal Description] ללא המתנה לתגובה מהלקוח.
+אסור לך לומר ללקוח שאתה מעביר לשכבת ניתוק.
+```
+
+Required language field (the terminal's ONLY utterance):
 
 | Field | Meaning | Example (Hebrew) |
 |---|---|---|
-| `announcement` | The outcome-specific FULL closing line for this terminal (v1.13.0, FP-8) — the compliance-grade farewell/handoff sentence spoken verbatim before the transfer/hang-up. One terminal per outcome ⇒ one closing line, here. | "מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב." |
-| `intentLoadingAnnouncement` | Latency-cover utterance between announcement and the actual transfer. Keep short; it must NOT duplicate the announcement's farewell (FP-6 say-once — check 14). | "יום טוב" (only if the farewell is not already in `announcement`) or "המתן בבקשה" |
+| `intentLoadingAnnouncement` | Short "good day"-style line spoken while the transfer executes — the RT=1 intent's ONLY spoken content (v1.14.0). It must NOT be the full farewell (that lives on the predecessor — FP-6 say-once, check 14; farewell placement, check 18). | "יום טוב!" / "מעביר לנציג אנושי." / "שיהיה המשך יום טוב!" |
 
 Layer ID is structural (declared in section 4). Skill 1 captures the real layer number from the MCP; if the spec omits a layer, Skill 3 defaults it to `0` (root layer) — there is no `-999` sentinel for layer (v1.12.0). Do not invent a specific layer.
 
-For a terminal carrying `**Terminal outcome:**`, step 2 already wrote the outcome-value capture mapping (check 17); step 3 confirms the closing line and loading filler only.
+For a terminal carrying `**Terminal outcome:**`, step 2 already wrote the outcome-value capture mapping (check 17); step 3 confirms the loading filler only — the closing line is authored on the predecessor (check 18).
 
 #### RT=2 (API Call)
 
@@ -404,11 +417,11 @@ Required language fields (v1.13.0 — rewritten per FP-2/FP-3/FP-7):
 
 | Field | Meaning | Example (Hebrew) |
 |---|---|---|
-| `announcement` | The REAL spoken content delivered when this intent's tool completes: the read-back with `{{CustomData}}`/slot vars plus **the section-4 `**Asks next:**` question** — the question the NEXT intent's slots will capture (FP-2 staggering). NEVER filler ("תודה.", "קיבלתי.") — acknowledgment belongs in `intentLoadingAnnouncement`. MAY be intentionally empty ONLY when this intent's post-execution `intentInstructions` carry the speech instead (FP-3 exception — e.g., reading an API-response list under reading instructions with no fixed transition sentence); log to 7.3: `announcement intentionally empty on [intent] — speech carried by intentInstructions`. | "התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת. האם הפרטים נכונים?" |
+| `announcement` | The REAL spoken content delivered when this intent's tool completes: the read-back with `{{CustomData}}`/slot vars plus **the section-4 `**Asks next:**` question** — the question the NEXT intent's slots will capture (FP-2 staggering). NEVER filler ("תודה.", "קיבלתי.") — acknowledgment belongs in `intentLoadingAnnouncement`. MAY be intentionally empty ONLY in the two FP-3 cases (v1.14.0): (a) an API-response list read immediately under this intent's `intentInstructions` reading instructions; (b) this is the intent immediately before the final RT=1 terminal with no splits — its farewell is an FP-4 quoted line in its own `intentInstructions` (check 18). A splitting predecessor never qualifies — that needs a dedicated pre-IVR farewell intent (structural → Skill 1 patch). Log to 7.3: `announcement intentionally empty on [intent] — FP-3 case (a|b)`. | "התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת. האם הפרטים נכונים?" |
 | `intentLoadingAnnouncement` | **MANDATORY, non-empty (FP-7 — check 12; Skill 3 check 17 backstops).** Short natural filler spoken while the tool executes, matching the persona's register and grammatical gender. An unconfigured value produces the default "." SAY directive — a verified production trigger for duplicated phrases and dead air. | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
 | `response_success` | **Response success instructions** [JSON field: `response_success` — object shape `{ "instructions": "<text or empty>" }`, v1.5.0 shape change]. Skill 2 prompts the user for any instructional text the runtime should use after RT=3 success (collect-and-continue). Empty string is the most common production shape (`{ "instructions": "" }`). User supplies the inner string; Skill 2 wraps it as the object. | `{ "instructions": "" }` |
 
-**Filler-announcement advisory (v1.13.0, fires during step 3):** an RT=3 `announcement` that contains no `{{…}}` reference, no question mark, and is ≤ ~15 characters (e.g., "תודה.") is almost certainly misplaced acknowledgment. Surface: "Acknowledgment belongs in `intentLoadingAnnouncement`; `announcement` must carry the read-back + the `**Asks next:**` question, or be intentionally empty per FP-3. Move it?"
+**Filler-announcement advisory (v1.13.0, fires during step 3):** an RT=3 `announcement` that contains no `{{…}}` reference, no question mark, and is ≤ ~15 characters (e.g., "תודה.") is almost certainly misplaced acknowledgment. Surface: "Acknowledgment belongs in `intentLoadingAnnouncement`; `announcement` must carry the read-back + the `**Asks next:**` question, or be intentionally empty per one of the two FP-3 cases (API-list read-out / pre-terminal farewell-in-instructions). Move it?"
 
 #### RT=4 (Dial-Out)
 
@@ -422,6 +435,13 @@ Required language fields:
 Other RT=4 fields (Phone destination, NEXT_VO_ID, etc.) are structural — declared in section 4 by Skill 1.
 
 #### Step-3 cross-RT iron rules (v1.13.0)
+
+**Max turns sentence authoring (v1.14.0 — fires once per bot, during the first step 3):** Skill 2 authors ONE default `max_turns_sentence` for the bot — a short apology-and-retry line adjusted to the persona's register and **grammatical gender**, modeled on:
+
+- masculine: `"מתנצל אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"`
+- feminine: `"מתנצלת אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"`
+
+Show it to the user once (accept/edit), then write it into each intent's section-4 `**Max turns sentence:**` field. **Boundary note:** section 4 is Skill 1's domain; this field is a narrow, explicit Skill 2 write exception (like the §4.5.3 regeneration) because the content is language authoring, not structure. Never ask the user about `max_turns` values themselves — those are autonomous (Skill 1 §3.4.3 / Skill 3 default 5).
 
 **Iron rule (say-once, FP-6 — fires during step 3 + gate, blocking; check 14):** no sentence may be mandated as speech in two places — within this intent's fields (`announcement` vs `intentLoadingAnnouncement` vs a quoted line in `intentInstructions`), or between this intent and a bot-level prompt (persona / opening instructions / openingAnnouncement). Compare normalized text (trim, strip punctuation/niqqud, collapse whitespace). Duplicated speak-obligations are the diagnosed root cause of the bot saying things twice in production. On detection: keep the sentence in exactly one field (announcement for content, loading for acknowledgment) and remove the other.
 
@@ -544,6 +564,7 @@ Per intent, before flipping status to `[detailed]`. Each check has a timing clas
 | 15 | Quote convention: every mandated verbatim spoken line in `intentInstructions` uses `<instruction text> : "<line>"` (v1.13.0, FP-4) | FP-4 | blocking | during step 4 + gate |
 | 16 | Staggered consistency (fires only when the section-4 fields exist, else skipped): the `validationPrompt` maps the answer to `**Captures answer to:**` into this intent's slots, AND the `**Asks next:**` question appears in exactly ONE of {this intent's `announcement`, an FP-4 quoted line in its `intentInstructions`} (v1.13.0, FP-2/FP-3) | FP-2 | blocking | gate |
 | 17 | Terminal outcome consistency (fires only when section-4 `**Terminal outcome:**` exists): the `validationPrompt` implements the declared value mode — fixed ⇒ the exact string pinned verbatim with the no-translate + never-ask lines; captured/dynamic ⇒ a matching save/compose instruction for the slot (v1.13.0, FP-5/FP-8) | FP-8 | blocking | during step 2 + gate |
+| 18 | RT=1 farewell placement (v1.14.0, FP-8): the terminal has NO authored `announcement`; its `intentLoadingAnnouncement` is a short "good day"-style line; and the ending sentence exists exactly ONCE — as an FP-4 quoted line in the predecessor's (or the dedicated pre-IVR intent's) `intentInstructions`, followed by the immediate-forward / no-wait / no-reveal instruction. When detailing any intent that transitions into an RT=1 terminal, this check fires on THAT intent too (its instructions must carry the farewell + forward). | FP-8 | blocking | during steps 3/4 + gate |
 
 **Behavior on blocking failure at gate:** do NOT mark the intent `[detailed]`. Surface the failure to the user with the specific check number and remediation suggestion. The user fixes the field; Skill 2 re-runs the gate; on pass, status flips.
 
@@ -560,6 +581,7 @@ Skill 2 modifies a defined subset of the spec. Crossing these boundaries silentl
 | Section | Operation | When |
 |---|---|---|
 | Section 5 entry per intent | Fill content; flip status `[structural]` or `[detailed-revisit]` → `[detailed]` | After self-validation passes |
+| Section 4 `**Max turns sentence:**` per intent (v1.14.0) | Write the bot's gender-matched default sentence (narrow explicit exception to the section-4 boundary — language content only) | Once per bot, during the first step 3 |
 | Section 4.5.3 (slot inventory) | Regenerate from section 5 state | At end of each batch |
 | Section 6.1 (Mustache variable usage) | Append references just written, with location and resolution source | After each intent's step 2/3/4 |
 | Section 7.3 (generation log) | Append entry per batch + per invocation | At each batch checkpoint and at invocation end |
@@ -571,7 +593,7 @@ Skill 2 modifies a defined subset of the spec. Crossing these boundaries silentl
 - **Section 1** — Bot Identity. Skill 1's domain.
 - **Section 2** — Persona Bundle. All five fields. Skill 1's domain. If Skill 2 detects content that should live here (per §14.3.11 or §14.3.13), it raises to the user and recommends Skill 1 patch mode.
 - **Section 3** — Caller Silence Behavior. Skill 1's domain.
-- **Section 4** — Intent List structural. Slot names, types, required, collection order, transitions, RT, hard-intent flags. Skill 1's domain. If Skill 2 detects a structural problem (e.g., wrong slot type in step 1 check 4), it raises to the user and recommends Skill 1 patch mode.
+- **Section 4** — Intent List structural. Slot names, types, required, collection order, transitions, RT, hard-intent flags, `**Sensitive:**`, `**Max turns:**`, `**IsSilenceIntent:**`. Skill 1's domain. If Skill 2 detects a structural problem (e.g., wrong slot type in step 1 check 4, or an unflagged sensitive-collecting intent per the v1.14.0 sensitive backstop), it raises to the user and recommends Skill 1 patch mode. **Sole exception (v1.14.0):** the `**Max turns sentence:**` field — language content Skill 2 writes per §7.1.
 - **Section 4.5.1** — Call-context variables. Skill 1's domain.
 - **Section 4.5.2** — Environment variables. Skill 1's domain.
 - **Section 4.5.4** — API response variables per RT=2 intent. Skill 1's domain.
@@ -686,7 +708,8 @@ When the work queue is exhausted and section 7.5 reports zero pending:
 
 ## 10. Anti-list — what Skill 2 does NOT do
 
-- Modify spec sections 1, 2, 3, 4, 4.5.1, 4.5.2, 4.5.4, 4.5.5 — Skill 1's domain. If a structural change is needed, raise to user, recommend Skill 1 patch mode, halt the current intent's authoring.
+- Modify spec sections 1, 2, 3, 4, 4.5.1, 4.5.2, 4.5.4, 4.5.5 — Skill 1's domain. If a structural change is needed, raise to user, recommend Skill 1 patch mode, halt the current intent's authoring. *(Sole v1.14.0 exception: the section-4 `**Max turns sentence:**` field — language content per §7.1.)*
+- Author an `announcement` on an RT=1 terminal (v1.14.0, FP-8) — the farewell lives in the predecessor's `intentInstructions`; the terminal carries only its short loading announcement (check 18).
 - Write speech content into `validationPrompt` — no scripts, questions, greetings, turn-taking guards, or routing (v1.13.0, FP-5). It is a capture mapping only.
 - Paste turn-taking / human-rep / disapproval rules into per-intent fields — call-wide rules live once, in persona (FP-6; Skill 1's domain).
 - Invent `{{…}}` placeholder names — only keys declared in 4.5.1–4.5.5 (FP-11).
@@ -721,6 +744,7 @@ When the work queue is exhausted and section 7.5 reports zero pending:
 | FP-6 | Duplicate speak-obligation (v1.13.0) | Step 3 say-once iron rule + check 14; Skill 3 check 19 |
 | FP-7 | Missing RT=3 intentLoadingAnnouncement (v1.13.0) | Step 3 RT=3 table + check 12; Skill 3 check 17 |
 | FP-8 | Foreign-parameter reference (v1.13.0) | Step 4 own-parameters rule + check 13; Skill 3 check 18 |
+| FP-8 | Farewell inside an RT=1 terminal / missing pre-terminal farewell (v1.14.0) | Step 3 RT=1 hard rule + step 4 predecessor authoring + check 18; Skill 3 check 20 |
 
 Skill 1 owns: §14.3.1 (persona content), §14.3.4 (escalation transitions), §14.3.7 (capabilities ⊆ intents), §14.3.8 (naming), §14.3.9 (channel content placement), §14.3.10 (per-intent logic in persona).
 
@@ -774,7 +798,7 @@ What Skill 2 must populate in step 3 per RT.
 
 | RT | Required fields (Skill 2) | Mustache scope |
 |---|---|---|
-| 1 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
+| 1 | `intentLoadingAnnouncement` only (v1.14.0 — NO `announcement`; the farewell lives on the predecessor per FP-8 / check 18) | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
 | 2 | `announcement` (was `apiResponseAnnouncement` pre-v1.5.0), `fail_output`, `function_output` (object `{ "default": "..." }`), `response_success` (object `{ "instructions": "..." }`), `intentLoadingAnnouncement` (v1.5.0: capital-I `IntentLoadingAnnouncement` removed), `silence_sentence`, `silence_ending_sentence`, `silence_instructions` | Above + 4.5.4 dotted paths declared for THIS intent |
 | 3 | `announcement` (the read-back + `**Asks next:**` question, or intentionally empty per FP-3), `intentLoadingAnnouncement` (**mandatory, v1.13.0 FP-7**), `response_success` (object `{ "instructions": "..." }`) | Slots from this intent + upstream + 4.5.1 + 4.5.2 + 4.5.4 from upstream RT=2 intents + 4.5.5 CustomData keys |
 | 4 | `announcement`, `intentLoadingAnnouncement` | Slots from this intent + upstream + 4.5.1 + 4.5.2 |
