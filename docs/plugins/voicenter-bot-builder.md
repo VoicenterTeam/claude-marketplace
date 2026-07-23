@@ -75,7 +75,7 @@ The plugin includes a shared doctrine reference at `plugins/voicenter-bot-builde
 - **Skill 2** (rules 8, 9, 10, 11) — per-intent text: TTS-safe formatting, date math in prompt, few-shot example cap, Hebrew-utterance isolation.
 - **Skill 3** (rules 1, 2, 12, 13) — final assembly: token budget, session-resumption ceiling, model-config doctrine, doctrine banner sentinels.
 
-Gating on `AiModelConfigID=139` (Gemini Live 3.1) — rules tied to model-specific behavior skip silently on other models. Universal voice principles (language posture, TTS safety) apply broadly.
+Gating on `AiModelConfigID=139` or `142` (Gemini 3.1 — voice driven or LLM driven, same underlying runtime) — rules tied to model-specific behavior skip silently on other models. Universal voice principles (language posture, TTS safety) apply broadly.
 
 ---
 

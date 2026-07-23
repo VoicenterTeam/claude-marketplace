@@ -496,7 +496,7 @@ The bot-builder plugin includes a shared doctrine reference at `plugins/voicente
 - **Check 10 — Model-config doctrine (Compass rule 12 — v1.5.0 inversion).** Blocking. Validates that the version-level `AIModelConfig.created` does NOT contain any dropped field (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`). The lean payload has none of these by construction; the check catches future regressions.
 - **DOCTRINE SENTINELS banner section (Compass rule 13).** Auto-applied at emission. One banner line per Compass advisory (rules 3, 4, 5, 6, 7, 9, 10) that fired during authoring and was not resolved.
 
-Cross-references 1–7 (per Doc 1 §15.4), 11–13, 15, and 16–21 are blocking; checks 8–10 are gated on Gemini Live 3.1 and skip silently with a one-time section 7.3 log entry for other models; 14 and 22 are non-blocking advisory.
+Cross-references 1–7 (per Doc 1 §15.4), 11–13, 15, and 16–21 are blocking; checks 8–10 are gated on Gemini 3.1 (`AIModelConfigID=139` or `142`) and skip silently with a one-time section 7.3 log entry for other models; 14 and 22 are non-blocking advisory.
 
 Anti-list addition: Skill 3 **does not auto-trim prompt text** to satisfy the token budget. Above 5,000 tok, assembly halts and routes to Skill 1 / Skill 2 patch.
 
