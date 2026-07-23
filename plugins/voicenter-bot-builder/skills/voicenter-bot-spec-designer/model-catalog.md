@@ -10,9 +10,9 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 
 ## AI model configs
 
-> **Canonical default:** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Gemini Live (Voice driven 3.1)** — `AIModelConfigID = 139`, `AIModelTypeId = 18`. The entry below is the source of truth for those numbers.
+> **Canonical default:** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Gemini 3.1 - LLM driven** — `AIModelConfigID = 142`, `AIModelTypeId = 21`. The "Gemini 3.1 - LLM driven (default)" entry below is the source of truth for those numbers.
 
-### Gemini Live (default — Voice driven 3.1)
+### Gemini Live (Voice driven 3.1)
 
 | Field | Value |
 |---|---|
@@ -45,11 +45,11 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 | **Voice family** | Gemini |
 | **Notes** | Active default. VOICE-class model. |
 
-### Gemini 3.1 LLM Driven
+### Gemini 3.1 - LLM driven (default)
 
 | Field | Value |
 |---|---|
-| **Display name** | Gemini 3.1 LLM Driven |
+| **Display name** | Gemini 3.1 - LLM driven |
 | **`AIModelConfigID`** | `142` |
 | **`AIModelTypeId`** | `21` |
 | **Provider model string** | `models/gemini-3.1-flash-live-preview` |
@@ -116,7 +116,7 @@ Used with the GPT family (GPT-4 Realtime, GPT-5 Realtime, GPT Realtime Mini).
 
 ### Gemini voices
 
-Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemini 3.1 LLM Driven).
+Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemini 3.1 - LLM driven).
 
 | Voice | Wire-format value | Gender |
 |---|---|---|
