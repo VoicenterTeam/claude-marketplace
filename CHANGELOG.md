@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-07-23
+
+Default AI model config for the bot-builder pipeline switched from voice-driven to LLM-driven (v1.15.0 of the plugin).
+
+### Skills
+
+- **Skill 1 — canonical default model is now Gemini 3.1 - LLM driven.** `model-catalog.md`'s canonical default repointed from Gemini Live (Voice driven 3.1, `AIModelConfigID=139` / `AIModelTypeId=18`) to **Gemini 3.1 - LLM driven** (`AIModelConfigID=142` / `AIModelTypeId=21`); the entry's display name is now the exact production wire string `Gemini 3.1 - LLM driven`, which Skill 3 emits verbatim as `AiModelConfig.Name`. Skill 1's silent-default mentions (§2.4.B Phase 1 note, §3.1 step 7b, §3.1 step 8) updated to match. The voice-driven catalog entries (139, 136) remain selectable.
+- **Doctrine gate extended.** `voice-prompt-doctrine.md`'s `[GL3.1]` gating legend now fires for `AIModelConfigID=139` or `142` (same `models/gemini-3.1-flash-live-preview` runtime), so the token-budget, session-resumption, and model-config checks (Skill 3 checks 8–10) still apply to bots built with the new default.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-spec-designer/README.md` (Phase 1 step 8 default), `docs/plugins/voicenter-bot-builder.md` (gating note), and `docs/skills/voicenter-bot-json-assembler/README.md` (both checks-8–10 gating sentences, previously self-contradictory) mirrored.
+
+### Versioning
+
+- voicenter-bot-builder 1.14.0 → 1.15.0, marketplace metadata 1.15.0 → 1.16.0. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.14.0] — 2026-07-13
 
 Field-placement doctrine for the bot-builder pipeline (v1.13.0 of the plugin), derived from a root-cause comparison of pipeline output against a hand-built, production-validated golden bot (`בוט שיקוף – קבוצת קלי v0.0.17`). The core fix: content was being authored into fields the runtime consumer never reads.
