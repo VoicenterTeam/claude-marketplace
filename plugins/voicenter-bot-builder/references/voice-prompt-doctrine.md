@@ -12,7 +12,7 @@
 
 Severity legend: **blocking** = skill refuses to proceed until resolved; **advisory** = skill warns, records resolution in spec section 7.3, continues; **structural** = auto-applied (no user prompt).
 
-Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelConfigID=139` (Gemini Live 3.1); `[voice]` = applies when section 1 declares an active voice channel; `[any voice]` = applies to any platform but most impactful when a voice channel is active (the rule is universal but framed against voice-bot workflows); `[any]` = universal.
+Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelConfigID=139` (Gemini Live 3.1, voice driven) or `AIModelConfigID=142` (Gemini 3.1 - LLM driven — same `models/gemini-3.1-flash-live-preview` runtime, so the same limits apply); `[voice]` = applies when section 1 declares an active voice channel; `[any voice]` = applies to any platform but most impactful when a voice channel is active (the rule is universal but framed against voice-bot workflows); `[any]` = universal.
 
 ### Rule 1 — Assembled-prompt token budget
 
