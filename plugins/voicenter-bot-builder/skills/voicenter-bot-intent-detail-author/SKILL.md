@@ -366,9 +366,17 @@ The Configuration shape and required language fields differ by Response Type. Se
 
 Required language field (the terminal's ONLY utterance):
 
-| Field | Meaning | Example (Hebrew) |
+**Iron rule (RT=1 wording match — fires during step 3, blocking):** before picking `intentLoadingAnnouncement` wording, determine which RT=1 sub-case this terminal is, from its section-4 **Description**:
+
+- **Hang-up terminal** (the call ends here — e.g. "ניתוק עקב שקט ממושך", "סיום השיחה במקרה של דיבור על נושא לא קשור יותר מ-N פעמים"): a short farewell/goodbye filler is correct.
+- **Transfer terminal** (the call continues to a queue or human rep — e.g. "העברה לתור טכני", "העברה לנציג אנושי"): the filler MUST communicate that a transfer is happening. Farewell/goodbye phrasing here reads to the caller as the call ending, not as being connected onward — this exact mistake shipped on a production bot (a transfer intent's loading announcement carried a farewell line) and is why this rule exists.
+
+| Field | Terminal type | Example (Hebrew) |
 |---|---|---|
-| `intentLoadingAnnouncement` | Short "good day"-style line spoken while the transfer executes — the RT=1 intent's ONLY spoken content (v1.14.0). It must NOT be the full farewell (that lives on the predecessor — FP-6 say-once, check 14; farewell placement, check 18). | "יום טוב!" / "מעביר לנציג אנושי." / "שיהיה המשך יום טוב!" |
+| `intentLoadingAnnouncement` | Hang-up | "יום טוב!" / "שיהיה המשך יום טוב!" |
+| `intentLoadingAnnouncement` | Transfer | "רגע אחד, מעביר אותך." / "מעביר לנציג אנושי." |
+
+Either way, it must NOT be the full farewell (that lives on the predecessor — FP-6 say-once, check 14; farewell placement, check 18) — it is the RT=1 intent's ONLY spoken content (v1.14.0).
 
 Layer ID is structural (declared in section 4). Skill 1 captures the real layer number from the MCP; if the spec omits a layer, Skill 3 defaults it to `0` (root layer) — there is no `-999` sentinel for layer (v1.12.0). Do not invent a specific layer.
 

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.16.1] — 2026-08-02
+
+Bug fix for the bot-builder pipeline: RT=1 transfer intents could get farewell/hang-up-style loading-announcement wording instead of transfer-style wording (voicenter-bot-builder 1.15.1).
+
+### Skills
+
+- **Skill 2 — RT=1 `intentLoadingAnnouncement` wording split by terminal type.** The RT=1 authoring table previously gave three example phrases ("יום טוב!" / "מעביר לנציג אנושי." / "שיהיה המשך יום טוב!") with no rule for when each applies, mixing hang-up-style farewells and transfer-style wording under one field. Root-caused from a live production bot where a transfer intent (`divert_to_technical`) shipped with hang-up-style filler ("יום טוב!"), which reads to the caller as the call ending rather than being connected onward. New iron rule: before authoring the field, classify the RT=1 terminal as hang-up vs. transfer from its section-4 Description, and pick wording accordingly (hang-up → farewell filler; transfer → "מעביר אותך" — transferring — style filler).
+
+### Documentation
+
+- `docs/skills/voicenter-bot-intent-detail-author/README.md` RT=1 section mirrored — also fixed a separate pre-existing staleness where it still described pre-v1.14.0 behavior (`announcement` carrying the full closing line on RT=1 terminals), which v1.14.0 removed (the farewell moved to the predecessor intent).
+
+### Versioning
+
+- voicenter-bot-builder 1.15.0 → 1.15.1, marketplace metadata 1.16.0 → 1.16.1. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.16.0] — 2026-07-23
 
 Default AI model config for the bot-builder pipeline switched from voice-driven to LLM-driven (v1.15.0 of the plugin).

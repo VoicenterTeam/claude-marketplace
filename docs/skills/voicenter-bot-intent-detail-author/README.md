@@ -133,10 +133,19 @@ The Configuration shape and required language fields differ by Response Type.
 
 #### RT=1 (Layer Transfer)
 
-| Field | Meaning |
-|---|---|
-| `announcement` | The outcome-specific FULL closing line for this terminal (v1.13.0, FP-8) — the compliance-grade farewell/handoff sentence spoken verbatim before the transfer/hang-up. One terminal per outcome ⇒ one closing line, here. |
-| `intentLoadingAnnouncement` | Latency-cover utterance between announcement and the actual transfer. Keep short; it must NOT duplicate the announcement's farewell (FP-6 say-once — check 14). |
+**v1.14.0 hard rule — RT=1 has NO `announcement`. Never author one.** The farewell/closing line is authored on the terminal's PREDECESSOR intent instead (or on a dedicated pre-IVR farewell intent Skill 1 creates when the predecessor splits): an FP-4 quoted line as the last spoken line of that predecessor's post-execution `intentInstructions`, immediately followed by the instruction to forward to this terminal by its Description — without waiting for a caller answer and without telling the caller the call is being transferred to a layer.
+
+**Iron rule (RT=1 wording match, v1.15.1 — blocking):** before picking `intentLoadingAnnouncement` wording — the terminal's ONLY spoken content — determine which RT=1 sub-case this is, from the intent's section-4 Description:
+
+- **Hang-up terminal** (the call ends here — e.g. "ניתוק עקב שקט ממושך"): a short farewell/goodbye filler is correct.
+- **Transfer terminal** (the call continues to a queue or human rep — e.g. "העברה לתור טכני"): the filler MUST communicate that a transfer is happening. Farewell/goodbye phrasing here reads to the caller as the call ending, not as being connected onward — this exact mistake shipped on a production bot (a transfer intent's loading announcement carried a farewell line) and is why the rule exists.
+
+| Field | Terminal type | Example (Hebrew) |
+|---|---|---|
+| `intentLoadingAnnouncement` | Hang-up | "יום טוב!" / "שיהיה המשך יום טוב!" |
+| `intentLoadingAnnouncement` | Transfer | "רגע אחד, מעביר אותך." / "מעביר לנציג אנושי." |
+
+Either way it must NOT duplicate the predecessor's farewell (FP-6 say-once — check 14; farewell placement — check 18).
 
 Layer ID is structural (in section 4). Skill 1 captures the real layer number from the MCP; if omitted, Skill 3 defaults it to `0` (root layer) — no `-999` sentinel for layer (v1.12.0).
 
