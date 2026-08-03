@@ -156,6 +156,7 @@ Ask, in order:
 12. **Max duration sentence (v1.14.0):** prompt via `AskUserQuestion` (header: "Max duration sentence"): *"When the call hits max duration, the bot says: 'נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית'. Keep this default?"* Options: "Use default *(Recommended)*" / "Write my own" (free-text capture). Written to spec section 1 as `**Max duration sentence:**` (omit the field when the default is kept — Skill 3 emits the default).
 13. **Max duration layer (v1.14.0):** if MCP is available per §2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]`, display the layers as an id+name table, then prompt via `AskUserQuestion` (header: "Max-duration layer"): *"Which layer should receive the call when max duration is reached?"* Written to spec section 1 as `**Max duration layer:**`. If MCP is unavailable or the user already declined MCP: **silently default `0`** — do NOT ask, do NOT re-run the §2.4.A install/auth offer; log to 7.3. `dailyLimitLayerId` and `IVRLayerSelect_2` are NOT asked and keep their default `3` (out of scope).
 14. **Record agent calls:** boolean. Default `false`. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Record calls", 2 options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this in the JSON as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
+15. **Negative instructions (v1.16.0):** optional free text — the UI's AI Security Settings field: what the agent must never say or commit to (legally, medically, financially — e.g., "never promise a refund", "never give medical advice"). Prompt once via `AskUserQuestion` per Section 2.4.B (header: "Guardrails", 2 options: "Skip — none *(Recommended)*" / "Add never-say rules" with free-text capture). Written to spec section 1 as `**Negative instructions:**`; omit the field entirely when skipped. **NOT emitted to the wire JSON** — the wire field name is unverified; Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step (paste into the UI's AI Security Settings → Negative Instructions). Check 15 may also relocate must-never-say content here from prompt fields.
 
 **Write at end of Phase 1:** spec sections 1, 3, and 4.6 (only if the user supplied a catalog intent).
 
@@ -368,7 +369,7 @@ Ask:
 
 #### 3.5.1 Per-RT capture
 
-**For all RTs:** capture slot list — name (free text), `ParameterTypeId` (closed set per Appendix B → prompt via `AskUserQuestion`, header "Slot type", 4 options: STRING / PHONE / BOOLEAN / ENUM, with Other for the unsupported-type fallback path), `IsRequired` (yes/no → prompt via `AskUserQuestion`, header "Required?"), `CollectionOrder` (integer, free text), `OptionList` for ENUM (free-text capture of `{Value, Label}` pairs).
+**For all RTs:** capture slot list — name (free text), `ParameterTypeId` (closed set per Appendix B → prompt via `AskUserQuestion`, header "Slot type", 4 options: STRING / PHONE / BOOLEAN / ENUM, with Other for the unsupported-type fallback path), `IsRequired` (yes/no → prompt via `AskUserQuestion`, header "Required?"), `CollectionOrder` (integer, free text), `OptionList` for ENUM (free-text capture of `{Value, Label}` pairs), and `DefaultValue` (optional, v1.16.0 — NEVER prompted; record on the slot line only when the user volunteers a pre-filled value, most commonly `true`/`false` on a BOOLEAN slot. Omitted ⇒ Skill 3 emits `""`).
 
 For unsupported types (number, integer, date, email — captured via the `ParameterTypeId` Other branch): emit STRING (ParameterTypeId 1) and flag the slot for Skill 2 to author a `validationPrompt` enforcing format. Note in section 7.3: "Slot `[name]` requires natural-language validation (v1 type fallback: STRING)."
 
@@ -611,6 +612,7 @@ Open unknowns: <count from 7.4>
 - Edit channel scope from one channel to two (newly-active channel gets templated defaults)
 - Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that Skill 3 check 7 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / IVRLayerSelect_2) (v1.13.0)
+- Edit the §1 `Negative instructions` field (v1.16.0)
 - Edit `**Sensitive:**` / `**Max turns:**` / `**Max turns sentence:**` / `**IsSilenceIntent:**` on an intent (v1.14.0) — re-run Checks 23/24 after the edit
 
 **Hard-change taxonomy** (cascade reset required — see 4.5):
@@ -863,11 +865,12 @@ No user prompt required.
 **Trigger:** case-insensitive substring search across `prompts.persona`, `prompts.voiceInstructions`, `prompts.intentInstructions`, and all per-intent `validationPrompt` fields. v1 stem list: `gdpr`, `hipaa`, `pii`, `personally identifiable`, `medical advice`, `legal advice`, `financial advice`, `we do not store`, `we do not retain`, `data retention`, `do not provide professional`. Fire if any stem matches.
 
 **Failure message:**
-> Detected generic-policy boilerplate `"[matched stem]"` in `[field]`. Per Compass §2 anti-list ("generic content-policy lists"), the prompt cannot enforce GDPR/HIPAA/PII compliance — these belong in the data plane (Presidio redaction, dialplan recording-consent gating, SIEM audit). Putting them in the prompt is "a liability waiting to surface in your next HIPAA audit" (Prediction Guard analysis cited in Compass). Two paths:
->   (a) Confirm the boilerplate is appropriate to this bot's domain (e.g., medical-domain bot rightly mentions HIPAA) and keep it.
->   (b) Remove the boilerplate and rely on platform-side controls (or accept that prompt-side enforcement is probabilistic).
+> Detected generic-policy boilerplate `"[matched stem]"` in `[field]`. Per Compass §2 anti-list ("generic content-policy lists"), the prompt cannot enforce GDPR/HIPAA/PII compliance — these belong in the data plane (Presidio redaction, dialplan recording-consent gating, SIEM audit). Putting them in the prompt is "a liability waiting to surface in your next HIPAA audit" (Prediction Guard analysis cited in Compass). Three paths:
+>   (a) Relocate the content to the spec's §1 `**Negative instructions:**` field — the product's dedicated AI Security Settings destination for "what the agent must never say or commit to." *(Recommended for must-never-say / must-never-commit content, v1.16.0)*
+>   (b) Confirm the boilerplate is appropriate to this bot's domain (e.g., medical-domain bot rightly mentions HIPAA) and keep it in place.
+>   (c) Remove the boilerplate and rely on platform-side controls (or accept that prompt-side enforcement is probabilistic).
 
-**Remediation:** record user's decision per match in 7.3 — `Compass rule 7 advisory: stem "[X]" in [field] — user kept|removed`. Do not auto-remove.
+**Remediation:** record user's decision per match in 7.3 — `Compass rule 7 advisory: stem "[X]" in [field] — user relocated to §1 Negative instructions|kept|removed`. On relocate: move the matched content out of the prompt field and append it to §1 `**Negative instructions:**` (creating the field if absent). Do not auto-remove or auto-relocate without the user's choice.
 
 **Gating:** `[any]`.
 

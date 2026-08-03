@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-08-03
+
+UI-parity improvements for the bot-builder pipeline (voicenter-bot-builder 1.16.0), from the product-UI parity audit: boolean/slot default values and a first-class home for AI-security "never say" content.
+
+### Skills
+
+- **Slot `DefaultValue` capture (audit 4.3).** The section-4 slot line gains an optional `DefaultValue` segment (`..., OptionList [if ENUM], DefaultValue [value]`) — most common on BOOLEAN slots, per the product UI. Skill 1 never prompts for it; it is recorded only when the user volunteers a pre-filled value. Skill 3's parse grammar accepts the optional segment (older slot lines stay valid) and wires it to `IntentParameters[].DefaultValue`, which previously always emitted `""`.
+- **Section 1 `Negative instructions` field (audit 3.2).** New optional spec field mirroring the UI's AI Security Settings free-text field ("what the agent cannot say or commit to — legally, medically, etc."). Skill 1 asks once in Phase 1 (header "Guardrails", skip-by-default) and can edit it in patch mode. **Parse-only at emission** — the wire field name is unverified, so Skill 3 emits a MANDATORY POST-IMPORT banner step telling the operator to paste the text into the UI's AI Security Settings instead of guessing a JSON key.
+- **Check 15 (generic-policy boilerplate) reworked.** The advisory's recommended resolution for must-never-say/never-commit content found in prompt fields is now *relocation* to §1 `Negative instructions` (new option a), instead of the old confirm-or-remove binary that actively discouraged exactly the content the product has a dedicated field for. Resolution log format extended: `user relocated to §1 Negative instructions|kept|removed`.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-spec-designer/README.md` and `docs/skills/voicenter-bot-json-assembler/README.md` mirrored (Phase-1 item, patch-mode list, parse grammar, `IntentParameters[]` mapping, banner example, doctrine-check table row 15).
+
+### Versioning
+
+- voicenter-bot-builder 1.15.1 → 1.16.0, marketplace metadata 1.16.1 → 1.17.0. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.16.1] — 2026-08-02
 
 Bug fix for the bot-builder pipeline: RT=1 transfer intents could get farewell/hang-up-style loading-announcement wording instead of transfer-style wording (voicenter-bot-builder 1.15.1).

@@ -59,6 +59,7 @@ Skill 3 reads the Agent Spec as a fixed grammar — no synonyms, no flexibility,
 - **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`.
 - **Section 1 optional limit fields (v1.13.0):** `**Daily limit:**` (int), `**Daily limit layer:**` (int), `**Max duration layer:**` (int), `**Daily limit sentence:**` (free text), `**Max duration sentence:**` (free text), `**IVRLayerSelect_2:**` (int). All optional; absence parses to defaults 600 / 3 / 3 / production-default sentence / production-default sentence / 3 (see the version-envelope mapping below). A non-integer where an int is expected is a parse error.
+- **Section 1 `**Negative instructions:**` (v1.16.0, optional):** free text. **Parse-only — never emitted to the wire JSON** (the wire field name is unverified). When present, the banner gains a MANDATORY POST-IMPORT step: paste the text into the UI's AI Security Settings → Negative Instructions field.
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms.
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. Angle brackets, literal token.
 - **Intent header in section 4:** `### Intent N: <identifier>` where N is the 1-based ordinal.
@@ -68,7 +69,7 @@ Skill 3 reads the Agent Spec as a fixed grammar — no synonyms, no flexibility,
 - **Sensitive in section 4 (v1.13.0, optional):** `**Sensitive:** true|false` only. Absence parses as `false`. Any other value is a parse error.
 - **Intent header in section 5:** `### Intent: <identifier>`.
 - **Section 4.5.5 (v1.13.0, optional):** header exact `### 4.5.5 CustomData keys (per-call payload)` under `## 4.5 Available Variables`; entries `- \`{{key}}\` — <meaning>`. Absence ⇒ empty CustomData key list (check 7 then allows only 4.5.1–4.5.4 references).
-- **Slot lines** in section 4: numbered, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM]`.
+- **Slot lines** in section 4: numbered, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM], DefaultValue [value]`. The `DefaultValue` segment is optional (v1.16.0); absence parses to `""` (the older slot-line format without the segment remains valid).
 - **Transition lines** in section 4: numbered list under `**Transitions out:**`, target identifier optionally followed by a parenthetical role label.
 - **RT-specific sub-labels in section 4:**
   - RT=1: `**Layer:**` followed by an integer.
@@ -333,6 +334,11 @@ The banner is rendered **above** the JSON (single-conversation runtime) or as a 
 #   - IntentConfig.additional defaults applied (max_turns / sensitive / max_turns_sentence) on intents without spec overrides (v1.13.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
 #   - [...]
+#
+# MANDATORY POST-IMPORT STEP (v1.16.0 — emitted whenever spec section 1 carries **Negative instructions:**):
+#   - Negative instructions are NOT emitted to the JSON (wire field unverified) — after import, paste the
+#     spec's Negative instructions text into the UI's AI Security Settings → Negative Instructions field:
+#     "<spec section 1 Negative instructions text>"
 ```
 
 Each section is always emitted, even if its content is "(none)" — consistent banner shape regardless of whether the spec was tidy. The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that wasn't authored in the spec; this makes Skill 3's contributions auditable.
@@ -396,7 +402,7 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 **`intents[]` — 17-field shape:** restored intent-root `IsActive: 1` and intent-root `AccountId`. `IsSilenceIntent` is now integer 0/1 (was boolean). `IntentSources` shape expanded to `{ SourceID, SourceName, IntentSourceID }` (was `{ SourceID: 1 }` only). `max_turns` / `max_turns_sentence` added with RT-conditional defaults (RT=2 defaults to `max_turns: 15` — rationale preserved; **relocated into `IntentConfig.additional` in v1.13.0**, where non-RT=2 intents now default to `5` instead of omitting).
 
-**`IntentParameters[]`:** audit fields added (`Schema: null`, `CreatedBy` from spec section 1, `ModifiedBy: " "` literal space, `CreatedDate`, `ModifiedDate`). `IsRequired` and `IsActive` are now integers. `OptionList` is `null` for non-ENUM (not `[]`). `DefaultValue` is `""` (not `null`). Full nested `ParameterType` object with frozen constants (per-type dictionary values CORRECTED in v1.13.0 — see the `ParameterType` system dictionary section above; the v1.5.0 BOOLEAN/ENUM rows were extrapolated guesses).
+**`IntentParameters[]`:** audit fields added (`Schema: null`, `CreatedBy` from spec section 1, `ModifiedBy: " "` literal space, `CreatedDate`, `ModifiedDate`). `IsRequired` and `IsActive` are now integers. `OptionList` is `null` for non-ENUM (not `[]`). `DefaultValue` is `""` (not `null`); v1.16.0: populated from the spec slot-line's optional `DefaultValue` segment when present. Full nested `ParameterType` object with frozen constants (per-type dictionary values CORRECTED in v1.13.0 — see the `ParameterType` system dictionary section above; the v1.5.0 BOOLEAN/ENUM rows were extrapolated guesses).
 
 **`botIntents[]`:** `BotId`/`IntentId` lowercase `d`. `DTMFList: []` always emitted. `BotVersionId: -2` added. `SortOrder` is 0-based. `ConditionGroupList` now populated by default with structural entry.
 

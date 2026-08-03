@@ -120,6 +120,7 @@ Specifically, the parser expects:
 - **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error (§3.2) — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`. Bold markdown around the colon-terminated label, exactly as written.
 - **Section 1 optional limit fields (v1.13.0; maxDurationLayerId default revised v1.14.0):** `**Daily limit:**` (int), `**Daily limit layer:**` (int), `**Max duration layer:**` (int), `**Daily limit sentence:**` (free text), `**Max duration sentence:**` (free text), `**IVRLayerSelect_2:**` (int). All optional; absence parses to defaults 600 / 3 / **0** / production-default sentence / production-default Hebrew sentence / 3 (see §4.2.2). A non-integer where an int is expected is a parse error.
+- **Section 1 `**Negative instructions:**` (v1.16.0, optional):** free text. **Parse-only — NOT emitted to the wire JSON** (the wire field name is unverified). When present, Skill 3 emits a MANDATORY POST-IMPORT banner step telling the operator to paste the text into the UI's AI Security Settings → Negative Instructions field (§7.2). Absence ⇒ no banner step.
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms (e.g., `[done]`, `[in progress]`).
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. The angle-bracket format is not optional; `(UNKNOWN: ...)` is a parse error.
 - **Intent header in section 4:** `### Intent N: <identifier>` where N is the 1-based ordinal and identifier is snake_case. The number determines section 4 ordering (used for first-intent start-marker logic in `botIntents[]`).
@@ -130,7 +131,7 @@ Specifically, the parser expects:
 - **IsSilenceIntent in section 4 (v1.14.0, optional):** `**IsSilenceIntent:** true|false` only. Absence parses as `false`. Any other value is a parse error. Drives the intent-root `IsSilenceIntent` integer (§4.3.1 row 13).
 - **Intent header in section 5:** `### Intent: <identifier>` (no ordinal). Identifier matches a section 4 entry.
 - **Section 4.5.5 (v1.13.0, optional):** header exact `### 4.5.5 CustomData keys (per-call payload)` under `## 4.5 Available Variables`; entries `- \`{{key}}\` — <meaning>`. Absence ⇒ empty CustomData key list (check 7 then allows only 4.5.1–4.5.4 references).
-- **Slot lines in section 4:** numbered list under `**Slots:**` heading, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM]`.
+- **Slot lines in section 4:** numbered list under `**Slots:**` heading, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM], DefaultValue [value]`. The `DefaultValue` segment is optional (v1.16.0); absence parses to `""` (the pre-v1.16.0 slot-line format without the segment remains valid).
 - **Transition lines in section 4:** numbered list under `**Transitions out:**` heading, each item is a target intent identifier optionally followed by a parenthetical role label (e.g., `1. get_available_slots (success path)`).
 - **RT-specific sub-labels in section 4:** for RT=1 intents, `**Layer:**` followed by an integer. For RT=2 intents, `**URL:**`, `**Method:**`, `**Headers:**`, `**Body:**`, and `**API silence behavior:**` (the silence block has six sub-bullets exact: `silence_duration:`, `silence_loops:`, `silence_sentence:`, `silence_ending_sentence:`, `silence_instructions:`, `fallback intent:`). For RT=3 intents, the RT-specific block is empty (no sub-bullets). For RT=4 intents, `**Dial source:**` (`parameter` | `static`), then either `**Parameter phone:**` (slot identifier, when dial-source=parameter) or `**Phone1:** / **Phone2:** / **Phone3:**` (when dial-source=static); plus `**selectdial_option:**`, `**NEXT_VO_ID:**`, `**MAX_DIAL_DURATION:**`, `**Record:**`, optional `**Announcement:**` / `**Loading announcement:**` / `**Post-execution intent instructions:**`, and `**Response success:**` (object with `instructions` key).
 
@@ -439,7 +440,7 @@ For each slot in section 5, build a parameter entry. Emit fields in this order (
 | 9 | `CreatedDate` | ISO timestamp at assembly time |
 | 10 | `Description` | Section 5 slot description |
 | 11 | `ParameterId` | Cached `<intent>.<slot> → ParameterId` placeholder |
-| 12 | `DefaultValue` | Slot default if set; else `""` (NOT `null` — v1.5.0 correction) |
+| 12 | `DefaultValue` | Spec slot-line `DefaultValue` segment if present (v1.16.0); else `""` (NOT `null` — v1.5.0 correction) |
 | 13 | `ModifiedDate` | ISO timestamp at assembly time |
 | 14 | `ParameterType` | Full nested object — see table below |
 | 15 | `CollectionOrder` | Slot order (1-indexed) |
@@ -1014,6 +1015,11 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   - silence_behaviour.intent = <placeholder> is a pre-import placeholder the import procedure does NOT
 #     remap — after import, set the silence forward to "<display name>" in the UI
 #     (the target intent is identifiable by IsSilenceIntent: 1).
+#
+# MANDATORY POST-IMPORT STEP (v1.16.0 — emitted whenever spec section 1 carries **Negative instructions:**):
+#   - Negative instructions are NOT emitted to the JSON (wire field unverified) — after import, paste the
+#     spec's Negative instructions text into the UI's AI Security Settings → Negative Instructions field:
+#     "<spec section 1 Negative instructions text>"
 ```
 
 Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.

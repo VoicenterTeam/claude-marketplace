@@ -19,7 +19,7 @@ Skill 1 fills these spec sections:
 
 | Section | Content |
 |---|---|
-| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls; optional limit fields (v1.13.0): daily limit, daily-limit layer, max-duration layer, limit sentences, `IVRLayerSelect_2` |
+| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls; optional limit fields (v1.13.0): daily limit, daily-limit layer, max-duration layer, limit sentences, `IVRLayerSelect_2`; optional `Negative instructions` (v1.16.0, AI-security never-say field — banner-only, not emitted to the JSON) |
 | 2. Persona Bundle | `persona`, voice/chat instructions, opening behavior, opening announcement |
 | 3. Caller Silence Behavior | Mandatory (v1.11.0) — 4 silence fields (with defaults) + the silence forward intent |
 | 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields; v1.13.0 adds the staggering fields (`**Captures answer to:**` / `**Asks next:**`) and `**Terminal outcome:**` on RT=1 terminals |
@@ -106,6 +106,7 @@ Captures section 1 + section 3:
 10. **Created by** — bot author/owner name (free text). Optional; `AskUserQuestion` (header: "Created by", options: "Skip (default: empty)" / "Provide a name"). Written to spec section 1 as `**Created by:**`. **Purpose:** Skill 3 v1.5.0+ uses this value to populate `IntentParameters[].CreatedBy` (production-required audit field).
 11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
 12. **Record agent calls** — boolean, default `false`. `AskUserQuestion` (header: "Record calls", options: "No — do not record *(Recommended)*" / "Yes — record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits this as the **string** `"false"` / `"true"` (not a JSON boolean) — production export shape.
+13. **Negative instructions (v1.16.0)** — optional free text: the UI's AI Security Settings field for what the agent must never say or commit to (legally, medically, financially — e.g., "never promise a refund", "never give medical advice"). `AskUserQuestion` (header: "Guardrails", options: "Skip — none *(Recommended)*" / "Add never-say rules" with free-text capture). Written to spec section 1 as `**Negative instructions:**`; omitted entirely when skipped. **Not emitted to the wire JSON** (wire field name unverified) — Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step: paste the text into the UI's AI Security Settings → Negative Instructions. Self-validation Check 15 may also relocate must-never-say content here from prompt fields.
 
 ### Phase 2 — Persona Bundle
 
@@ -215,6 +216,7 @@ Used when the user wants to modify an existing spec.
 - Expand channel scope (newly-active channel gets templated defaults)
 - Edit the §4.5.5 CustomData key list (v1.13.0) — Check 8 re-runs after the edit; Skill 3 check 7 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / `IVRLayerSelect_2`) (v1.13.0)
+- Edit the §1 `Negative instructions` field (v1.16.0)
 
 **Hard changes** (cascade reset to `[detailed-revisit]` for affected intents):
 
@@ -409,7 +411,7 @@ Checks 11–15 extend the self-validation checklist (see table above) and run at
 | 12 | Intent `description` fields authored in English | Rule 4 — Intent description in English | Advisory |
 | 13 | Bot-level `prompts.intentInstructions` contains a language-lock guardrail (`NEVER infer language from caller name/accent/tone`) located in the final third (recency slot) of the field. | Rule 5 — Recency-slot language-lock guardrail | Advisory |
 | 14 | `voiceInstructions` pacing/length directives do not contradict each other (e.g., "speak slowly" + "be concise and fast") | Rule 6 — Contradictory pacing/length | Advisory |
-| 15 | `persona` and `intentInstructions` do not contain generic compliance boilerplate copied from policy documents | Rule 7 — Generic-policy boilerplate | Advisory |
+| 15 | `persona` and `intentInstructions` do not contain generic compliance boilerplate copied from policy documents (v1.16.0: the recommended resolution for must-never-say/never-commit content is relocation to the §1 `Negative instructions` field, not removal) | Rule 7 — Generic-policy boilerplate | Advisory |
 
 **Rule-11 mirror on rewritten fields.** When Skill 1 patch mode rewrites any of `persona`, `voiceInstructions`, `chatInstructions`, or `intentInstructions`, it re-runs check 11 (English operational) on the rewritten content before accepting the change. This prevents a patch from accidentally introducing non-English bot-level prompt text.
 
