@@ -1,14 +1,14 @@
-# Field-placement doctrine — Voicenter bot-builder reference (v1.14.0)
+# Field-placement doctrine — Voicenter bot-builder reference (v1.17.0)
 
-**Source:** production root-cause analysis comparing a pipeline-generated bot against a hand-built, production-validated golden bot for the same use case, plus the user-confirmed design decisions of v1.13.0, plus the v1.14.0 two-reference-bot ground-truth pass (terminal farewell placement, dedicated silence/API-timeout forwarding intents, mandatory off-topic handling, sensitive-flag placement). This file is the authority on **which prompt field carries which kind of content**. Where any older doc phrasing implies a different placement, this file wins.
+**Source:** production root-cause analysis comparing a pipeline-generated bot against a hand-built, production-validated golden bot for the same use case, plus the user-confirmed design decisions of v1.13.0, plus the v1.14.0 two-reference-bot ground-truth pass (terminal farewell placement, dedicated silence/API-timeout forwarding intents, mandatory off-topic handling, sensitive-flag placement), plus the v1.17.0 turn-yield fact confirmed on live test-bot calls (a non-empty `announcement` makes the bot wait for a caller turn). This file is the authority on **which prompt field carries which kind of content**. Where any older doc phrasing implies a different placement, this file wins.
 
 **Read this when:** loaded by Skill 1, Skill 2, and Skill 3 at invocation per their §1 required-reading tables.
 
-**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6 (including the v1.14.0 off-topic rule). Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies (cross-reference checks 16–23).
+**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6 (including the v1.14.0 off-topic rule). Skill 2 owns FP-3 (including the v1.17.0 turn-yield rule), FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies (cross-reference checks 16–24).
 
 **One-line doctrine:**
 
-> **announcement** says it, **validationPrompt** captures it, **intentInstructions** routes it, **intentLoadingAnnouncement** covers the wait, **persona** rules it — each fact exactly once, in exactly one layer.
+> **announcement** asks it *and waits for the answer*, **validationPrompt** captures it, **intentInstructions** routes it (and speaks without yielding the turn), **intentLoadingAnnouncement** covers the wait, **persona** rules it — each fact exactly once, in exactly one layer.
 
 ---
 
@@ -37,7 +37,7 @@ Severity legend matches `voice-prompt-doctrine.md`: **blocking** = the owning sk
 
 | Field | Consumer | Allowed content | Forbidden content |
 |---|---|---|---|
-| `Configuration.announcement` | Spoken to the caller when the intent completes | The scripted content the caller must hear: read-back with `{{CustomData}}` vars + the next question (FP-2/FP-3) | Routing logic, capture rules, filler ("תודה."); **any content at all on RT=1 terminals (v1.14.0 — RT=1 never carries `announcement`; see the trigger rule below the table and FP-8)** |
+| `Configuration.announcement` | Spoken to the caller when the intent completes — **and then the bot yields the turn and WAITS for a caller answer (v1.17.0 turn-yield fact)** | The scripted content the caller must hear when the intent awaits an answer: read-back with `{{CustomData}}` vars + the next question (FP-2/FP-3) | Routing logic, capture rules, filler ("תודה."); **any content at all on an auto-chaining intent (`Asks next:` [none]) — the announcement stalls the call waiting for an answer that never comes (FP-3 turn-yield, v1.17.0)**; **any content at all on RT=1 terminals (v1.14.0 — RT=1 never carries `announcement`; see the trigger rule below the table and FP-8)** |
 | `IntentConfig.prompts.validationPrompt` | Intent Agent ONLY — never spoken, never seen by the voice model | Capture mapping, 1–3 bullets (FP-5); terminal outcome-value instruction per its mode | Scripts to speak, questions to ask, greetings, turn-taking guards, routing |
 | `Configuration.intentInstructions` (per-intent) | Voice model, after tool completion | Post-answer routing by Description text + the wait rule; mandated spoken lines via the FP-4 convention when needed | Setting/referencing parameters of other intents; call-wide rules (persona's job); re-mandating a sentence already in `announcement` |
 | `Configuration.intentLoadingAnnouncement` | Spoken while the tool executes | Short natural persona/gender-matched filler; on RT=1 terminals this is the intent's ONLY utterance — a short "יום טוב"-style line ("יום טוב!", "מעביר לנציג אנושי.") (v1.14.0) | Full content sentences; full farewell sentences; duplicate farewells |
@@ -76,12 +76,20 @@ Intent B  confirm_health_declaration  (Description: "confirming health declarati
 
 Structural encoding in the spec: section 4 fields `**Captures answer to:**` and `**Asks next:**` (Skill 1 fills them while walking the happy path).
 
-### FP-3 — Script home (blocking, Skill 2)
+### FP-3 — Script home + the turn-yield rule (blocking, Skill 2; verified by Skill 3 check 24)
 
-`announcement` is the primary home for spoken content. Per-intent `intentInstructions` may ALSO carry speech (via FP-4) when the step involves several questions or short mandated lines. `announcement` MAY be intentionally **empty** in EXACTLY two cases (v1.14.0 — both verified in production reference bots; log the choice to spec §7.3):
+**Turn-yield platform fact (v1.17.0 — confirmed on live test-bot calls):** a non-empty `announcement` makes the bot speak it and then **yield the turn — it waits for the caller to answer** before doing anything else. `announcement` is not merely "the spoken-content home"; it is a **wait-for-answer directive**. The placement rule follows directly from section-4 `**Asks next:**`:
+
+- **`Asks next:` is a question** (the intent awaits a caller answer) → `announcement` MUST be non-empty and MUST carry the read-back + that question (FP-2 staggering).
+- **`Asks next:` is `[none]`** (the intent auto-chains — its instructions immediately forward to the next intent) → `announcement` MUST be **empty**. Any line the caller must still hear moves to an FP-4 quoted line in the intent's post-execution `intentInstructions` (spoken without yielding the turn, immediately before the forward); pure acknowledgment belongs in `intentLoadingAnnouncement`.
+
+A non-empty announcement on an auto-chaining intent stalls the call: the bot speaks it, waits for a caller turn that never comes, and the silence loop fires ("האם אתם עדיין על הקו?"). **Scope:** RT=2 and RT=3 `announcement`. RT=1 never carries one (FP-8). RT=4's `announcement` is pre-dial speech — the platform initiates the dial immediately after, so no turn-yield applies.
+
+`announcement` remains the primary home for spoken content on answer-awaiting intents. Per-intent `intentInstructions` may ALSO carry speech (via FP-4) when the step involves several questions or short mandated lines. The two v1.14.0 production-verified intentional-empty cases are instances of the turn-yield rule (log every intentional-empty choice to spec §7.3):
 
 - **(a) API list read-out:** an RT=2 intent whose API response returns a list of items the bot must start reading immediately — the read-out lives entirely under the intent's `intentInstructions` reading instructions, and no fixed transition sentence is wanted.
 - **(b) Pre-terminal farewell-in-instructions:** the intent immediately before the final RT=1 terminal, with **no splits to other intents** — its farewell is an FP-4 quoted line in its own `intentInstructions` (the RT=1 farewell trigger rule, FP-1/FP-8).
+- **(c) Any other auto-chaining intent (v1.17.0):** `Asks next:` is `[none]` and the flow proceeds automatically — e.g., a collect-and-forward RT=3 gate, or an RT=2 whose success speech is carried by the FP-4 farewell lines in its own instructions.
 
 **Corollary (structural, Skill 1):** if the intent before the final RT=1 DOES have splits/transitions to other intents, Skill 1 must create a **dedicated pre-IVR intent whose only job is saying the ending sentence** before the terminal — case (b) never applies to a splitting intent.
 
@@ -195,5 +203,7 @@ ENUM (ParameterTypeId 19, with `OptionList`) is used only when a parameter selec
 | Stage markers / dialogue / business logic in Description | Degrades tool routing; leaks workflow into the tool layer | FP-10 | Skill 1 §3.4.3 authoring rule |
 | Re-authored ParameterType blocks | Schema drift vs the platform's system dictionary | — | Skill 3 check 21 |
 | "תודה." filler announcements | Stilted rhythm; extra speech obligation per turn | FP-3 | Skill 2 filler advisory |
+| Non-empty `announcement` on an auto-chaining intent (`Asks next:` [none]) (v1.17.0) | Bot speaks it, yields the turn, and waits for an answer that never comes → silence loop → "האם אתם עדיין על הקו?" | FP-3 | Skill 2 checks 10/16; Skill 3 check 24 |
+| Explicit wait rule ("stop and wait for the customer's answer") in an auto-chaining intent's `intentInstructions` (v1.17.0) | Voice model obeys post-execution, stalls waiting for a turn that never comes → silence loop | FP-3 | Skill 2 step-4 authoring rule; Skill 3 check 24 (advisory half) |
 | Full farewell inside an RT=1 terminal's `announcement` / loading announcement (v1.14.0) | Double farewell + farewell spoken from the wrong layer; predecessor forwards mid-sentence | FP-8 | Skill 2 check 18; Skill 3 check 20 |
 | No off-topic rule in persona / no dedicated off-topic global intent (v1.14.0) | Bot chats off-scope indefinitely; no escape hatch when the caller won't return to the flow | FP-6 | Skill 1 checks 20/22; Skill 3 check 23 |

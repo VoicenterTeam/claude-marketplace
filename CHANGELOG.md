@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-08-03
+
+Turn-yield announcement doctrine for the bot-builder pipeline (voicenter-bot-builder 1.17.0), root-caused from live test-bot calls: a non-empty `announcement` makes the bot yield the turn and **wait for a caller answer** before doing anything else.
+
+### Skills
+
+- **FP-3 rewritten as "Script home + the turn-yield rule" (field-placement doctrine v1.17.0).** `announcement` is a wait-for-answer directive, not just the spoken-content home. Placement now follows section-4 `**Asks next:**` directly: a question ⇒ non-empty announcement carrying the read-back + that question (FP-2); `[none]` (auto-chaining) ⇒ announcement MUST be the empty string, with any remaining spoken line moved to an FP-4 quoted line in the post-execution `intentInstructions` immediately before the forward. The two v1.14.0 intentional-empty cases (API-list read-out, pre-terminal farewell) become named instances, joined by case (c): any auto-chaining intent. Scope: RT=2/RT=3 (RT=1 never carries an announcement; RT=4's is pre-dial speech). Diagnosed failure mode: bot speaks the announcement, waits for a turn that never comes, silence loop fires ("האם אתם עדיין על הקו?").
+- **Skill 2 — check 10's announcement clause rewritten; question-less announcement rule added (blocking).** RT=2 `announcement` is now conditional (non-empty iff `**Asks next:**` is a question) instead of unconditionally required; `fail_output`/`function_output`/`response_success` unchanged. New blocking step-3 rule: any RT=2/RT=3 announcement on an `**Asks next:** [none]` intent must be emptied. Check 16 (staggered consistency) extended with the `[none]` arm: empty announcement + no wait rule in instructions.
+- **Skill 2 — the explicit wait rule scoped (step 4).** "Stop and wait for the customer's explicit answer" is authored ONLY on intents that actually ask a question; auto-chaining intents get the opposite instruction (`Immediately forward the call to <next intent's Description>, without waiting for a response from the customer.`). Root-caused from a live call where the wait rule on an auto-chaining collect intent stalled the bot post-capture into the silence loop.
+- **Skill 3 — new cross-reference check 24 (turn-yield announcement gating), pass extended to 24 checks (9 field-placement).** Blocking half: every RT=2/RT=3 intent with `**Asks next:** [none]` has `announcement === ""`. Advisory half: those intents' `intentInstructions` carry no wait-rule phrasing. Remediation routes to Skill 2 reactivation. Frontmatter gate, §6 counts/run-order, RT=2/RT=3 emission notes, quirk 5, and both remediation tables updated.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-intent-detail-author/README.md` (RT=2/RT=3 field tables, iron rules, checks 10/16, new question-less announcement rule) and `docs/skills/voicenter-bot-json-assembler/README.md` (cross-reference pass intro/count/run order; added rows for checks 23 and 24 — the check table had been stale at twenty-two since v1.13.0) mirrored.
+
+### Versioning
+
+- voicenter-bot-builder 1.16.0 → 1.17.0, marketplace metadata 1.17.0 → 1.18.0. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.17.0] — 2026-08-03
 
 UI-parity improvements for the bot-builder pipeline (voicenter-bot-builder 1.16.0), from the product-UI parity audit: boolean/slot default values and a first-class home for AI-security "never say" content.

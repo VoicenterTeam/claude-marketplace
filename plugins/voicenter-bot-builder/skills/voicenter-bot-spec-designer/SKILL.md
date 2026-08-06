@@ -33,7 +33,7 @@ Before any user interaction, load context from these references. Path convention
 | Doc 2 §3 — Agent Spec template | What Skill 1 writes |
 | Doc 2 §4 — Skill 1 architecture | What Skill 1 does |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 1 owns checks 11–15 (rules 3–7) and the rule 11 mirror |
-| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.14.0) — FP-1…FP-13; Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6 (incl. the v1.14.0 off-topic rule), and checks 18–24 |
+| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13 incl. the FP-3 turn-yield rule (v1.17.0: `**Asks next:**` [none] ⇒ empty announcement); Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6 (incl. the v1.14.0 off-topic rule), and checks 18–24 |
 
 Also load these files from this skill's package:
 
