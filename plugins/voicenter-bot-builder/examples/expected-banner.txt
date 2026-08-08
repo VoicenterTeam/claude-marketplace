@@ -1,0 +1,61 @@
+# Voicenter Bot JSON — generation banner
+# Skill suite: v1
+# Generated: 2026-08-08T09:15:00Z
+# Source spec: sample-spec-detailed.md (F1 baseline fixture)
+# Source spec version: 1.0.0
+#
+# UNKNOWN VALUES — user must replace before import:
+#   - (none)
+#
+# DRIFT NOTES (section 6 sanity check):
+#   - 6.5: spec lists IntentId placeholders -1..-10; Skill 3 §4.1 allocates the -10 series
+#     (-10..-19). Derivative section only — sections 4-5 are authoritative and were emitted
+#     correctly. Root cause is a contradiction between spec-skeleton.md §6.5 ("-1, -2, -3, ...")
+#     and Skill 3 §4.1 (IntentId range "-10, -11, -12, ..."); see examples/baseline-notes.md N7.
+#   - 6.1: no drift (11 references regenerated, 11 in spec).
+#   - 6.2: no drift (5 authored transitions; no global fan-out per v1.12.0).
+#   - 6.3: no drift (1 RT=2 pairing).
+#   - 6.4: no drift (escalation implicit via the transfer_to_human type-2 global).
+#
+# RECONCILIATION (section 7.4 vs emitted sentinels):
+#   - 7.4 and emitted sentinels in agreement (7.4 is empty; no sentinels emitted).
+#
+# DOCTRINE SENTINELS (Compass advisories not resolved during authoring):
+#   - No doctrine sentinels.
+#   - Token estimate: 1961 tok (advisory threshold 1,500-4,999; expect noticeable barge-in lag
+#     and instruction-drop risk above ~2,500 per Compass §4). See
+#     references/voice-prompt-doctrine.md rule 1.
+#
+# DEFAULTS APPLIED:
+#   - ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled = "true" (v1.5.0 lean payload constant)
+#   - ActiveVersionInfo.AIModelConfig.daily_limit = 600 (v1.13.0 default — spec section 1 omits it)
+#   - ActiveVersionInfo.AIModelConfig.dailyLimitLayerId = 3 (v1.14.0 default — account-specific, verify after import)
+#   - ActiveVersionInfo.AIModelConfig.IVRLayerSelect_2 = 3 (v1.14.0 default — account-specific, verify after import)
+#   - ActiveVersionInfo.AIModelConfig.daily_limit_sentence = production-derived English default (spec section 1 omits it)
+#   - ActiveVersionInfo.AIModelConfig.max_duration_sentence = production-derived Hebrew default (spec section 1 omits it)
+#   - intents[].MaxAttempts = 3 on all 10 intents (Doc 1 §9.0 default — spec sets no explicit value)
+#   - intents[].Priority = 1, ValidationTimeout = 30, IntentCategoryId = -3 (Doc 1 §9.0 / §16 constants)
+#   - intents[].IntentScripts = [], HandlingInstructions = null, ValidationRules = {} (§16 preserved quirks)
+#   - botIntents[].ConditionGroupList / intentRelations[].ConditionGroupList = structural default entry (v1.5.0)
+#   - intentCategories[].Name = bot name (v1.12.0 — replaces the hardcoded "Default Category")
+#   - IntentConfig.additional: no defaults applied — max_turns, sensitive and max_turns_sentence
+#     are authored explicitly on all 10 intents in spec section 4.
+#
+# MANDATORY POST-IMPORT STEP (v1.14.0 — emitted whenever silence_behaviour.intent is a placeholder):
+#   - silence_behaviour.intent = -19 is a pre-import placeholder the import procedure does NOT
+#     remap — after import, set the silence forward to "Handing the call to a human representative"
+#     in the UI. NOTE: this bot has no intent with IsSilenceIntent: 1, because spec section 3 points
+#     the failover at an existing flow intent per Skill 1 §3.1 step 9 option (c), which is logged in
+#     spec section 7.3. Identify the target by display name rather than by the IsSilenceIntent flag.
+#
+# MANDATORY POST-IMPORT STEP (v1.16.0 — emitted whenever spec section 1 carries **Negative instructions:**):
+#   - Negative instructions are NOT emitted to the JSON (wire field unverified) — after import, paste the
+#     spec's Negative instructions text into the UI's AI Security Settings → Negative Instructions field:
+#     "Never provide medical advice, a diagnosis, or medication guidance of any kind. Never quote a price,
+#     confirm insurance coverage, or commit to what a visit will cost. Never promise that a specific
+#     clinician will be available beyond what the scheduling system returns."
+#
+# CROSS-REFERENCE PASS: 24 of 24 checks passed (0 blocking, 0 advisory failures).
+#   Checks 8/9/10 fired (model is models/gemini-3.1-flash-live-preview).
+#
+# Output file: bot-brightview_clinic-2026-08-08.json

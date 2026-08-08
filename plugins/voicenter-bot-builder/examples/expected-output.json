@@ -1,0 +1,1139 @@
+{
+  "Name": "Brightview Family Clinic Assistant",
+  "BotID": -1,
+  "AccountID": 4471,
+  "intentList": {
+    "intents": [
+      {
+        "Name": "Collecting the caller's name for an appointment",
+        "IntentId": -10,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Collecting the caller's name for an appointment",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Save the name the customer gave in the parameter caller_name.\n* If the customer gives only a first name, save just that.\n* If the customer refuses to give a name, leave caller_name unfilled."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4000
+          }
+        ],
+        "IntentToolName": "capture_caller_details",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "Thanks, {{caller_name}}. Which clinician would you like to see, and what day works best for you?",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. After asking, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.\n2. Once the customer answers, forward the call to Collecting the preferred clinician and date.\n\nIRON RULE: do not offer specific times yourself. Only the scheduling system knows what is open.",
+            "intentLoadingAnnouncement": "Great, let me note that down."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "caller_name",
+            "Schema": null,
+            "IntentId": -10,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The caller's first name, or full name if they give it, exactly as they say it.",
+            "ParameterId": -1000,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Collecting the preferred clinician and date",
+        "IntentId": -11,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Collecting the preferred clinician and date",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Save the clinician the customer named in the parameter preferred_clinician.\n* If the customer has no preference, save \"any\" in the parameter preferred_clinician.\n* Save the day the customer asked for in the parameter requested_date.\n* If the customer gives no day, leave requested_date unfilled."
+          },
+          "additional": {
+            "max_turns": 10,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4001
+          }
+        ],
+        "IntentToolName": "collect_appointment_preferences",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. Immediately forward the call to Fetching available appointment times, without waiting for a response from the customer.\n\nIRON RULE: do not guess at availability. The scheduling system is the only source of open times.",
+            "intentLoadingAnnouncement": "Perfect, let me check the calendar."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "preferred_clinician",
+            "Schema": null,
+            "IntentId": -11,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The clinician the caller asked for, by name or by role (for example \"Dr Ellison\" or \"any GP\").",
+            "ParameterId": -1001,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          },
+          {
+            "Name": "requested_date",
+            "Schema": null,
+            "IntentId": -11,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The day the caller wants, exactly as they said it (for example \"next Tuesday\", \"the 14th\").",
+            "ParameterId": -1002,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 2,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Fetching available appointment times",
+        "IntentId": -12,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Fetching available appointment times",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* This intent collects nothing from the customer; it reads the scheduling system only."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4002
+          }
+        ],
+        "IntentToolName": "fetch_available_slots",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "url": "http://127.0.0.1:8787/available-slots",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "requested_date": "{{requested_date}}",
+              "preferred_clinician": "{{preferred_clinician}}",
+              "patient_record_id": "{{patient_record_id}}"
+            },
+            "fail_output": "I can't reach the scheduling system right now, so let me put you through to one of the team.",
+            "announcement": "I have three openings with {{clinician.name}}: {{available_slots.0.display}}, {{available_slots.1.display}}, and {{available_slots.2.display}}. Which of those times works best for you?",
+            "function_output": {
+              "default": "Something went wrong while I was checking the calendar."
+            },
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. After reading the available times, stop and wait for the customer's explicit answer. Do not proceed until the customer responds.\n2. If the customer picks one of the times, forward the call to Confirming the chosen appointment time.\n3. If the scheduling system returned nothing usable, forward the call to Handing the call to a human representative.\n\nIRON RULE: read back only the times the scheduling system returned. Never invent or approximate a time.",
+            "api_silence_behaviour": {
+              "intent": -18,
+              "silence_loops": 2,
+              "silence_duration": 5,
+              "silence_sentence": "Still checking the calendar for you.",
+              "silence_instructions": "",
+              "silence_ending_sentence": "The scheduling system is taking too long, so I'll put you through to one of the team."
+            },
+            "intentLoadingAnnouncement": "Give me just a moment to look that up."
+          },
+          "ResponseTypeId": 2,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Confirming the chosen appointment time",
+        "IntentId": -13,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Confirming the chosen appointment time",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Save the time the customer picked in the parameter chosen_slot, worded exactly as it was read out.\n* If the customer picks none of the offered times, leave chosen_slot unfilled."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4003
+          }
+        ],
+        "IntentToolName": "confirm_slot_booking",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. Say to the customer : \"You're all set, and we'll see you then.\"\n2. Immediately forward the call to Ending the call after the appointment is booked, without waiting for a response from the customer.\n\nIRON RULE: never tell the customer that the call is being moved to a layer.",
+            "intentLoadingAnnouncement": "Lovely, booking that in for you now."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "chosen_slot",
+            "Schema": null,
+            "IntentId": -13,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The appointment time the caller picked, stored exactly as it was read out to them.",
+            "ParameterId": -1003,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Scheduling a callback for the caller",
+        "IntentId": -14,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Scheduling a callback for the caller",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Save the day and hour the customer asked to be called back in the parameter callback_time.\n* If the customer gives a day but no hour, leave callback_time unfilled until the hour is known."
+          },
+          "additional": {
+            "max_turns": 10,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4004
+          }
+        ],
+        "IntentToolName": "schedule_callback",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "announcement": "",
+            "response_success": {
+              "instructions": ""
+            },
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. Say to the customer : \"Perfect, we'll ring you back at {{callback_time}}.\"\n2. Immediately forward the call to Ending the call after a callback is arranged, without waiting for a response from the customer.\n\nIRON RULE: never tell the customer that the call is being moved to a layer.",
+            "intentLoadingAnnouncement": "Of course, let me get that scheduled."
+          },
+          "ResponseTypeId": 3,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "callback_time",
+            "Schema": null,
+            "IntentId": -14,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The day and hour the caller asked to be called back, already resolved against today's date.",
+            "ParameterId": -1004,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Connecting the caller to the on-call nurse",
+        "IntentId": -15,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Connecting the caller to the on-call nurse",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Save what the customer said is urgent in the parameter urgency_note, in their own words.\n* If the customer gives no detail, save \"unspecified urgent concern\" in the parameter urgency_note."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4005
+          }
+        ],
+        "IntentToolName": "dial_on_call_nurse",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "phone1": "+15550142200",
+            "phone2": "",
+            "phone3": "",
+            "selectdial_option": "Static",
+            "NEXT_VO_ID": 4102,
+            "MAX_DIAL_DURATION": 60,
+            "record": true,
+            "announcement": "This sounds urgent, so I'm putting you through to our on-call nurse now.",
+            "intentLoadingAnnouncement": "Dialing the on-call nurse.",
+            "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. Once the dial is placed, say nothing further and let the nurse take over.\n\nIRON RULE: never comment on what the customer's symptoms might mean.",
+            "response_success": {
+              "instructions": ""
+            }
+          },
+          "ResponseTypeId": 4,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "urgency_note",
+            "Schema": null,
+            "IntentId": -15,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "A short note in the caller's own words about what is urgent, passed to the nurse.",
+            "ParameterId": -1005,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Ending the call after the appointment is booked",
+        "IntentId": -16,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Ending the call after the appointment is booked",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "1. Set booking_status to exactly this value; do not translate, paraphrase, or alter it: \"Appointment booked\"\n2. Never ask the customer to choose or confirm this value — it is fixed for this outcome."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4006
+          }
+        ],
+        "IntentToolName": "end_booking_confirmed",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "layer": 12,
+            "intentLoadingAnnouncement": "Have a great day!"
+          },
+          "ResponseTypeId": 1,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "booking_status",
+            "Schema": null,
+            "IntentId": -16,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The fixed outcome recorded when an appointment was successfully booked.",
+            "ParameterId": -1006,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Ending the call after a callback is arranged",
+        "IntentId": -17,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Ending the call after a callback is arranged",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "1. Set callback_status to exactly this value; do not translate, paraphrase, or alter it: \"Callback scheduled\"\n2. Never ask the customer to choose or confirm this value — it is fixed for this outcome."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4007
+          }
+        ],
+        "IntentToolName": "end_callback_scheduled",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "layer": 12,
+            "intentLoadingAnnouncement": "Speak to you soon!"
+          },
+          "ResponseTypeId": 1,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "callback_status",
+            "Schema": null,
+            "IntentId": -17,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The fixed outcome recorded when a callback was arranged.",
+            "ParameterId": -1007,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Handing the call to a human representative",
+        "IntentId": -18,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Handing the call to a human representative",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "* Compose a short note describing why this call was handed to a person and save it in the parameter handoff_reason."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4008
+          }
+        ],
+        "IntentToolName": "transfer_to_human",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "layer": 7,
+            "intentLoadingAnnouncement": "One moment, connecting you."
+          },
+          "ResponseTypeId": 1,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "handoff_reason",
+            "Schema": null,
+            "IntentId": -18,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "A short note composed per call describing why the call went to a person.",
+            "ParameterId": -1008,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      },
+      {
+        "Name": "Ending the call after repeated unrelated topics",
+        "IntentId": -19,
+        "IsActive": 1,
+        "Priority": 1,
+        "AccountId": 4471,
+        "Description": "Ending the call after repeated unrelated topics",
+        "MaxAttempts": 3,
+        "IntentConfig": {
+          "prompts": {
+            "llmDescription": "",
+            "validationPrompt": "1. Set closure_reason to exactly this value; do not translate, paraphrase, or alter it: \"Call ended after repeated unrelated topics\"\n2. Never ask the customer to choose or confirm this value — it is fixed for this outcome."
+          },
+          "additional": {
+            "max_turns": 5,
+            "sensitive": false,
+            "max_turns_sentence": "I'm sorry, I seem to be having trouble at the moment. Please do try again a little later."
+          }
+        },
+        "IntentScripts": [],
+        "IntentSources": [
+          {
+            "SourceID": 1,
+            "SourceName": "VOICE",
+            "IntentSourceID": -4009
+          }
+        ],
+        "IntentToolName": "end_off_topic",
+        "IntentResponces": {
+          "IsActive": 1,
+          "Configuration": {
+            "layer": 12,
+            "intentLoadingAnnouncement": "Goodbye now."
+          },
+          "ResponseTypeId": 1,
+          "SuccessCondition": ""
+        },
+        "IsSilenceIntent": 0,
+        "IntentCategoryId": -3,
+        "IntentParameters": [
+          {
+            "Name": "closure_reason",
+            "Schema": null,
+            "IntentId": -19,
+            "IsActive": 1,
+            "CreatedBy": "S0 baseline fixture",
+            "IsRequired": 1,
+            "ModifiedBy": " ",
+            "OptionList": null,
+            "CreatedDate": "2026-08-08 09:15:00",
+            "Description": "The fixed outcome recorded when the call ended after repeated unrelated topics.",
+            "ParameterId": -1009,
+            "DefaultValue": "",
+            "ModifiedDate": "2026-08-08 09:15:00",
+            "ParameterType": {
+              "Name": "STRING",
+              "IsActive": 1,
+              "CreatedBy": "SYSTEM",
+              "ModifiedBy": null,
+              "CreatedDate": "2025-01-21 11:25:25",
+              "Description": "Basic text input",
+              "ModifiedDate": null,
+              "ParameterTypeId": 1,
+              "ValidationPattern": null,
+              "IsCustomValidationAllowed": 1
+            },
+            "CollectionOrder": 1,
+            "ParameterTypeId": 1,
+            "ValidationRules": {}
+          }
+        ],
+        "ValidationTimeout": 30,
+        "HandlingInstructions": null
+      }
+    ],
+    "botIntents": [
+      {
+        "BotId": -1,
+        "DTMFList": [],
+        "IntentId": -10,
+        "IsActive": 1,
+        "SortOrder": 0,
+        "BotIntentId": -100,
+        "BotVersionId": -2,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3000,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -100,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": -1,
+        "DTMFList": [],
+        "IntentId": -14,
+        "IsActive": 1,
+        "SortOrder": 1,
+        "BotIntentId": -101,
+        "BotVersionId": -2,
+        "BotIntentTypeID": 1,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3001,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -101,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": -1,
+        "DTMFList": [],
+        "IntentId": -15,
+        "IsActive": 1,
+        "SortOrder": 2,
+        "BotIntentId": -102,
+        "BotVersionId": -2,
+        "BotIntentTypeID": 2,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3002,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -102,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": -1,
+        "DTMFList": [],
+        "IntentId": -18,
+        "IsActive": 1,
+        "SortOrder": 3,
+        "BotIntentId": -103,
+        "BotVersionId": -2,
+        "BotIntentTypeID": 2,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3003,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -103,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      },
+      {
+        "BotId": -1,
+        "DTMFList": [],
+        "IntentId": -19,
+        "IsActive": 1,
+        "SortOrder": 4,
+        "BotIntentId": -104,
+        "BotVersionId": -2,
+        "BotIntentTypeID": 2,
+        "ConditionGroupList": [
+          {
+            "Order": 1,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3004,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -104,
+            "IntentConditionRelationType": 1,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "BotIntentID"
+          }
+        ]
+      }
+    ],
+    "intentRelations": [
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": -11,
+        "OriginIntentID": -10,
+        "IntentRelatedID": -2000,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3005,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2000,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": -12,
+        "OriginIntentID": -11,
+        "IntentRelatedID": -2001,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3006,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2001,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": -13,
+        "OriginIntentID": -12,
+        "IntentRelatedID": -2002,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3007,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2002,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": -16,
+        "OriginIntentID": -13,
+        "IntentRelatedID": -2003,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3008,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2003,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      },
+      {
+        "Order": 0,
+        "DTMFList": [],
+        "NextIntentID": -17,
+        "OriginIntentID": -14,
+        "IntentRelatedID": -2004,
+        "ConditionGroupList": [
+          {
+            "Order": 0,
+            "IntentConditionList": [],
+            "IntentConditionName": "",
+            "IntentConditionGroupID": -3009,
+            "IntentConditionGroupType": 1,
+            "IntentConditionRelationID": -2004,
+            "IntentConditionRelationType": 2,
+            "IntentConditionGroupTypeName": "tool",
+            "IntentConditionRelationTypeName": "RelatedIntentID"
+          }
+        ]
+      }
+    ],
+    "intentCategories": [
+      {
+        "Name": "Brightview Family Clinic Assistant",
+        "IsActive": 1,
+        "AccountId": 4471,
+        "PriorityId": 1,
+        "Description": "Brightview Family Clinic Assistant",
+        "IntentCategoryId": -3
+      }
+    ],
+    "silenceRelations": [],
+    "apiSilenceRelations": [
+      {
+        "Configuration": {
+          "url": "http://127.0.0.1:8787/available-slots",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "requested_date": "{{requested_date}}",
+            "preferred_clinician": "{{preferred_clinician}}",
+            "patient_record_id": "{{patient_record_id}}"
+          },
+          "fail_output": "I can't reach the scheduling system right now, so let me put you through to one of the team.",
+          "announcement": "I have three openings with {{clinician.name}}: {{available_slots.0.display}}, {{available_slots.1.display}}, and {{available_slots.2.display}}. Which of those times works best for you?",
+          "function_output": {
+            "default": "Something went wrong while I was checking the calendar."
+          },
+          "response_success": {
+            "instructions": ""
+          },
+          "intentInstructions": "POST-EXECUTION BEHAVIOR\n1. After reading the available times, stop and wait for the customer's explicit answer. Do not proceed until the customer responds.\n2. If the customer picks one of the times, forward the call to Confirming the chosen appointment time.\n3. If the scheduling system returned nothing usable, forward the call to Handing the call to a human representative.\n\nIRON RULE: read back only the times the scheduling system returned. Never invent or approximate a time.",
+          "api_silence_behaviour": {
+            "intent": -18,
+            "silence_loops": 2,
+            "silence_duration": 5,
+            "silence_sentence": "Still checking the calendar for you.",
+            "silence_instructions": "",
+            "silence_ending_sentence": "The scheduling system is taking too long, so I'll put you through to one of the team."
+          },
+          "intentLoadingAnnouncement": "Give me just a moment to look that up."
+        },
+        "OriginIntentID": -12,
+        "ApiSilenceIntentID": -18
+      }
+    ]
+  },
+  "BotStatusId": 1,
+  "CreatedDate": "2026-08-08 09:15:00",
+  "Description": "Voice assistant that books, confirms and reschedules appointments for Brightview Family Clinic.",
+  "BotLanguages": [],
+  "ModifiedDate": null,
+  "AiModelConfig": {
+    "Name": "Gemini 3.1 - LLM driven",
+    "ApiKey": {},
+    "AIModel": 21,
+    "IsActive": 1,
+    "AccountId": 0,
+    "ModifiedBy": null,
+    "CreatedDate": "2026-08-08 09:15:00",
+    "ModifiedDate": "2026-08-08 09:15:00",
+    "AIModelConfig": {
+      "created": {
+        "model": "models/gemini-3.1-flash-live-preview"
+      }
+    },
+    "AIModelConfigID": 142
+  },
+  "ActiveVersionInfo": {
+    "IsActive": 1,
+    "CreatedDate": "2026-08-08 09:15:00",
+    "Description": "",
+    "BotVersionId": -2,
+    "ModifiedDate": null,
+    "SystemPrompt": "",
+    "AIModelConfig": {
+      "max_duration": 1200,
+      "daily_limit": 600,
+      "dailyLimitLayerId": 3,
+      "maxDurationLayerId": 0,
+      "daily_limit_sentence": "Sorry, but reached daily limit of calls duration, please try again later or contact the copany's support",
+      "max_duration_sentence": "נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית ",
+      "IVRLayerSelect_2": 3,
+      "prompts": {
+        "persona": "You are the virtual scheduling assistant for Brightview Family Clinic, a small family practice. Your role is narrow and practical: you help callers book a new appointment, pick a time from the clinic's live availability, or arrange a callback when they cannot talk. You speak English only, in a warm and unhurried register, and you never switch to another language.\n\nYou are not a clinician. You do not interpret symptoms, and you do not reassure callers about what their symptoms mean. When a caller describes something that sounds urgent, your only job is to get them to the on-call nurse quickly.\n\nTURN TAKING\nYou should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer.\n\nHUMAN REPRESENTATIVE REQUESTS\nIf the caller asks to speak with a person, tell the customer : \"Of course, let me put you through to one of the team.\"\nThen forward the call to Handing the call to a human representative.\n\nUNRELATED TOPICS\nYou must never discuss subjects that have nothing to do with Brightview Family Clinic appointments (for example: politics, world news, personal opinions about medicine).\nWhen the caller raises such a subject, tell the customer : \"I'm sorry, I can only help with clinic appointments. Shall we carry on?\"\nIf the caller keeps raising unrelated subjects 2 times, you must say : \"I'll let you go now — take care.\"\nThen forward the call to Ending the call after repeated unrelated topics.\nTake care not to mistake an ordinary clinic word for an unrelated subject.",
+        "voiceInstructions": "Speak at an even, unhurried pace. Let the caller finish before you reply, and if they start speaking while you are talking, stop immediately and listen.\n\nRead clinic times back the way a person would say them — \"Tuesday the fourteenth, half past nine\" rather than reading the raw string. When you read back a name you captured, say it once and move on; do not spell it out unless the caller asks.\n\nKeep each turn to roughly one or two sentences so the caller always gets a turn quickly. Use short acknowledgements like \"of course\" or \"got it\" while you are working, so the line is never silent.",
+        "chatInstructions": "[default — not user-authored]\n\nYou are writing as the virtual scheduling assistant for Brightview Family Clinic, a small family practice. Maintain the same identity and tone as defined in the global persona.\n\nChat-channel guidelines:\n\n1. Keep messages short and focused — typically 1-3 sentences per turn unless explaining something complex.\n2. No emojis unless the user uses them first.\n3. Use plain text formatting. No markdown headers, no bullet lists unless the content is genuinely list-shaped.\n4. Confirm collected information by writing it back to the user (e.g., \"Got it — phone: 050-1234567. Is that correct?\").\n5. Use English only. Do not switch languages mid-conversation unless the user does.\n\nThis is a generated default. If the user later activates chat as a primary channel, regenerate this section through Skill 1 patch mode (channel scope expansion).",
+        "intentInstructions": "OPENING BEHAVIOR\n(The opening announcement has already greeted the caller and asked who is speaking. Do not repeat it.)\n\n1. Capture the caller's answer to the opening question — the caller's name — and hand it to Collecting the caller's name for an appointment.\n2. Route on what the caller needs:\n   - Booking, moving or asking about an appointment -> forward the call to Collecting the caller's name for an appointment.\n   - The caller says they cannot talk right now -> ask the customer : \"No problem at all. When would be a good time for us to call you back?\" then forward the call to Scheduling a callback for the caller.\n   - Something urgent or clinical -> forward the call to Connecting the caller to the on-call nurse.\n\nIF the caller ignores the opening question and states a request straight away:\n  - Route on the request immediately, and collect the name later only if it is still needed.\n\nIF the caller's request is unclear:\n  - Ask once for clarification.\n  - If it is still unclear, forward the call to Handing the call to a human representative.\n\nCALLBACK DATE AND TIME INTERPRETATION\n- Today's date is {{todayDate}} and the current time is {{currentTime}}. Anchor every relative expression the caller uses on these two values.\n- Resolve a relative expression (\"tomorrow\", \"in a couple of hours\", \"Monday morning\") silently. Never read the calculation back to the caller.\n- If the caller gives a day but no hour, ask only : \"What time on that day?\"\n- If the caller gives an hour but no day, assume today when that hour is still ahead of {{currentTime}}, and tomorrow when it is not.\n- Never re-ask for anything the caller has already told you.\n\nIRON RULE: Never greet again, and never repeat the opening question.\nIRON RULE: Stay in scope. For billing, pricing, or anything clinical, forward the call to Handing the call to a human representative.\nIRON RULE: NEVER infer language from the caller's name, accent, or tone. Speak only English.",
+        "openingAnnouncement": "Thanks for calling Brightview Family Clinic. Who am I speaking with?"
+      },
+      "recordAgentCalls": "false",
+      "silence_behaviour": {
+        "intent": -18,
+        "silence_duration": 5,
+        "silence_loops": 3,
+        "silence_sentence": "Are you still there?",
+        "silence_ending_sentence": "I can't hear you, so I'll put you through to one of the team."
+      },
+      "created": {
+        "realtimeInputConfig": {
+          "automaticActivityDetection": {
+            "disabled": "true"
+          }
+        },
+        "generationConfig": {
+          "speechConfig": {
+            "voiceConfig": {
+              "prebuiltVoiceConfig": {
+                "voiceName": "Kore"
+              }
+            }
+          }
+        }
+      }
+    },
+    "VersionNumber": "0.0.1",
+    "AIModelConfigId": 142,
+    "BotVersionStatusId": 3
+  }
+}
