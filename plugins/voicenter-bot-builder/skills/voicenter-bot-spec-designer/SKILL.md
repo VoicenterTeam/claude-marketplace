@@ -104,6 +104,13 @@ Three fields are **never** prompted: the identifier (auto-derived from the bot n
 model config (silently defaults to Gemini 3.1 - LLM driven), and per-intent `max_turns` (the
 skills decide autonomously).
 
+**Bidi safety in prompts.** Terminal surfaces (Claude Code CLI, VS Code, Desktop) do not render
+RTL reliably. Keep every `AskUserQuestion` option **label/value LTR-stable** — an ASCII or
+otherwise LTR-leading string the user can read unambiguously — and put Hebrew or Arabic in the
+option's *description* text, not in the value being selected. The same applies to anything the
+skill echoes back as an identifier, filename, or status marker: those stay ASCII. Target-language
+text belongs in the *content* the bot will speak, never in a machine-critical field.
+
 ---
 
 ## 3. Greenfield mode

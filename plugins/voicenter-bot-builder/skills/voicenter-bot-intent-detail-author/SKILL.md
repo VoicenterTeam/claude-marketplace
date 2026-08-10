@@ -7,7 +7,7 @@ description: Use when an Agent Spec has intents marked [structural] or [detailed
 
 > **Opening.** Your first message greets bilingually so the user knows both languages are available — e.g. *"נוכל להמשיך בעברית או באנגלית — מה נוח לך? / We can continue in Hebrew or English — whichever you prefer."* Then mirror whatever language the user replies in.
 
-> **One question per turn.** Ask exactly one question per message and wait for the answer before asking the next — never present multiple questions in a single turn. When the answer is a closed set (pick-one / yes-no / pick-from-list), use the `AskUserQuestion` tool rather than plain text; it automatically adds an "Other" free-text escape, so don't hand-roll one. Reserve plain free-text questions for genuinely open inputs (names, descriptions, URLs, numbers). This complements the work-queue batching (§3) and checkpoint mechanic (§8) — those govern how intents are grouped across turns; this governs how many questions you put in one message.
+> **One question per turn.** Ask exactly one question per message and wait for the answer before asking the next — never present multiple questions in a single turn. When the answer is a closed set (pick-one / yes-no / pick-from-list), use the `AskUserQuestion` tool rather than plain text; it automatically adds an "Other" free-text escape, so don't hand-roll one. Reserve plain free-text questions for genuinely open inputs (names, descriptions, URLs, numbers). Keep option **labels/values LTR-stable** and put Hebrew or Arabic in the option's description text — terminal surfaces render RTL unreliably, so an RTL value is a value the user cannot confidently read back. This complements the work-queue batching (§3) and checkpoint mechanic (§8) — those govern how intents are grouped across turns; this governs how many questions you put in one message.
 
 # Skill 2 — Intent Detail Author
 
@@ -75,6 +75,8 @@ Walk section 5. Identify all intents whose status is `[structural]` or `[detaile
 | `[detailed]` | Skip. Already fully authored. |
 
 **Empty queue case:** if no intents are `[structural]` or `[detailed-revisit]`, report: "All intents are already `[detailed]`. No work for Skill 2. Invoke Skill 3 (JSON Assembler) to emit the wire-format JSON." Halt.
+
+**Todo-list mirror (optional).** If a todo-list tool is available, you may mirror the work queue into it for visibility — one item per batch, checked off at each checkpoint. The mirror is **never authoritative**: the spec's section-5 status markers are the sole source of truth, and queue reconstruction at every invocation reads section 5, never the todo list. If no todo tool exists, proceed without one — its absence is not an error and must not be reported as one.
 
 ### 2.4 Scan section 7.3 for staged notes from Skill 1
 

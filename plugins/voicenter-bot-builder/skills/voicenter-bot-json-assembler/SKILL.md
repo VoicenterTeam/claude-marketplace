@@ -1,6 +1,7 @@
 ---
 name: voicenter-bot-json-assembler
 description: Use when a fully-detailed Agent Spec exists and the user asks to build, emit, or publish the final Voicenter bot JSON — "assemble the JSON", "run Skill 3". Does NOT design specs or author intents.
+model: haiku
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.

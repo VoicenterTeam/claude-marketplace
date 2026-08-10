@@ -37,6 +37,20 @@ one that doesn't import.
 /plugin install voicenter-bot-builder@voicenter
 ```
 
+## Slash commands *(Claude Code / Cowork)*
+
+Three commands give deterministic entry points into the pipeline:
+
+| Command | Runs |
+|---|---|
+| `/bot-spec` | Skill 1 — the skill's own mode detection picks greenfield or patch |
+| `/bot-detail` | Skill 2 — rebuilds its queue from the spec's section-5 markers |
+| `/bot-assemble` | Skill 3 — parse, assemble, verify, emit |
+
+The commands carry no logic of their own; they hand straight over. Plain-language requests
+("design a bot", "assemble the JSON") still work everywhere, including claude.ai, where slash
+commands don't exist.
+
 ## Example prompts
 
 **Design a new bot from scratch**
@@ -118,6 +132,13 @@ Two things to be aware of, because they involve *your* choices rather than the p
   intent to select in the UI. This is a platform limitation, not a plugin bug.
 - **Negative instructions are not emitted to the JSON.** The wire field is unverified, so the
   banner surfaces the text for you to paste into the UI's AI Security Settings instead.
+- **The Assembler pins `model: haiku`; the other two skills don't.** Assembly is a
+  deterministic projection — a parser, not an interpreter — so it runs on a cheaper model. The
+  interview and language-authoring skills inherit your session's model, because those genuinely
+  need reasoning. `model` is a Claude Code extension: **claude.ai ignores it**, so the same
+  assembly costs more there. No behavioural difference either way, only cost.
+- **Slash commands are Claude Code / Cowork only.** In claude.ai the skills trigger from plain
+  language instead. Nothing is lost — the commands are convenience, not capability.
 
 ## Troubleshooting
 
