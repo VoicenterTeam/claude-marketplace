@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-spec-designer
-description: Designs the structural skeleton of a Voicenter Bot via interview. Use this skill when the user wants to create, design, scope, or modify a Voicenter voice/chat bot — phrases like "design a bot", "create an agent spec", "build a Voicenter bot", "patch this bot", "add an intent", "change the bot's persona", "modify the flow graph", or any reference to the Agent Spec Designer / Skill 1 in the Voicenter bot generation pipeline. Produces an Agent Spec markdown file (sections 1-4, 4.5, section 5 stubs, section 6 initial, section 7 init). Two named entry modes — greenfield (no spec attached) and patch (spec attached). Does NOT author per-intent language content (validationPrompt, post-execution intentInstructions) — that's Skill 2 (Intent Detail Author). Does NOT emit wire-format JSON — that's Skill 3 (JSON Assembler).
+description: Use when the user wants to design, scope, or patch a Voicenter voice/chat bot spec — "design a bot", "add an intent", "patch this bot". Does NOT author per-intent language or emit JSON.
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
