@@ -12,6 +12,30 @@
 
 ---
 
+## Table of contents
+
+- [1. The runtime-consumer model — who reads what](#1-the-runtime-consumer-model-who-reads-what)
+  - [Consumer 1 — the live voice model (e.g., Gemini Live)](#consumer-1-the-live-voice-model-eg-gemini-live)
+  - [Consumer 2 — the Intent Agent (parameter extraction/validation)](#consumer-2-the-intent-agent-parameter-extractionvalidation)
+  - [Consumer 3 — the platform / IVR layer](#consumer-3-the-platform-ivr-layer)
+- [2. Rule catalog](#2-rule-catalog)
+  - [FP-1 — Field-placement hard-rule table (blocking, all skills)](#fp-1-field-placement-hard-rule-table-blocking-all-skills)
+  - [FP-2 — Staggered pipeline (BINDING; supersedes any conflicting phrasing in older docs)](#fp-2-staggered-pipeline-binding-supersedes-any-conflicting-phrasing-in-older-docs)
+  - [FP-3 — Script home + the turn-yield rule (blocking, Skill 2; verified by CHK-24)](#fp-3-script-home-the-turn-yield-rule-blocking-skill-2-verified-by-chk-24)
+  - [FP-4 — Quote convention for mandated speech (blocking, Skill 2; Skill 1 for §2.4/persona)](#fp-4-quote-convention-for-mandated-speech-blocking-skill-2-skill-1-for-24persona)
+  - [FP-5 — validationPrompt is capture mapping only (blocking, Skill 2; verified by CHK-16)](#fp-5-validationprompt-is-capture-mapping-only-blocking-skill-2-verified-by-chk-16)
+  - [FP-6 — Say-once / rules-once (blocking; persona half Skill 1, per-intent half Skill 2; verified by CHK-19)](#fp-6-say-once-rules-once-blocking-persona-half-skill-1-per-intent-half-skill-2-verified-by-chk-19)
+  - [FP-7 — intentLoadingAnnouncement mandatory on every RT=3 intent (blocking, Skill 2; verified by CHK-17)](#fp-7-intentloadingannouncement-mandatory-on-every-rt3-intent-blocking-skill-2-verified-by-chk-17)
+  - [FP-8 — Terminal doctrine (blocking, Skill 1; verified by CHK-18/CHK-20)](#fp-8-terminal-doctrine-blocking-skill-1-verified-by-chk-18chk-20)
+  - [FP-9 — Minimal graph (blocking at Skill 1; CHK-22 advisory)](#fp-9-minimal-graph-blocking-at-skill-1-chk-22-advisory)
+  - [FP-10 — Description doctrine (blocking, Skill 1)](#fp-10-description-doctrine-blocking-skill-1)
+  - [FP-11 — CustomData keys are never invented (blocking; Skill 1 interview, CHK-07)](#fp-11-customdata-keys-are-never-invented-blocking-skill-1-interview-chk-07)
+  - [FP-12 — Callback date/time interpretation block (blocking when a callback/scheduling time is collected; Skill 1 check 21)](#fp-12-callback-datetime-interpretation-block-blocking-when-a-callbackscheduling-time-is-collected-skill-1-check-21)
+  - [FP-13 — ENUM doctrine (blocking, Skill 1 Appendix B mapping)](#fp-13-enum-doctrine-blocking-skill-1-appendix-b-mapping)
+- [3. Anti-pattern table (all observed in production or in v1.12 pipeline output)](#3-anti-pattern-table-all-observed-in-production-or-in-v112-pipeline-output)
+
+---
+
 ## 1. The runtime-consumer model — who reads what
 
 A Voicenter voice bot config has **three consumers**. Misplacing content across them is the #1 source of production bugs (unspoken scripts, double announcements, hallucinated behavior).

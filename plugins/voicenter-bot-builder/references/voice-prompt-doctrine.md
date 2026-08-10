@@ -8,6 +8,29 @@
 
 ---
 
+## Table of contents
+
+- [1. Rule catalog](#1-rule-catalog)
+  - [Rule 1 — Assembled-prompt token budget](#rule-1-assembled-prompt-token-budget)
+  - [Rule 2 — Session-resumption ceiling](#rule-2-session-resumption-ceiling)
+  - [Rule 3 — English operational, target-language utterances](#rule-3-english-operational-target-language-utterances)
+  - [Rule 4 — Intent description in English](#rule-4-intent-description-in-english)
+  - [Rule 5 — Recency-slot language-lock guardrail](#rule-5-recency-slot-language-lock-guardrail)
+  - [Rule 6 — Contradictory pacing/length](#rule-6-contradictory-pacinglength)
+  - [Rule 7 — Generic-policy boilerplate](#rule-7-generic-policy-boilerplate)
+  - [Rule 8 — TTS-safe formatting in voice output](#rule-8-tts-safe-formatting-in-voice-output)
+  - [Rule 9 — Date math in prompt](#rule-9-date-math-in-prompt)
+  - [Rule 10 — Few-shot transcript example cap](#rule-10-few-shot-transcript-example-cap)
+  - [Rule 11 — Hebrew-utterance isolation](#rule-11-hebrew-utterance-isolation)
+  - [Rule 12 — Model-config doctrine (Gemini Live 3.1)](#rule-12-model-config-doctrine-gemini-live-31)
+  - [Rule 13 — Doctrine banner sentinels](#rule-13-doctrine-banner-sentinels)
+- [2. Token-counting method (v1 — char-based, ±15% accuracy)](#2-token-counting-method-v1-char-based-15-accuracy)
+- [3. In-prompt vs platform boundary table](#3-in-prompt-vs-platform-boundary-table)
+- [4. Token budget table](#4-token-budget-table)
+- [5. The 10 operating rules (Compass §8) — closing checklist](#5-the-10-operating-rules-compass-8-closing-checklist)
+
+---
+
 ## 1. Rule catalog
 
 Severity legend: **blocking** = skill refuses to proceed until resolved; **advisory** = skill warns, records resolution in spec section 7.3, continues; **structural** = auto-applied (no user prompt).
