@@ -777,15 +777,69 @@ count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22, CHK-23 are advisory.
 
 ### 6.0 Execution mode
 
-[MS2 fills this]
+**Inline execution is the default and authoritative path.** If you are able to delegate to
+the `voicenter-bot-builder:spec-verifier` agent, do so — a fresh-context verifier reads what
+the spec says rather than what it remembers intending, and is preferred wherever it is
+available. Otherwise — **including whenever you are uncertain whether the agent is
+available** — execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` yourself,
+inline, per §6.2.
+
+**Never block on delegation availability.** Do not probe for it, do not test for it, and do
+not ask the user which path to use. Both paths run the same procedure file and emit the same
+output contract, so the verdicts are comparable either way. A runtime without subagents
+(claude.ai consumer chat) simply takes the inline path with no user-visible difference.
+
+Delegation prompt — use this template verbatim. The subagent starts with a fresh, isolated
+context and sees nothing but this prompt (C3), so every path it needs must be spelled out:
+
+```
+Verify the Agent Spec at: <absolute spec path>
+Plugin root: <resolved plugin root path>
+Execute the verification procedure at
+<plugin root>/references/verification-procedure.md and return the report in
+its Output Contract format. Report only; do not modify any file.
+```
+
+Resolve `<absolute spec path>` and `<plugin root>` before sending — the subagent cannot ask
+a follow-up question.
 
 ### 6.1 Delegated path
 
-[MS2 fills this]
+When a report comes back from the verifier:
 
-### 6.2 Inline path
+1. **Validate it against the contract** before trusting it. A report is valid iff the
+   `## Verification Report` header is present, the Verdicts table contains exactly
+   CHK-01…CHK-24 in order, and every verdict is in the allowed vocabulary
+   (`pass` / `FAIL` / `error`).
+2. **If valid: consume it verbatim.** Apply blocking/advisory handling (§6.4) and the
+   report's routing recommendations exactly as the inline path would apply its own results.
+   Do not summarize it, soften it, re-rank its findings, or re-derive severity.
+3. **If invalid: discard it and fall back to §6.2 inline.** Log exactly one line to the
+   user — `verifier report malformed — running checks inline` — and proceed. This guards
+   against a stale or foreign verifier version returning a shape this Skill 3 cannot read.
+4. **If the report is the structured-error form** (`## Verification Report — ERROR`), treat
+   it as an unrunnable verification: surface the error and action lines to the user and halt.
+   Do not assemble on an unverified spec.
 
-[MS2 fills this]
+### 6.2 Inline path (degraded mode)
+
+This is **degraded mode** — not because the checks are weaker (they are the same 24 from the
+same file), but because there is no context isolation. You watched this spec get built, so
+your memory of what was intended can quietly substitute for what is written. That asymmetry
+is the only difference between the two paths, and it is why the discipline below is
+mandatory rather than advisory. Expect slightly lower sensitivity here on the judgement-heavy
+checks (the CHK-07 and CHK-16…CHK-20 classes).
+
+**Fresh-eyes discipline — do this before checking anything:**
+
+> Re-read the spec in full from the artifact — not from memory of this conversation. Verify
+> against what is written, not what was intended. Treat the spec as if someone else authored
+> it.
+
+Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-24
+in its run order, apply its severity assignments, and emit the same output contract a
+delegated run would produce. The contract is not optional on this path — MS6's equivalence
+test compares the two paths' reports mechanically.
 
 ### 6.3 Failure routing
 
@@ -973,6 +1027,8 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Auto-fix cross-reference violations.** Dangling IDs, missing API silence pairings, unresolvable Mustache references — none of these get repaired by Skill 3. The error report routes the user to the responsible skill (Skill 1 patch or Skill 2 reactivation per Doc 2 §7.5). The user invokes that skill; Skill 3 re-runs from scratch on the next invocation.
 - **Modify the spec beyond appending to section 7.3.** No edits to sections 1-6. No changes to status markers. No regeneration of section 4.5.3 (Skill 2's job) or section 6 (Skill 1/2's job; Skill 3 only compares as a sanity check).
 - **Skip the cross-reference pass.** Under any circumstance. Even if the user explicitly asks ("just give me the JSON, I'll fix it later") — the pass is non-negotiable per locked decision C. The cross-reference pass is the difference between a JSON that the platform can import but the runtime can't execute, and a JSON the runtime actually runs.
+- **Skip verification because delegation is unavailable.** The `spec-verifier` agent is an enhancement, not a prerequisite. When it cannot be reached — or when you are simply unsure whether it can — run the procedure inline per §6.2. Inline is not optional, and "no subagent available" is never a reason to assemble unverified.
+- **Summarize, soften, re-rank, or reinterpret the verifier's report.** A valid report is consumed verbatim (§6.1): its verdicts, severities and routing lines pass through unchanged. You may not downgrade a blocking failure to a note, merge findings, or substitute your own judgement about which failures matter. If the report is malformed, discard it entirely and re-run inline — never partially salvage it.
 - **Suppress fail-loud sentinels.** They are the entire point of the unknown-value model (decision B). The banner makes them visible at import time so the user catches them before deploying. Quiet defaults (empty string, 0, null) would import successfully and break at runtime, which is much harder to diagnose. **Exception (v1.12.0): the RT=1 `Configuration.layer`** defaults to `0` (root layer) rather than a `-999` sentinel — Skill 1 fetches the real layer number from the MCP (§2.4.A), and `0` is itself a valid landing layer, so the quiet default does not break at runtime. Layer is the only field exempt from fail-loud.
 - **Emit JSON if any blocking cross-reference check fails.** Partial emission is worse than no emission — a partial JSON looks deployable, the user might import it and find out at runtime that it's broken. Hard halt is the correct behavior.
 - **Emit `max_turns` / `max_turns_sentence` as direct siblings of `prompts` inside `IntentConfig` (the pre-v1.13 shape).** Since v1.13.0 they live inside `IntentConfig.additional` together with `sensitive` (§4.3.1, golden-export shape).
