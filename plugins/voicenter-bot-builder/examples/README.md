@@ -21,6 +21,8 @@ Golden files for the v1.18.0 release, captured by session **S0**
 | `assemble.py` | Mechanical transcription of Skill 3 §3-§4 (spec → wire format) |
 | `verify.py` | Mechanical transcription of Skill 3 §6 (the 24-check cross-reference pass) |
 | `stub-api-server.py` | Local API standing in for the fictional clinic's scheduling endpoint |
+| `check-static.py` | The V-S static check suite (MS6 §6.1) — runs in CI on every push |
+| `trigger-evals.json` | Description trigger evals: positive sets + the cross-fire matrix (needs a live run) |
 
 ## F1 at a glance
 

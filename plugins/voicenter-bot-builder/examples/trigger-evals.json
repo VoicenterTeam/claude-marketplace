@@ -1,0 +1,104 @@
+{
+  "_about": "MS6 §6.1B — description trigger evals for the three bot-builder skills. Positives are drawn from the long-form trigger lists that MS3 removed from the descriptions; negatives are the cross-fire matrix (a phrase that must route to a DIFFERENT one of the three). Acceptance: every positive triggers its own skill, and no negative triggers the skill it is listed under. Executing this needs live model invocations with only these three skills' name+description in context — it cannot run in a static harness. See docs/planning/va-run-instructions.md §4.",
+  "_acceptance": {
+    "positives": "100% must trigger the owning skill",
+    "negatives": "0% may trigger the owning skill; each must trigger its expected_instead skill",
+    "on_failure": "the description is mis-scoped — retune wording, keep <=200 chars, re-run"
+  },
+  "skills": [
+    {
+      "name": "voicenter-bot-spec-designer",
+      "description_under_test": "Use when the user wants to design, scope, or patch a Voicenter voice/chat bot spec — \"design a bot\", \"add an intent\", \"patch this bot\". Does NOT author per-intent language or emit JSON.",
+      "positives": [
+        "design a Voicenter bot",
+        "create an agent spec for a voice bot",
+        "build a Voicenter voicebot for my clinic",
+        "I want to scope a new phone bot",
+        "add an intent to this bot",
+        "patch this bot spec",
+        "change the bot's persona",
+        "modify the flow graph",
+        "run Skill 1",
+        "use the Agent Spec Designer",
+        "delete an intent from the spec",
+        "rename an intent identifier",
+        "the bot needs a transfer-to-human path",
+        "set up caller silence handling for this bot",
+        "I need a chat bot spec for support"
+      ],
+      "negatives": [
+        { "query": "detail the intents in agent-spec.md", "expected_instead": "voicenter-bot-intent-detail-author" },
+        { "query": "fill in the per-intent validationPrompt fields", "expected_instead": "voicenter-bot-intent-detail-author" },
+        { "query": "write the announcement text for each intent", "expected_instead": "voicenter-bot-intent-detail-author" },
+        { "query": "assemble the JSON for this spec", "expected_instead": "voicenter-bot-json-assembler" },
+        { "query": "emit the deployable bot JSON", "expected_instead": "voicenter-bot-json-assembler" },
+        { "query": "run the cross-reference checks before assembly", "expected_instead": "voicenter-bot-json-assembler" }
+      ]
+    },
+    {
+      "name": "voicenter-bot-intent-detail-author",
+      "description_under_test": "Use when an Agent Spec has intents marked [structural] or [detailed-revisit] and the user wants them filled — \"detail the intents\", \"run Skill 2\". Does NOT change structure or emit JSON.",
+      "positives": [
+        "detail the intents",
+        "fill in the per-intent fields",
+        "run Skill 2",
+        "use the Intent Detail Author",
+        "author the validationPrompt for each intent",
+        "write the announcements and loading announcements",
+        "the intents are marked structural, fill them in",
+        "continue detailing where we left off",
+        "redo the detailing for the intents marked detailed-revisit",
+        "write the slot descriptions",
+        "author the post-execution intent instructions",
+        "finish the language content for this spec"
+      ],
+      "negatives": [
+        { "query": "design a bot for a dental clinic", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "add an intent that checks insurance", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "change this intent's response type to RT=2", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "modify the transition graph", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "assemble the JSON", "expected_instead": "voicenter-bot-json-assembler" },
+        { "query": "publish the bot to wire format", "expected_instead": "voicenter-bot-json-assembler" }
+      ]
+    },
+    {
+      "name": "voicenter-bot-json-assembler",
+      "description_under_test": "Use when a fully-detailed Agent Spec exists and the user asks to build, emit, or publish the final Voicenter bot JSON — \"assemble the JSON\", \"run Skill 3\". Does NOT design specs or author intents.",
+      "positives": [
+        "assemble the JSON",
+        "emit the bot JSON",
+        "publish the bot",
+        "build the wire-format JSON",
+        "run Skill 3",
+        "use the JSON Assembler",
+        "generate the deployable JSON for agent-spec.md",
+        "the spec is fully detailed, produce the JSON",
+        "run the cross-reference pass and emit",
+        "give me the importable bot file",
+        "project this spec into wire format"
+      ],
+      "negatives": [
+        { "query": "design a Voicenter bot", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "patch this bot spec to add a callback branch", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "elicit the persona for this bot", "expected_instead": "voicenter-bot-spec-designer" },
+        { "query": "detail the intents", "expected_instead": "voicenter-bot-intent-detail-author" },
+        { "query": "write the per-intent capture mapping", "expected_instead": "voicenter-bot-intent-detail-author" },
+        { "query": "author the RT=2 announcement text", "expected_instead": "voicenter-bot-intent-detail-author" }
+      ]
+    }
+  ],
+  "_ambiguous_by_design": [
+    {
+      "query": "make me a Voicenter bot",
+      "note": "Legitimately routes to spec-designer (stage 1 is the entry point). Not a cross-fire failure."
+    },
+    {
+      "query": "verify this spec",
+      "note": "May route to the spec-verifier AGENT rather than any skill in Claude Code. Both are acceptable; in claude.ai it should reach the assembler, which runs the checks inline."
+    },
+    {
+      "query": "fix the check 19 failure",
+      "note": "Genuinely ambiguous — routing depends on which site holds the duplicate. The assembler's failure report names the target skill, so a wrong first guess is self-correcting."
+    }
+  ]
+}
