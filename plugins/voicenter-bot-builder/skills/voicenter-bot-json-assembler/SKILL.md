@@ -1,6 +1,6 @@
 ---
 name: voicenter-bot-json-assembler
-description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 24 checks (8 §15.4 + 3 Compass + 3 botIntents-role + 1 duplicate-global-intent + 9 field-placement doctrine), checks 1–7, 11–13, 15, 16–21, and 24 blocking. Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
+description: Assembles a fully-detailed Voicenter Agent Spec into Bot JSON wire format — the final mechanical step in the three-skill pipeline. Use this skill when an Agent Spec exists with all section 5 entries marked `[detailed]` and the user wants the deployable JSON. Trigger phrases include "run Skill 3", "assemble the JSON", "emit the bot JSON", "publish the bot", "build the wire-format", "Skill 3 (JSON Assembler)", or any direct continuation from Skill 2's completion handoff. Produces a single `bot-<name>-<date>.json` file plus a banner identifying every fail-loud sentinel and any drift between spec section 6 and what Skill 3 regenerated. Refuses to assemble if any intent is still `[structural]` or `[detailed-revisit]`, or if the spec deviates from the strict template (Doc 2 §3.7). Runs the §15.4 cross-reference pass — 25 checks (8 §15.4 + 3 Compass + 3 botIntents-role + 1 duplicate-global-intent + 9 field-placement doctrine + 1 persona-FK sanity), checks 1–7, 11–13, 15, 16–21, and 24 blocking (25 is advisory). Does NOT author any text content (Skills 1 and 2 only). Does NOT make creative decisions, interpret deviations, fix violations, or invoke other skills (it reports routing recommendations; the user invokes the relevant skill).
 ---
 
 > **Language.** Reply in the user's language: detect what they write — Hebrew→Hebrew, English→English — and mirror it, switching if they switch mid-conversation. This shapes your prose, your questions, and your `AskUserQuestion` option labels only. It does **not** change the artifacts you produce — identifiers, JSON keys, BCP-47 language codes, API field names, and other data stay exactly as specified.
@@ -50,6 +50,7 @@ Before touching the spec, load context from these references.
 | `locked-decisions.md` decision M | Section 4.5 inventory drives Mustache check |
 | `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 3 owns checks 8 (token budget — rule 1), 9 (session resumption — rule 2), 10 (model-config doctrine — rule 12), and the banner sentinels (rule 13) |
 | `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13 incl. the FP-3 turn-yield rule; Skill 3 owns cross-reference checks 16–24 |
+| `../../references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot — Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7) + cross-reference check 25 (§4.2.2, §6, Appendix D.12) |
 
 Also load this file from Skill 1's package:
 
@@ -255,6 +256,7 @@ Emit fields in this order (matches production — v1.5.0):
 | 8 | `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
 | 9 | `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
 | 10 | `BotVersionStatusId` | `3` (per Doc 1 §5) |
+| 11 | `PersonaID` | **v1.18.0 — added per the `ImportBotFromJSON` contract (`voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it always emits the known shared value `3` (`TTSScriptReader`, `AccountId=0`) unless a future spec revision adds an explicit persona-catalog field. Banner DEFAULTS APPLIED note whenever this default is used (i.e. always, in v1). **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
 
 **v1.5.0 wire-format correction.** Field order revised to match production. Prior baseline had `BotVersionId` first; production has `IsActive` first.
 
@@ -758,13 +760,13 @@ If the user cares enough about the drift to fix it, they invoke Skill 1 patch mo
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run all **twenty-four** checks — eight per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, three **botIntents-role integrity checks (11–13, v1.8.0; the v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped)**, one **duplicate-global-intent check (15, v1.12.0)**, and **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `../../references/field-placement-doctrine.md`. Checks 1–7, 11–13, 15, **16–21**, and **24** are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch; 14, **22**, and **23** are non-blocking advisory (24's wait-rule scan half is advisory). (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
+After §4 assembly and §5 sanity check: run all **twenty-five** checks — eight per Doc 1 §15.4, three from Compass doctrine integration per `../../references/voice-prompt-doctrine.md`, three **botIntents-role integrity checks (11–13, v1.8.0; the v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped)**, one **duplicate-global-intent check (15, v1.12.0)**, **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `../../references/field-placement-doctrine.md`, and one **persona-FK sanity check (25, v1.18.0)** per `../../references/voicebot-json-contract.md` R7/R11. Checks 1–7, 11–13, 15, **16–21**, and **24** are blocking; 8 is advisory/blocking by token band; 9 advisory; 10 blocking on mismatch; 14, **22**, **23**, and **25** are non-blocking advisory (24's wait-rule scan half is advisory). (The 1–7 blocking status is per locked decision C.) Failure of any blocking check halts emission.
 
 ### 6.1 Order, timing, what each check operates on
 
 The pass operates on the **assembled in-memory wire structure**, not on the spec (checks 16–24 additionally consult the spec's section-4 staggering/terminal/role fields — check 24 reads `**Asks next:**` — the 4.5 variable inventory, and — for check 23 — the persona text). Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point — they are **not** treated as missing references for the ID-resolution checks (1-4). The ID-resolution checks operate on placeholder integers (the negative-integer cache), which are internally consistent by construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`, `layer`, `NEXT_VO_ID`), which are not the subject of any §15.4 check.
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14. All checks run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–13, 15, and 16–24 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25. All checks run unconditionally (no short-circuit on first failure) so the user gets a complete failure report rather than fixing one issue at a time. Checks 11–13, 15, 16–24, and 25 are model-agnostic (unlike 8–10, which gate on the Gemini 3.1 model). Checks 8, 9, 10 are gated on `AiModelConfig.created.model` being `models/gemini-3.1-flash-live-preview`; if the model is different they skip silently (one-time per-spec log entry to section 7.3).
 
 ### 6.2 The checks
 
@@ -794,6 +796,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 →
 | 22 | No authored edges into type-2 globals (v1.13.0, FP-9) | Advisory. `intentRelations[]` rows whose `NextIntentID` is a type-2 global are legal but usually redundant — globals are reachable from anywhere by construction, and extra edges enlarge the tool-routing surface. | List any relation targeting a botIntents type-2 IntentId; banner line recommending removal via Skill 1 patch mode. |
 | 23 | Off-topic global present (v1.14.0, FP-6) | Advisory. Every bot should carry the mandatory off-topic handling pair: (a) at least one RT=1 intent registered type-2 in `botIntents[]` whose Description/Name marks it as the off-topic/unrelated-topic terminal, AND (b) a `prompts.persona` off-topic section (forbid + deflect + N-loop ending) that references that intent's Description. Missing either half means the bot has no escape hatch when a caller won't return to the flow. | Scan `botIntents[]` type-2 entries' source intents (RT=1) for off-topic semantics in Description/Name (e.g., "unrelated", "לא קשור"); scan `prompts.persona` for an off-topic rule and match its routing target against that Description. On miss: banner line routing to Skill 1 patch mode (§3.2.5 elicitation). |
 | 24 | Turn-yield announcement gating (v1.17.0, FP-3) | A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose spec section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement` equal to the empty string — a non-empty value there stalls the call into the silence loop. **Blocking** on that half. **Advisory half:** the same auto-chaining intents' `Configuration.intentInstructions` should carry no wait rule (only the immediate-forward instruction). RT=1 is covered by check 20 (no announcement key at all); RT=4 is exempt (pre-dial speech, platform dials immediately after). | Walk RT=2/RT=3 intents; read section-4 `**Asks next:**`; when `[none]`, assert `announcement === ""` (blocking on failure, reporting intent + the offending text). Advisory scan on the same intents: regex `(?i)(stop and wait|wait for (the customer|their|a) (explicit )?(answer|response))` or Hebrew `המתן לתשוב` inside `Configuration.intentInstructions` → banner line routing to Skill 2 reactivation. |
+| 25 | Persona FK sanity (v1.18.0, `voicebot-json-contract.md` R7/R11) | Advisory. `ActiveVersionInfo.PersonaID` is present and is one of the known shared `Persona` rows (`AccountId=0`): `{3}` (`TTSScriptReader`). v1 always emits `3` by construction, so this check is trivial today (parallels check 4's "trivial but explicit" rationale) — it future-proofs a later spec-level persona-selection feature, at which point a spec-authored `PersonaID` outside the known whitelist needs a banner note (the row must exist on the target account, per the FK) rather than a silent pass. | Assert `ActiveVersionInfo.PersonaID` is present and non-null; if its value is not in the known shared whitelist, emit a banner line asking the operator to confirm that `Persona` row exists on the target account before import. |
 
 **Check 7 specifics — the dotted-path validation depth:**
 
@@ -929,6 +932,7 @@ For each failing check, the structured error includes a "route to" recommendatio
 | Check 22 — authored edge into a type-2 global (advisory) | Informational — recommend **Skill 1 patch mode** to drop the redundant relation; the global is reachable from anywhere by construction. |
 | Check 23 — off-topic global / persona rule missing (advisory) | Recommend **Skill 1 patch mode** — run the §3.2.5 off-topic elicitation (outcome / loops / wording) to add the dedicated off-topic global and/or inject the persona rule (v1.14.0, FP-6). |
 | Check 24 — non-empty announcement on an auto-chaining intent (blocking); wait rule in its instructions (advisory) | **Skill 2 reactivation** — empty the flagged `announcement`; move any line the caller must still hear to an FP-4 quoted line in the intent's `intentInstructions` immediately before the forward instruction, and replace any wait rule with the immediate-forward instruction (v1.17.0, FP-3 turn-yield). |
+| Check 25 — PersonaID outside known whitelist (advisory) | Informational — banner note asking the operator to confirm the `Persona` row exists on the target account (FK). Not user-actionable during authoring in v1 (Skill 1 has no persona-selection field yet); relevant once that feature ships. |
 
 Appendix B has the consolidated routing table.
 
@@ -1011,6 +1015,7 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — v1.18.0; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - [...]
 #
 # MANDATORY POST-IMPORT STEP (v1.14.0 — emitted whenever silence_behaviour.intent is a placeholder):
@@ -1129,7 +1134,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 
 ## Appendix A — Doc 1 §16 quirks: complete preservation checklist
 
-All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–23 added in v1.13.0 from the golden export; row 24 added in v1.14.0) must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
+All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–23 added in v1.13.0 from the golden export; row 24 added in v1.14.0; row 25 added in v1.18.0) must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
 
 | # | Quirk | Wire-format location | Action |
 |---|---|---|---|
@@ -1158,6 +1163,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 22 | Version-level limit/layer fields (v1.13.0) | `ActiveVersionInfo.AIModelConfig` | Emit `daily_limit`, `dailyLimitLayerId`, `maxDurationLayerId`, `daily_limit_sentence`, `max_duration_sentence`, `IVRLayerSelect_2` per §4.2.3 (siblings of `max_duration`, NOT inside `created`). |
 | 23 | RT=3 `Configuration.intentLoadingAnnouncement` (v1.13.0) | Per RT=3 intent | Always emitted, non-empty (Skill 2 check 12 upstream; Skill 3 check 17 backstop). |
 | 24 | RT=1 `Configuration` carries NO `announcement` key (v1.14.0) | Per RT=1 intent | Emit only `layer` + `intentLoadingAnnouncement`. The farewell lives in the predecessor's `intentInstructions` (FP-8; check 20). |
+| 25 | `ActiveVersionInfo.PersonaID: 3` (v1.18.0) | `ActiveVersionInfo` | Emit the shared `TTSScriptReader` persona id per §4.2.2 and Appendix D.12. Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 18 numbered quirks.
 
@@ -1194,6 +1200,7 @@ When Skill 3 fails, it tells the user which skill to invoke for the fix. This ta
 | Cross-reference check 22 (edges into type-2 globals) | §6.2 | **Advisory** — banner line recommending Skill 1 patch to drop the redundant relation. |
 | Cross-reference check 23 (off-topic global / persona rule missing) | §6.2 | **Advisory** — banner line recommending Skill 1 patch mode (§3.2.5 off-topic elicitation) to add the dedicated off-topic global and/or the persona rule (v1.14.0, FP-6). |
 | Cross-reference check 24 fail (turn-yield: non-empty announcement on auto-chaining intent) | §6.2 | **Skill 2 reactivation** — empty the announcement; remaining speech → FP-4 quoted line in `intentInstructions` before the forward; wait rule → immediate-forward instruction (v1.17.0, FP-3). |
+| Cross-reference check 25 (PersonaID outside known whitelist) | §6.2 | **Advisory** — banner line asking the operator to confirm the `Persona` row exists on the target account before import (v1.18.0, `voicebot-json-contract.md` R7/R11). |
 | Section 6 regeneration drift | §5 | **Soft warning, not blocking** — recorded in banner. User can fix via Skill 1 patch (regenerates section 6) if it bothers them; Skill 3 emits anyway. |
 
 ---
@@ -1235,6 +1242,7 @@ Sample banner for a hypothetical bot with: 1 unknown webhook URL, no model confi
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — v1.18.0; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
 #   - intentCategories: single default category, IntentCategoryId = -3
 #   - All §16 quirks emitted per Appendix A checklist
@@ -1384,3 +1392,15 @@ The full set of catalog-eligible default models. See `model-catalog.md` for the 
 | 7 | 7 | Public PaLM Standard | inactive |
 
 Skill 3 emits one of the active rows per the catalog mapping; the matching `AIModelTypeId` is the row's `AIModel` FK. When the user picks "Gemini Live" in Skill 1, the catalog resolves to row **139** (the active Gemini 3.1 Voice driven default).
+
+**Known gap (v1.18.0).** `voicebot-json-contract.md` R11's live FK whitelist (2026-08-10 snapshot) additionally lists `AIModelConfigID` **303, 312, 321** as valid shared (`AccountId=0`) rows — three IDs not yet in the table above or in `model-catalog.md`. Their `Name`/`AIModelTypeId`/active status haven't been captured from a `Data.sql` dump, so Skill 3 does not fabricate rows for them: they're unusable as Skill 1 catalog choices until someone with DB access adds real entries to both this table and `model-catalog.md`. Not a defect in existing output — a coverage gap flagged for follow-up.
+
+### D.12 `PersonaID` (`ActiveVersionInfo.PersonaID`)
+
+Added v1.18.0 per `voicebot-json-contract.md` R7/R11. `Persona.PersonaID` is a `bigint NOT NULL` FK on `BotVersion` — no golden production export captured to date includes it (persona selection isn't yet a Skill 1 interview field), so Skill 3 emits the one known shared row unconditionally.
+
+| ID | Name | When |
+|---|---|---|
+| **3** | TTSScriptReader | **v1 default — always emitted** (`AccountId=0`) |
+
+If a future spec revision adds a persona-catalog field (mirroring how `model-catalog.md` resolves `AIModelConfigID`), extend this table with the additional named rows at that time — do not invent names for ids outside `{3}` today.
