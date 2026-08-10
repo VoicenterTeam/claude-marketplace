@@ -1,0 +1,95 @@
+name: plugin-validate
+
+# MS4 step 4.7 — manifest validation on every PR and every push to main.
+#
+# Strict mode fails on warnings (misspelled or unrecognized manifest fields),
+# which is what a directory-published plugin needs: a silently-ignored typo in
+# plugin.json is how a plugin loads with zero skills.
+#
+# Scope note. Only voicenter-bot-builder is gated strictly. As of v1.18.0 the
+# marketplace root and the voicenter-mcp / voicenter-api manifests do not carry
+# `author`, so --strict fails on them for a reason that predates this release and
+# belongs to those plugins' own versioning. They are validated non-strict here so
+# real regressions still fail the build, and the gap is tracked in
+# plugins/voicenter-bot-builder/docs/planning/license-decision.md §3 rather than
+# being fixed by a drive-by edit to three other plugins.
+#
+# MS6 adds the eval harness (golden-file byte-compare + trigger evals) as a
+# separate job in this workflow.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate voicenter-bot-builder (strict — release gate)
+        run: claude plugin validate ./plugins/voicenter-bot-builder --strict
+
+      - name: Validate marketplace root and sibling plugins (non-strict)
+        run: |
+          claude plugin validate .
+          for p in voicenter-mcp voicenter-api voicenter-dashboard; do
+            if [ -d "./plugins/$p" ]; then
+              echo "::group::$p"
+              claude plugin validate "./plugins/$p"
+              echo "::endgroup::"
+            fi
+          done
+
+      - name: Report which manifests still fail strict
+        if: always()
+        run: |
+          echo "Manifests not yet strict-clean (informational, does not fail the build):"
+          claude plugin validate . --strict 2>&1 | sed 's/^/  /' || true
+          for p in voicenter-mcp voicenter-api voicenter-dashboard; do
+            if [ -d "./plugins/$p" ]; then
+              claude plugin validate "./plugins/$p" --strict 2>&1 | sed "s/^/  [$p] /" || true
+            fi
+          done
+
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: F1 assembles byte-identical to the frozen v1.17.0 golden
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-detailed.md -o /tmp/f1.json
+          diff /tmp/f1.json expected-output.json
+
+      - name: F1 passes all 24 cross-reference checks
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python verify.py sample-spec-detailed.md expected-output.json
+
+      - name: F2 fires exactly the three seeded violations
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-seeded.md -o /tmp/f2.json
+          # exits 1 by design (two blocking failures) — assert the exact check set
+          python verify.py sample-spec-seeded.md /tmp/f2.json > /tmp/report.txt || true
+          cat /tmp/report.txt
+          grep -q 'Check 3 \[BLOCKING\]'  /tmp/report.txt
+          grep -q 'Check 7 \[BLOCKING\]'  /tmp/report.txt
+          grep -q 'Check 22 \[advisory\]' /tmp/report.txt
+          test "$(grep -c '^Check ' /tmp/report.txt)" -eq 3
