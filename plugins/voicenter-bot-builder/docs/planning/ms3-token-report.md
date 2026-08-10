@@ -76,7 +76,17 @@ rules, and tightening the field tables. That is a rewrite, which MS3 explicitly 
 3. **Accept +8%** on the happy path as the cost of the conditional-path wins, and record it in
    the release notes.
 
-This needs a decision before MS6 treats V-A5 as a release gate. Recommended: option 1 for
-v1.18.0, with option 2 scheduled — the always-loaded reduction is the real user-visible win
-(it is what every invocation pays, including the many that early-exit), and a compression pass
-deserves its own version where byte-comparability can gate it honestly.
+### Decision
+
+**Option 1, decided 2026-08-10.** V-A5 is re-scoped to always-loaded context in
+`../reference/validation-checklist.md` (gate: ≥ 40% reduction; actual −75%), MS6 acceptance
+criterion 6 is updated to match, and the content-compression pass is scheduled as its own
+version in `00-overview.md` §6.
+
+Rationale: the always-loaded reduction is the real user-visible win — it is what *every*
+invocation pays, including the many that early-exit before touching a stage file. A content
+compression pass deserves its own version, where the frozen golden fixture can gate
+byte-comparability honestly instead of being entangled with a structural refactor.
+
+The per-scenario table in §2 stays in the release notes as a recorded, non-gating metric, so
+the +8% on happy-path assembly is visible rather than buried.

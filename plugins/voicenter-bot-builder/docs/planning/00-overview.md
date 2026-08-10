@@ -78,3 +78,9 @@ Each milestone leaves the plugin installable and functional in both runtimes.
 - Cowork-only PostToolUse validation hook — recorded as candidate for v1.19
   (progressive enhancement, never load-bearing; see milestone-5 §5)
 - BotIntentTypeID semantics (still awaiting production observation)
+- **Field-mapping content compression** — recorded as the next version after
+  v1.18.0. MS3 proved progressive disclosure cannot reduce a full-assembly run
+  (it must read every mapping rule); shrinking that path needs the interleaved
+  v1.5.0/v1.13.0/v1.14.0 changelog prose deduplicated out of the live rules.
+  That is a content rewrite, so it gets its own version where the golden fixture
+  can gate byte-comparability honestly. See `ms3-token-report.md` §3.
