@@ -18,7 +18,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §4 budget table, §8 operating rule 2.
 **Applies to:** assembled `systemInstruction` content (= `prompts.persona` + `prompts.voiceInstructions` + `prompts.intentInstructions` + sum of every intent's `validationPrompt` + sum of every intent's post-execution `intentInstructions`).
-**Owning skill:** Skill 3 (§6.2 cross-reference check 8).
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-08; see [`verification-procedure.md`](verification-procedure.md).
 **Severity:** advisory at 1,500–4,999 tok; **blocking** at ≥ 5,000 tok (forced decomposition at ≥ 6,000 tok).
 **Gating:** `[GL3.1]`.
 **Why:** Gemini Live 3.1 Flash does not support context caching — the assembled prompt is paid in full on every session start, and every subsequent turn re-attends over it. Above 2,500 tok, first-turn TTFA materially degrades and instruction-drop risk rises (Compass §1, §4). **Enforcement note:** the pipeline gate is deliberately set *higher* than the Compass degradation point — advisory through 4,999, blocking only at ≥ 5,000 — an operator decision that accepts the documented 2,500–4,999 degradation as advisory-only to give authors working room. The Compass measurement (degradation begins ~2,500) is unchanged; only the pipeline's block threshold is relaxed. See §4.
@@ -29,7 +29,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §1 (cookbook #1197 Issue 11), §4.
 **Applies to:** same assembled systemInstruction as rule 1, but the threshold is 200 tok.
-**Owning skill:** Skill 3 (§6.2 cross-reference check 9). Fires only when the spec declares cross-session continuity is required.
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-09; see [`verification-procedure.md`](verification-procedure.md). Fires only when the spec declares cross-session continuity is required.
 **Severity:** advisory.
 **Gating:** `[GL3.1]`.
 **Why:** above ~200 tok, `sessionResumption.handle` silently breaks on Gemini Live 3.1 native-audio sessions. The only mitigation is a stateless prompt + injected per-session summary.
@@ -141,7 +141,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §1 (3.1 regression list — synchronous tool calls only, no `affective_dialog`, no `proactive_audio`, default `thinkingLevel=minimal`); §7 reference Python config.
 **Applies to:** assembled `AiModelConfig.created.generationConfig` and pinned model string.
-**Owning skill:** Skill 3 (§6.2 cross-reference check 10).
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-10; see [`verification-procedure.md`](verification-procedure.md).
 **Severity:** **blocking** on any mismatch.
 **Gating:** `[GL3.1]`.
 **Detection method:**

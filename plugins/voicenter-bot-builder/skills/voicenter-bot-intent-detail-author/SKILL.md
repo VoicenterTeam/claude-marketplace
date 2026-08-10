@@ -42,8 +42,8 @@ Before touching the spec, load context from these references.
 | Doc 1 §14.3.14 — Field-purpose cheat sheet | Disambiguating misplacement |
 | Doc 2 §5 — Skill 2 architecture | What Skill 2 does |
 | Doc 2 §3.6 — Status mechanic for section 5 intents | Reactivation logic |
-| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting — spoken fields only, v1.13.0), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
-| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13; Skill 2 owns FP-3 (script home + the turn-yield rule: announcement empty on auto-chaining intents, v1.17.0), FP-4 (quote convention), FP-5 (capture-mapping validationPrompt), FP-7 (RT=3 loading announcement), FP-8's pre-terminal farewell authoring (v1.14.0), and the per-intent half of FP-6 (say-once) |
+| `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 2 owns the primary enforcement of rules 8 (TTS-safe formatting — spoken fields only, v1.13.0), 9 (date math in prompt), 10 (few-shot count cap), 11 (Hebrew-utterance isolation) |
+| `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13; Skill 2 owns FP-3 (script home + the turn-yield rule: announcement empty on auto-chaining intents, v1.17.0), FP-4 (quote convention), FP-5 (capture-mapping validationPrompt), FP-7 (RT=3 loading announcement), FP-8's pre-terminal farewell authoring (v1.14.0), and the per-intent half of FP-6 (say-once) |
 | Skill 3 SKILL.md §4.4 | RT=1/2/3/4 Configuration field shapes at emission — v1.5.0 production-aligned (announcement / function_output object / response_success object). *(v1.13.0: replaces the retired external schema-audit doc reference.)* |
 
 Also load this file from this skill's package:
@@ -237,7 +237,7 @@ Whenever an intent IS (or becomes) sensitive-flagged, ALWAYS deliver the disclos
 
 ### 4.2 Step 2 — `validationPrompt` authoring
 
-**Doctrine (v1.13.0, FP-5 — this section was inverted; see `../../references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended (Compass rule 3 synergy); target-language text appears only as a quoted VALUE being saved.
+**Doctrine (v1.13.0, FP-5 — this section was inverted; see `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended (Compass rule 3 synergy); target-language text appears only as a quoted VALUE being saved.
 
 Canonical form (golden reference, verbatim style):
 
@@ -254,7 +254,7 @@ For an intent carrying a section-4 `**Terminal outcome:**`, write the form match
 - **captured**: save the customer's utterance — `Save the callback time (day and hour) the customer stated in the parameter callback_time.`
 - **dynamic**: an explicit per-call composition instruction for the slot.
 
-**FORBIDDEN in validationPrompt (blocking — check 3, mirrored by Skill 3 check 16):** scripts to speak, questions to ask, greetings, turn-taking guards, routing instructions, ALL-CAPS "GATE" recipes with `Say…`/`Ask…` steps. The asking happens where the voice model can see it — in the **previous** intent's `announcement` (FP-2 staggering) or this intent's post-execution `intentInstructions` (step 4). See `conversation-routines-style-guide.md` §3 for the capture-mapping patterns (C1–C5).
+**FORBIDDEN in validationPrompt (blocking — check 3, mirrored by CHK-16):** scripts to speak, questions to ask, greetings, turn-taking guards, routing instructions, ALL-CAPS "GATE" recipes with `Say…`/`Ask…` steps. The asking happens where the voice model can see it — in the **previous** intent's `announcement` (FP-2 staggering) or this intent's post-execution `intentInstructions` (step 4). See `conversation-routines-style-guide.md` §3 for the capture-mapping patterns (C1–C5).
 
 **Authoring procedure:**
 
@@ -426,7 +426,7 @@ Required language fields (v1.13.0 — rewritten per FP-2/FP-3/FP-7):
 | Field | Meaning | Example (Hebrew) |
 |---|---|---|
 | `announcement` | The REAL spoken content delivered when this intent's tool completes — **after which the bot yields the turn and WAITS for a caller answer (v1.17.0 turn-yield fact, FP-3)**: the read-back with `{{CustomData}}`/slot vars plus **the section-4 `**Asks next:**` question** — the question the NEXT intent's slots will capture (FP-2 staggering). NEVER filler ("תודה.", "קיבלתי.") — acknowledgment belongs in `intentLoadingAnnouncement`. **MUST be empty whenever `**Asks next:**` is `[none]`** — an auto-chaining intent with a non-empty announcement stalls waiting for an answer that never comes (turn-yield → silence loop). The FP-3 named cases: (a) an API-response list read immediately under this intent's `intentInstructions` reading instructions; (b) this is the intent immediately before the final RT=1 terminal with no splits — its farewell is an FP-4 quoted line in its own `intentInstructions` (check 18); (c) any other auto-chaining intent (v1.17.0) — any remaining spoken line moves to an FP-4 quoted line in `intentInstructions` before the forward. A splitting predecessor never qualifies for (b) — that needs a dedicated pre-IVR farewell intent (structural → Skill 1 patch). Log to 7.3: `announcement intentionally empty on [intent] — FP-3 case (a|b|c)`. | "התוכנית: {{policies}}, חברת הביטוח: {{insurer}}, פרמיה חודשית לאחר הנחה: {{monthlypremiumafterdiscount}}. לתשומת ליבך, ייתכן שהפרמיה תתעדכן בעקבות בדיקה נוספת. האם הפרטים נכונים?" |
-| `intentLoadingAnnouncement` | **MANDATORY, non-empty (FP-7 — check 12; Skill 3 check 17 backstops).** Short natural filler spoken while the tool executes, matching the persona's register and grammatical gender. An unconfigured value produces the default "." SAY directive — a verified production trigger for duplicated phrases and dead air. | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
+| `intentLoadingAnnouncement` | **MANDATORY, non-empty (FP-7 — check 12; CHK-17 backstops).** Short natural filler spoken while the tool executes, matching the persona's register and grammatical gender. An unconfigured value produces the default "." SAY directive — a verified production trigger for duplicated phrases and dead air. | "מצויין, אני רושמת" / "אין בעיה, שניה רושמת" / "אחלה, רק שומרת את התשובה" |
 | `response_success` | **Response success instructions** [JSON field: `response_success` — object shape `{ "instructions": "<text or empty>" }`, v1.5.0 shape change]. Skill 2 prompts the user for any instructional text the runtime should use after RT=3 success (collect-and-continue). Empty string is the most common production shape (`{ "instructions": "" }`). User supplies the inner string; Skill 2 wraps it as the object. | `{ "instructions": "" }` |
 
 **Filler-announcement advisory (v1.13.0, fires during step 3):** an RT=3 `announcement` that contains no `{{…}}` reference, no question mark, and is ≤ ~15 characters (e.g., "תודה.") is almost certainly misplaced acknowledgment. Surface: "Acknowledgment belongs in `intentLoadingAnnouncement`; `announcement` must carry the read-back + the `**Asks next:**` question, or be intentionally empty per FP-3 (API-list read-out / pre-terminal farewell-in-instructions / any auto-chaining intent, v1.17.0). Move it?"
@@ -559,7 +559,7 @@ Per intent, before flipping status to `[detailed]`. Each check has a timing clas
 |---|---|---|---|---|
 | 1 | `validationPrompt` is non-empty and capture-mapping styled (v1.13.0, FP-5 — short save/capture/set bullets; was "Conversation Routines styled" pre-v1.13) | FP-5 | blocking | during step 2 + gate |
 | 2 | `validationPrompt` covers every collectable slot in the intent (one mapping line per slot) | §14.3.2 / FP-5 | blocking | gate |
-| 3 | `validationPrompt` contains NO speech content — no ask/say/tell/greet/read-back imperatives, no question addressed to the caller, no turn-taking guards, no routing; quoted strings appear only as VALUES being saved (v1.13.0, FP-5 — replaces the pre-v1.13 "at least one IRON RULE block" check, which mandated the opposite pattern; mirrored by Skill 3 check 16) | FP-5 | blocking | during step 2 + gate |
+| 3 | `validationPrompt` contains NO speech content — no ask/say/tell/greet/read-back imperatives, no question addressed to the caller, no turn-taking guards, no routing; quoted strings appear only as VALUES being saved (v1.13.0, FP-5 — replaces the pre-v1.13 "at least one IRON RULE block" check, which mandated the opposite pattern; mirrored by CHK-16) | FP-5 | blocking | during step 2 + gate |
 | 4 | Slot type matches purpose (no STRING for phone, etc.) | §14.3.3 | blocking | during step 1 |
 | 5 | `intentInstructions` is non-empty and Conversation Routines styled | §14.3.2 | blocking | during step 4 + gate |
 | 6 | `intentInstructions` does not contain slot collection logic | §14.3.12 | blocking | during step 4 |
@@ -750,11 +750,11 @@ When the work queue is exhausted and section 7.5 reports zero pending:
 | 14.3.11 | Bot-level disambiguation in per-intent fields | Step 4 + check 8 |
 | 14.3.12 | Slot validation in intentInstructions | Step 4 + check 6 |
 | 14.3.13 | Persistent policy in single intent | Step 4 + check 7 |
-| FP-5 | Spoken script inside validationPrompt (v1.13.0) | Step 2 doctrine + check 3; Skill 3 check 16 |
-| FP-6 | Duplicate speak-obligation (v1.13.0) | Step 3 say-once iron rule + check 14; Skill 3 check 19 |
-| FP-7 | Missing RT=3 intentLoadingAnnouncement (v1.13.0) | Step 3 RT=3 table + check 12; Skill 3 check 17 |
-| FP-8 | Foreign-parameter reference (v1.13.0) | Step 4 own-parameters rule + check 13; Skill 3 check 18 |
-| FP-8 | Farewell inside an RT=1 terminal / missing pre-terminal farewell (v1.14.0) | Step 3 RT=1 hard rule + step 4 predecessor authoring + check 18; Skill 3 check 20 |
+| FP-5 | Spoken script inside validationPrompt (v1.13.0) | Step 2 doctrine + check 3; CHK-16 |
+| FP-6 | Duplicate speak-obligation (v1.13.0) | Step 3 say-once iron rule + check 14; CHK-19 |
+| FP-7 | Missing RT=3 intentLoadingAnnouncement (v1.13.0) | Step 3 RT=3 table + check 12; CHK-17 |
+| FP-8 | Foreign-parameter reference (v1.13.0) | Step 4 own-parameters rule + check 13; CHK-18 |
+| FP-8 | Farewell inside an RT=1 terminal / missing pre-terminal farewell (v1.14.0) | Step 3 RT=1 hard rule + step 4 predecessor authoring + check 18; CHK-20 |
 
 Skill 1 owns: §14.3.1 (persona content), §14.3.4 (escalation transitions), §14.3.7 (capabilities ⊆ intents), §14.3.8 (naming), §14.3.9 (channel content placement), §14.3.10 (per-intent logic in persona).
 

@@ -32,8 +32,8 @@ Before any user interaction, load context from these references. Path convention
 | Doc 1 §14.3 — Anti-patterns | Iron rules Skill 1 enforces (Appendix A) |
 | Doc 2 §3 — Agent Spec template | What Skill 1 writes |
 | Doc 2 §4 — Skill 1 architecture | What Skill 1 does |
-| `../../references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 1 owns checks 11–15 (rules 3–7) and the rule 11 mirror |
-| `../../references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13 incl. the FP-3 turn-yield rule (v1.17.0: `**Asks next:**` [none] ⇒ empty announcement); Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6 (incl. the v1.14.0 off-topic rule), and checks 18–24 |
+| `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine — 13 rules; Skill 1 owns checks 11–15 (rules 3–7) and the rule 11 mirror |
+| `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | Field-placement doctrine (v1.17.0) — FP-1…FP-13 incl. the FP-3 turn-yield rule (v1.17.0: `**Asks next:**` [none] ⇒ empty announcement); Skill 1 owns FP-2 (structural staggering), FP-8/FP-9 (terminals/graph), FP-10 (Description), FP-11 (CustomData interview), FP-12 (callback block), the persona half of FP-6 (incl. the v1.14.0 off-topic rule), and checks 18–24 |
 
 Also load these files from this skill's package:
 
@@ -180,7 +180,7 @@ Draft a `persona` from the user's answer. Show it, then prompt via `AskUserQuest
 | No persistent policy embedded in single intents. | §14.3.13 | Defer this check to Phase 3 boundary, where intents exist to compare against. But ask now: "Are there any policies that apply call-wide (privacy, GDPR, retention, escalation policy)?" — capture into persona directly. |
 | Call-wide rules stated ONCE, in persona (v1.13.0, FP-6). | FP-6 | The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: **"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."**; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists; (d) **off-topic handling (v1.14.0 — MANDATORY on every bot)** — authored in §3.2.5 from the user's answers. These rules are NEVER repeated in per-intent fields — enforced by check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known; stage a 7.3 note if authored earlier. |
 
-**Compass doctrine note (rules 3 and 7).** For non-English bots, the doctrine recommends writing operational prose in English (~3× token savings on the static prompt; preserves function-calling and instruction-following accuracy that degrades in Hebrew/Arabic/CJK). Verbatim utterances the agent must speak stay in the target language. Skill 1's self-validation check 11 fires advisory if a bot-level prompt field is ≥30% non-Latin characters. Independently, check 15 flags generic GDPR/HIPAA/PII boilerplate that isn't derived from the bot's domain — these belong in the data plane (Presidio, dialplan, etc.), not the persona. See `../../references/voice-prompt-doctrine.md` rules 3, 4, 7 for fix recipes.
+**Compass doctrine note (rules 3 and 7).** For non-English bots, the doctrine recommends writing operational prose in English (~3× token savings on the static prompt; preserves function-calling and instruction-following accuracy that degrades in Hebrew/Arabic/CJK). Verbatim utterances the agent must speak stay in the target language. Skill 1's self-validation check 11 fires advisory if a bot-level prompt field is ≥30% non-Latin characters. Independently, check 15 flags generic GDPR/HIPAA/PII boilerplate that isn't derived from the bot's domain — these belong in the data plane (Presidio, dialplan, etc.), not the persona. See `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` rules 3, 4, 7 for fix recipes.
 
 #### 3.2.2 Elicit channel-specific behavior
 
@@ -249,7 +249,7 @@ IRON RULE: Stay in scope. For pricing/billing/technical, route to transfer_to_hu
 
 Show the draft, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening behavior", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text and re-prompt until accepted.
 
-**Compass doctrine note (rule 5 — recency-slot language-lock).** The bot-level `intentInstructions` is the recency slot of the assembled systemInstruction (per "Lost in the Middle" + "Found in the Middle" U-shaped attention bias). For non-English bots, a known production bug (Gemini cookbook #1197) causes the model to code-switch based on the caller's name or accent even with English-only instructions. The doctrine's mitigation is to place an extreme negative constraint — equivalent to `"NEVER infer language from caller's name, accent, or tone."` — in the final third of `prompts.intentInstructions`. Skill 1's self-validation check 13 detects whether this constraint is present in the recency slot and, if not, offers to inject the standard line. See `../../references/voice-prompt-doctrine.md` rule 5 for the detection pattern and fix recipe.
+**Compass doctrine note (rule 5 — recency-slot language-lock).** The bot-level `intentInstructions` is the recency slot of the assembled systemInstruction (per "Lost in the Middle" + "Found in the Middle" U-shaped attention bias). For non-English bots, a known production bug (Gemini cookbook #1197) causes the model to code-switch based on the caller's name or accent even with English-only instructions. The doctrine's mitigation is to place an extreme negative constraint — equivalent to `"NEVER infer language from caller's name, accent, or tone."` — in the final third of `prompts.intentInstructions`. Skill 1's self-validation check 13 detects whether this constraint is present in the recency slot and, if not, offers to inject the standard line. See `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` rule 5 for the detection pattern and fix recipe.
 
 #### 3.2.5 Off-topic policy (v1.14.0, FP-6(d) — MANDATORY on every bot)
 
@@ -354,7 +354,7 @@ Ask:
 
 - **4.5.1 Call-context variables:** "What platform-supplied variables does your account expose at call start? Common entries: `caller_phone`, `TimeNow`, `caller_name`, `account_id`." If the user can't enumerate: emit defaults `caller_phone` and `TimeNow`, mark section `<INCOMPLETE: user to verify with platform>`.
 - **4.5.2 Environment variables:** "Are there any deployment-time secrets you'll reference, like `{{ENV.API_TOKEN}}`?" Capture by name. v1 trusts the user's declaration; no validation that the secret exists.
-- **4.5.5 CustomData keys (v1.13.0, FP-11):** "List the EXACT per-call CustomData keys your pipeline sends with each call (e.g., `firstnamelastname`, `nationalid`, `policies`, `insurer`, `monthlypremiumafterdiscount`). I will never invent key names — any `{{placeholder}}` not on this list blocks assembly at Skill 3 check 7." Record verbatim in §4.5.5. If the user cannot enumerate: write `<INCOMPLETE: CustomData keys unverified>`. When the flow reads per-call data or collects a callback time (Hebrew bots especially), also confirm the platform context vars `{{todayHe}}` / `{{timeHe}}` are available and add them to 4.5.1.
+- **4.5.5 CustomData keys (v1.13.0, FP-11):** "List the EXACT per-call CustomData keys your pipeline sends with each call (e.g., `firstnamelastname`, `nationalid`, `policies`, `insurer`, `monthlypremiumafterdiscount`). I will never invent key names — any `{{placeholder}}` not on this list blocks assembly at CHK-07." Record verbatim in §4.5.5. If the user cannot enumerate: write `<INCOMPLETE: CustomData keys unverified>`. When the flow reads per-call data or collects a callback time (Hebrew bots especially), also confirm the platform context vars `{{todayHe}}` / `{{timeHe}}` are available and add them to 4.5.1.
 - **4.5.4 API response shapes:** for each RT=2 intent, ask: "What dotted paths will you reference in the API response announcement? E.g., `available_slots.0.display`, `response.order.status`." Capture per intent. The declared shape is **provisional** — Skill 2 hard-verifies it against the live API (real `curl`, 2xx + every declared path present) before the intent can be detailed; an unverifiable endpoint blocks. Skill 3 also validates `announcement` (was `apiResponseAnnouncement` pre-v1.5.0) references against this allowlist.
 
 (Section 4.5.3 is auto-derived from section 5 slots — generated in Phase 4 close-out.)
@@ -610,7 +610,7 @@ Open unknowns: <count from 7.4>
 - Rename an intent identifier — Skill 1 updates all transition refs and Mustache refs; existing `[detailed]` content stays since the underlying logic is unchanged
 - Edit caller-silence configuration
 - Edit channel scope from one channel to two (newly-active channel gets templated defaults)
-- Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that Skill 3 check 7 re-validates every `{{reference}}` at assembly
+- Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that CHK-07 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / IVRLayerSelect_2) (v1.13.0)
 - Edit the §1 `Negative instructions` field (v1.16.0)
 - Edit `**Sensitive:**` / `**Max turns:**` / `**Max turns sentence:**` / `**IsSilenceIntent:**` on an intent (v1.14.0) — re-run Checks 23/24 after the edit
@@ -1086,7 +1086,7 @@ These warnings are emitted at greenfield close-out, after intent count is final.
 
 ## Appendix D — Compass doctrine cross-reference (rules Skill 1 enforces)
 
-The doctrine catalog lives in [`../../references/voice-prompt-doctrine.md`](../../references/voice-prompt-doctrine.md). Skill 1 owns the rules below; Skills 2 and 3 own the remainder.
+The doctrine catalog lives in `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md`. Skill 1 owns the rules below; Skills 2 and 3 own the remainder.
 
 | Compass rule | Name | Skill 1 hook | Severity | Model gating |
 |---|---|---|---|---|
