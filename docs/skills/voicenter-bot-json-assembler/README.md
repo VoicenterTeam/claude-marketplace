@@ -20,7 +20,7 @@ Mechanically projects a `[detailed]` Agent Spec into Bot JSON wire format. Produ
 - `bot-<identifier>-<YYYY-MM-DD>.json` — the deployable JSON
 - `bot-<identifier>-<YYYY-MM-DD>.banner.md` — a sidecar listing every fail-loud sentinel, drift note, and applied default
 
-**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **twenty-four checks** (eight §15.4 + three Compass + three botIntents-role + one duplicate-global-intent + nine field-placement doctrine — v1.13.0/v1.14.0/v1.17.0), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. Checks 1–7, 11–13, 15, 16–21, and 24 are blocking; 14, 22, and 23 are advisory. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **twenty-five checks** (eight §15.4 + three Compass + three botIntents-role + one duplicate-global-intent + nine field-placement doctrine + one persona-FK sanity — v1.13.0/v1.14.0/v1.17.0/v1.18.0), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. Checks 1–7, 11–13, 15, 16–21, and 24 are blocking; 14, 22, 23, and 25 are advisory. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
 
 The risk vector is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations. The skill's longest section (anti-list §8) is the explicit "do not" list.
 
@@ -121,7 +121,9 @@ Real platform-assigned IDs after import are positive integers, so there's no col
 
 Section 1 fields map to top-level root keys in production order: `Name`, `BotID`, `AccountID`, `intentList` (position #4 — v1.5.0 correction), `BotStatusId`, `CreatedDate`, `Description`, `BotLanguages`, `ModifiedDate`, `AiModelConfig`, `ActiveVersionInfo`.
 
-**`ActiveVersionInfo` field order (v1.5.0):** `IsActive` is first (was `BotVersionId` in prior baseline). Fields: `IsActive`, `CreatedDate`, `Description`, `BotVersionId`, `ModifiedDate`, `SystemPrompt`, `AIModelConfig`, `VersionNumber`, `AIModelConfigId`, `BotVersionStatusId`.
+**`ActiveVersionInfo` field order (v1.5.0):** `IsActive` is first (was `BotVersionId` in prior baseline). Fields: `IsActive`, `CreatedDate`, `Description`, `BotVersionId`, `ModifiedDate`, `SystemPrompt`, `AIModelConfig`, `VersionNumber`, `AIModelConfigId`, `BotVersionStatusId`, `PersonaID` (v1.18.0 — see below).
+
+**`PersonaID` (v1.18.0, new).** `BotVersion.PersonaID` is a `bigint NOT NULL` FK on `Persona`; per the `ImportBotFromJSON` stored-procedure contract (`references/voicebot-json-contract.md` R7), an omitted/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row is absent on the target server, the BotVersion insert fails, producing a Bot with intents but no version. Skill 3 does not rely on that implicit fallback: it always emits the known shared value `3` (`TTSScriptReader`), banner-noted under DEFAULTS APPLIED. No golden production export has been captured with this field yet, so its position in the object is unverified — Skill 3 appends it last pending confirmation.
 
 **The two `AIModelConfig` objects** (top-level `AiModelConfig` + version-level `AIModelConfig` per Doc 1 §6) now carry **distinct** `created` payloads (v1.5.0):
 
@@ -229,11 +231,11 @@ The sentinel value carries the field role inside the placeholder text, so the ba
 
 ---
 
-## §15.4 cross-reference pass — twenty-four checks
+## §15.4 cross-reference pass — twenty-five checks
 
-After assembly + section 6 sanity check, run all **twenty-four** checks against the in-memory wire structure — eight per Doc 1 §15.4, three Compass doctrine checks (8–10), three botIntents-role integrity checks (11–13, v1.8.0), one duplicate-global-intent check (15, v1.12.0), and **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `plugins/voicenter-bot-builder/references/field-placement-doctrine.md`. Checks 1–7, 11–13, 15, 16–21, and 24 are blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Check 8 is advisory/blocking by token band, check 9 is advisory, check 10 is blocking on mismatch — all three gated on Gemini 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`, i.e. `AIModelConfigID=139` or `142`). Checks 14, 22, and 23 are non-blocking advisory. Checks 11–13, 15, and 16–24 are model-agnostic. (The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped.)
+After assembly + section 6 sanity check, run all **twenty-five** checks against the in-memory wire structure — eight per Doc 1 §15.4, three Compass doctrine checks (8–10), three botIntents-role integrity checks (11–13, v1.8.0), one duplicate-global-intent check (15, v1.12.0), **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `plugins/voicenter-bot-builder/references/field-placement-doctrine.md`, and one **persona-FK sanity check (25, v1.18.0)** per `plugins/voicenter-bot-builder/references/voicebot-json-contract.md` R7/R11. Checks 1–7, 11–13, 15, 16–21, and 24 are blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Check 8 is advisory/blocking by token band, check 9 is advisory, check 10 is blocking on mismatch — all three gated on Gemini 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`, i.e. `AIModelConfigID=139` or `142`). Checks 14, 22, 23, and 25 are non-blocking advisory. Checks 11–13, 15, 16–24, and 25 are model-agnostic. (The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped.)
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14. The pass operates on the assembled in-memory wire structure; checks 16–24 additionally consult the spec's section-4 staggering/terminal/role fields (check 24 reads `**Asks next:**`), the 4.5 variable inventory, and — for check 23 — the persona text. The failure report is count-agnostic: `Checks failed: <count> of <total checks run>`.
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25. The pass operates on the assembled in-memory wire structure; checks 16–24 additionally consult the spec's section-4 staggering/terminal/role fields (check 24 reads `**Asks next:**`), the 4.5 variable inventory, and — for check 23 — the persona text. The failure report is count-agnostic: `Checks failed: <count> of <total checks run>`.
 
 | # | Check | Validates |
 |---|---|---|
@@ -259,6 +261,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 →
 | 22 | No authored edges into type-2 globals (v1.13.0, FP-9) | **Advisory.** `intentRelations[]` rows whose `NextIntentID` is a type-2 global are legal but usually redundant — globals are reachable from anywhere by construction, and extra edges enlarge the tool-routing surface. Detection: list any relation targeting a botIntents type-2 IntentId; banner line recommending removal via Skill 1 patch mode. |
 | 23 | Off-topic global present (v1.14.0, FP-6) | **Advisory.** The mandatory off-topic pair exists: (a) an RT=1 intent registered type-2 in `botIntents[]` whose Description/Name marks it as the off-topic terminal, AND (b) a `prompts.persona` off-topic section (forbid + deflect + N-loop ending) referencing that intent's Description. On miss: banner line routing to Skill 1 patch mode. |
 | 24 | Turn-yield announcement gating (v1.17.0, FP-3) | **Blocking** (advisory half noted). A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement === ""` — a non-empty value there stalls the call into the silence loop. Advisory half: those intents' `intentInstructions` should carry no wait rule, only the immediate-forward instruction. RT=1 covered by check 20 (no announcement key); RT=4 exempt (pre-dial speech). Remediation: Skill 2 reactivation — empty the announcement; remaining speech → FP-4 quoted line in `intentInstructions` before the forward. |
+| 25 | Persona FK sanity (v1.18.0) | **Advisory.** `ActiveVersionInfo.PersonaID` is present and is one of the known shared `Persona` rows (`AccountId=0`): `{3}` (TTSScriptReader). v1 always emits `3` by construction, so the check is trivial today — it future-proofs a later spec-level persona-selection feature. A value outside the known whitelist gets a banner note asking the operator to confirm the row exists on the target account (FK), rather than a silent pass. |
 
 Failure routing:
 
@@ -281,6 +284,7 @@ Failure routing:
 | Check 20 — terminal shape (blocking) | Skill 1 patch mode — per-outcome terminal restructure (add the outcome slot / remove the terminal-origin relation / merge the finalize→end_call chain); Skill 2 reactivation when only the validationPrompt's value-mode implementation is off |
 | Check 21 — ParameterType mismatch (blocking) | Skill 3 internal bug — Skill 3 emits these from its own system dictionary; a mismatch means emission drift. Report, don't repair. |
 | Check 22 — authored edge into a type-2 global (advisory) | Informational — recommend Skill 1 patch mode to drop the redundant relation; the global is reachable from anywhere by construction |
+| Check 25 — PersonaID outside known whitelist (advisory) | Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import; not user-actionable during authoring until Skill 1 gets a persona-selection field |
 
 Skill 3 does not invoke Skill 1 or Skill 2 itself. It reports the routing recommendation; the user invokes the appropriate skill.
 
@@ -335,6 +339,7 @@ The banner is rendered **above** the JSON (single-conversation runtime) or as a 
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 3, IVRLayerSelect_2 = 3 (v1.13.0 golden-derived defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns / sensitive / max_turns_sentence) on intents without spec overrides (v1.13.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — v1.18.0; verify this Persona row exists on the target account before import)
 #   - [...]
 #
 # MANDATORY POST-IMPORT STEP (v1.16.0 — emitted whenever spec section 1 carries **Negative instructions:**):
@@ -444,7 +449,7 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 
 **Section 6.2 regeneration.** Skill 3's section 6.2 regeneration pass emits authored transitions only (v1.12.0 — no fan-out), matching Skill 1's section 6.2, so no spurious drift is flagged between the authored spec and the assembled JSON.
 
-**Cross-reference pass gained three botIntents-role checks.** Three blocking checks (11–13): check 11 verifies global intents have `BotIntentTypeID = 2`; check 12 verifies no chained intents appear in `botIntents[]`; check 13 verifies at least one start point exists. (Check 14, a non-blocking advisory for catalog-intent resolution, was added in v1.11.0. The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped. Check 15 — duplicate-global-intent — was added in v1.12.0; checks 16–22 — field-placement doctrine — in v1.13.0; check 23 — off-topic global — in v1.14.0; and check 24 — turn-yield announcement gating — in v1.17.0, bringing the pass to twenty-four checks.)
+**Cross-reference pass gained three botIntents-role checks.** Three blocking checks (11–13): check 11 verifies global intents have `BotIntentTypeID = 2`; check 12 verifies no chained intents appear in `botIntents[]`; check 13 verifies at least one start point exists. (Check 14, a non-blocking advisory for catalog-intent resolution, was added in v1.11.0. The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped. Check 15 — duplicate-global-intent — was added in v1.12.0; checks 16–22 — field-placement doctrine — in v1.13.0; check 23 — off-topic global — in v1.14.0; check 24 — turn-yield announcement gating — in v1.17.0; and check 25 — persona-FK sanity — in v1.18.0, bringing the pass to twenty-five checks.)
 
 **`BotIntentId` placeholder allocation.** The `-100` series now allocates only to the emitted subset (entry + global intents). Chained intents get an `IntentId` but no `BotIntentId`.
 
@@ -515,6 +520,17 @@ Anti-list addition: Skill 3 **does not auto-trim prompt text** to satisfy the to
 The plugin adds a second shared doctrine reference at `plugins/voicenter-bot-builder/references/field-placement-doctrine.md` (rules FP-1…FP-13), sourced from a production root-cause analysis against a hand-built golden bot. One-line doctrine: *announcement says it, validationPrompt captures it, intentInstructions routes it, intentLoadingAnnouncement covers the wait, persona rules it — each fact exactly once, in exactly one layer.* The file is a required-reading row in Skill 3's §1 table.
 
 Rule ownership: Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6. Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6. **Skill 3 verifies** — cross-reference checks 16–22 (see the checks table above for the detection heuristics): 16 (FP-5, validationPrompt speech-free), 17 (FP-7, RT=3 loading announcement), 18 (FP-8, own-parameter references), 19 (FP-6, duplicate speak-obligation), 20 (FP-8, terminal shape), 21 (ParameterType dictionary byte-match), 22 (FP-9, authored edges into type-2 globals — advisory). FP-11 (CustomData keys are never invented) rides on check 7's extended §4.5.5 allowlist.
+
+---
+
+## `ImportBotFromJSON` contract integration (v1.18.0)
+
+The plugin adds a third shared reference at `plugins/voicenter-bot-builder/references/voicebot-json-contract.md` — the `ImportBotFromJSON` stored procedure's hard rules (R1–R12), from a 2026-08-10 schema/FK snapshot handed to the pipeline for compliance review. Skill 3's existing emission already satisfied R1–R6, R8–R10, and R12 by construction (always-array `ConditionGroupList`/`DTMFList`, the `IntentResponces` typo, globally-unique placeholder ids, the `AiModelConfig.AccountId` reuse switch, and the NOT-NULL constants already emitted per Doc 1 §16/§9.0). Reviewing R7 and R11 against the skill surfaced two real gaps, both fixed in v1.18.0:
+
+- **`ActiveVersionInfo.PersonaID` (R7) — previously unemitted.** `BotVersion.PersonaID` is a `bigint NOT NULL` FK with no fail-loud path in the stored procedure (a missing value silently falls back to the account's first `Persona` row, which can be absent on a given target server — the exact "Bot with intents but no BotVersion" failure class this whole contract exists to prevent). Skill 3 now always emits the known shared value `3` (`TTSScriptReader`) — see §4.2.2, Appendix D.12, and cross-reference check 25 (advisory — trivial today, future-proofed for a later persona-selection feature).
+- **Appendix D.11 `AIModelConfigID` whitelist gap (R11) — flagged, not fixed.** The contract's live FK snapshot lists three additional shared ids (303, 312, 321) beyond the nine already catalogued. Their names/types haven't been captured into `model-catalog.md`, so Skill 3 does not fabricate entries for them — Appendix D.11 now carries a "Known gap" note instead.
+
+One rule (R5's `IntentResponces.Configuration.IntentSelect_1`/`IntentSelect_4` cross-reference) does not apply — Skill 3 never emits an `IntentSelect_*` field in any RT's `Configuration` shape, so there is nothing to check.
 
 ---
 

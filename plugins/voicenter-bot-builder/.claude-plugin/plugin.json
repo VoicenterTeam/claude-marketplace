@@ -1,7 +1,7 @@
 {
   "name": "voicenter-bot-builder",
   "displayName": "Voicenter Bot Builder",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "Design, detail and assemble deployable Voicenter voice/chat bot JSON through a three-skill authoring pipeline.",
   "author": {
     "name": "Voicenter",
@@ -19,7 +19,9 @@
     "conversational-ai",
     "intent-design",
     "json-generator",
+    "json-emitter",
     "agent-spec",
-    "bot-builder"
+    "bot-builder",
+    "skill-suite"
   ]
 }

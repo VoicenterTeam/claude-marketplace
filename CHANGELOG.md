@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [1.19.0] — 2026-08-10
+
+Compliance pass for the bot-builder pipeline (voicenter-bot-builder 1.18.0) against an external `ImportBotFromJSON` stored-procedure contract (hard rules R1–R12, 2026-08-10 schema/FK snapshot) handed to the pipeline for review.
+
+### New shared reference
+
+- **`references/voicebot-json-contract.md`** — the `ImportBotFromJSON` contract's hard rules (R1–R12): array-vs-object shapes, the `IntentResponces` typo, map-table PK uniqueness, required NOT NULL fields, varchar limits, and FK whitelists (`BotStatusId`, `BotVersionStatusId`, `ScriptTypeId`, `ParameterTypeId`, `ResponseTypeId`, `BotIntentTypeID`, `SourceID`, shared `AIModelConfigID`, shared `PersonaID`). Loaded by Skill 3.
+
+### Skills
+
+- **Skill 3 — `ActiveVersionInfo.PersonaID` now emitted (R7).** `BotVersion.PersonaID` is a `bigint NOT NULL` FK with no fail-loud path in the stored procedure — an omitted/null value silently falls back to the account's first `AccountId=0` `Persona` row, and if that row is ever absent on a target server the BotVersion insert fails, producing exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent. This field was previously unemitted entirely (a genuine gap, not a prior design choice). Skill 3 now always emits the known shared value `3` (`TTSScriptReader`), banner-noted under DEFAULTS APPLIED; position in the object is unverified pending a golden export that includes it.
+- **Skill 3 — new advisory cross-reference check 25 (persona-FK sanity), pass extended to 25 checks (1 persona-FK).** Validates `ActiveVersionInfo.PersonaID` is present and within the known shared whitelist `{3}`; trivial in v1 (always `3` by construction) but future-proofs a later spec-level persona-selection feature. Frontmatter gate, §6 counts/run order, Appendix A quirk row 25, Appendix D.12, and both remediation tables updated.
+- **Skill 3 — Appendix D.11 known-gap note.** The contract's live FK snapshot lists three additional shared `AIModelConfigID` rows (303, 312, 321) beyond the nine already catalogued; their names/types aren't captured yet, so Skill 3 flags the gap rather than fabricating catalog entries.
+
+### Documentation
+
+- `docs/skills/voicenter-bot-json-assembler/README.md` mirrored: check-count/run-order updates, new check 25 row + routing row, `PersonaID` field note, banner DEFAULTS APPLIED line, and a new "`ImportBotFromJSON` contract integration (v1.18.0)" section.
+
+### Versioning
+
+- voicenter-bot-builder 1.17.0 → 1.18.0, marketplace metadata 1.18.0 → 1.19.0. **voicenter-mcp (1.1.7), voicenter-api (1.1.8), and voicenter-dashboard (1.0.0) unchanged.**
+
 ## [1.18.0] — 2026-08-03
 
 Turn-yield announcement doctrine for the bot-builder pipeline (voicenter-bot-builder 1.17.0), root-caused from live test-bot calls: a non-empty `announcement` makes the bot yield the turn and **wait for a caller answer** before doing anything else.
