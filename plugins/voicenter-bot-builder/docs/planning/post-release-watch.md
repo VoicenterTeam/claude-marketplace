@@ -1,4 +1,4 @@
-# Post-release watch — v1.18.0
+# Post-release watch — v1.19.0
 
 Opened per MS6 §6.5. Feeds the next planning cycle. Nothing here is scheduled work yet; these
 are the things whose answers only production can supply.
@@ -7,7 +7,7 @@ are the things whose answers only production can supply.
 
 ## 1. Locked decision R — the Skill 2 drafting subagent
 
-**Revisit after ~50 builds on v1.18.0.**
+**Revisit after ~50 builds on v1.19.0.**
 
 R deferred a per-batch drafting subagent for Skill 2, on the theory that late-batch quality decay
 might be a context-pressure symptom that MS3's lean-context world would fix on its own. That is
@@ -21,7 +21,7 @@ is worth building. If it disappears, R can be retired rather than re-litigated.
 
 ## 2. Conv 3a functional patches — v1.19.0 candidate
 
-Held out of v1.18.0 by locked decision S so byte-comparability could prove the refactor was
+Held out of v1.19.0 by locked decision S so byte-comparability could prove the refactor was
 inert. Now unblocked:
 
 - **S1 `Identifier:` field** handling.
@@ -62,19 +62,37 @@ again:
 | **Subagent mechanics** | Nesting depth, the Task→Agent rename, concurrency defaults. The verifier is a leaf, so nesting is irrelevant *today* — but §6.0's wording deliberately says "delegate to the agent" rather than naming a tool, and that should stay true. |
 | **Plugin-agent frontmatter allow-list (C4)** | V-S4 lints against it. If the allow-list grows, the lint should follow rather than block a legitimate field. |
 
-## 6. Carried-forward gates from v1.18.0
+## 6. Carried-forward gates from v1.19.0
 
 Not watch items — **open obligations** that were not closed before this note was written:
 
 | Gate | Status | Owner |
 |---|---|---|
-| V-C1/2/3/4/6/7 — Claude Code functional suite | not run; needs a marketplace install | — |
-| V-C9 — haiku byte-comparability for `model: haiku` | **not run.** If it drifts, fall back to `model: sonnet` and record why | — |
+| V-C1/2/3/4/6/7 — Claude Code functional suite | not run; needs an install from the branch — procedure in `vc-run-instructions.md` | — |
+| V-C9 — haiku byte-comparability for `model: haiku` | **not run**, and the fixtures cannot decide it (goldens come from `assemble.py`, not a model run). If it drifts, fall back to `model: sonnet` and record why | — |
 | V-A1…V-A6 — claude.ai regression | not run; see `va-run-instructions.md` | human |
-| Trigger evals (MS6 §6.1B) | query sets built, not executed | — |
+| Trigger evals (MS6 §6.1B) | query sets built; runner (`claude plugin eval`) is **early-access** and unavailable | — |
 | LICENSE sign-off on bundled reference material | **pending**; blocks submission | legal |
 | Marketplace root + sibling manifests fail `--strict` | tracked in `license-decision.md` §3.2 | — |
 | `docs/` ships inside the plugin | decide leave-or-relocate | — |
+
+## 6a. Upstream collision — what MS7 absorbed
+
+A **functional v1.18.0** (`1fa1351`) shipped on `main` mid-release, which is why the structural
+release is numbered **1.19.0**. MS7 merged it. Three consequences worth carrying forward:
+
+- **The single-source design was load-tested by accident and held.** Upstream added check 25;
+  integrating it meant one entry in `verification-procedure.md` plus a TOC line, a severity cell
+  and a run-order position. Nothing else in the plugin needed a check *procedure* edit.
+- **But the check *count* is echoed in 7 files** (`agents/spec-verifier.md`, both Skill 3 dispatch
+  sections, Skill 1's cross-reference, `self-validation.md`, the plugin README, the fixtures
+  README). MS1 de-duplicated the procedures and left the arithmetic duplicated. A follow-up
+  should either drop the counts in favour of "the checks in `verification-procedure.md`" or add a
+  V-S check that asserts every stated count matches the file. **Low severity, high annoyance.**
+- **Two goldens now exist** for the reason explained in `../../examples/README.md`. The frozen one
+  is still byte-identical after the merge, which is the actual evidence that the restructure was
+  inert. Keep the "delta between goldens is exactly one key" CI assertion — it is what bounds
+  future functional releases.
 
 ## 7. The eight v1.17.0 findings in `examples/baseline-notes.md`
 

@@ -92,6 +92,7 @@ Emit fields in this order (matches production — v1.5.0):
 | 8 | `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
 | 9 | `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
 | 10 | `BotVersionStatusId` | `3` (per Doc 1 §5) |
+| 11 | `PersonaID` | **Added per the `ImportBotFromJSON` contract (`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it always emits the known shared value `3` (`TTSScriptReader`, `AccountId=0`) unless a future spec revision adds an explicit persona-catalog field. Banner DEFAULTS APPLIED note whenever this default is used (i.e. always, in v1). Verified by CHK-25. **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
 
 **v1.5.0 wire-format correction.** Field order revised to match production. Prior baseline had `BotVersionId` first; production has `IsActive` first.
 
@@ -542,11 +543,11 @@ Walk Appendix A. For every quirk in the table, ensure the assembled wire structu
 
 In normal operation, §4.2-4.4 already produce all quirks correctly. §4.5 is the verification gate that catches drift between the emission code and the §16 contract.
 
-The full checklist is in Appendix A (rows 2, 5, 6, 7 marked REMOVED/CORRECTED; rows 16-19 added in v1.5.0; rows 20-23 added in v1.13.0; row 24 added in v1.14.0).
+The full checklist is in Appendix A (rows 2, 5, 6, 7 marked REMOVED/CORRECTED; rows 16-19 added in v1.5.0; rows 20-23 added in v1.13.0; row 24 added in v1.14.0; row 25 added with the PersonaID contract).
 
 ## Appendix A — Doc 1 §16 quirks: complete preservation checklist
 
-All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–23 added in v1.13.0 from the golden export; row 24 added in v1.14.0) must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
+All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–23 added in v1.13.0 from the golden export; row 24 added in v1.14.0; row 25 added with the PersonaID contract) must be present in the assembled JSON. Skill 3 verifies each before emission (§4.5).
 
 | # | Quirk | Wire-format location | Action |
 |---|---|---|---|
@@ -575,6 +576,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 22 | Version-level limit/layer fields (v1.13.0) | `ActiveVersionInfo.AIModelConfig` | Emit `daily_limit`, `dailyLimitLayerId`, `maxDurationLayerId`, `daily_limit_sentence`, `max_duration_sentence`, `IVRLayerSelect_2` per §4.2.3 (siblings of `max_duration`, NOT inside `created`). |
 | 23 | RT=3 `Configuration.intentLoadingAnnouncement` (v1.13.0) | Per RT=3 intent | Always emitted, non-empty (Skill 2 check 12 upstream; CHK-17 backstop). |
 | 24 | RT=1 `Configuration` carries NO `announcement` key (v1.14.0) | Per RT=1 intent | Emit only `layer` + `intentLoadingAnnouncement`. The farewell lives in the predecessor's `intentInstructions` (FP-8; check 20). |
+| 25 | `ActiveVersionInfo.PersonaID: 3` | `ActiveVersionInfo` | Emit the shared `TTSScriptReader` persona id per §4.2.2 and Appendix D.12. Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 18 numbered quirks.
 
@@ -722,3 +724,15 @@ The full set of catalog-eligible default models. See `model-catalog.md` for the 
 | 7 | 7 | Public PaLM Standard | inactive |
 
 Skill 3 emits one of the active rows per the catalog mapping; the matching `AIModelTypeId` is the row's `AIModel` FK. When the user picks "Gemini Live" in Skill 1, the catalog resolves to row **139** (the active Gemini 3.1 Voice driven default).
+
+**Known gap.** `voicebot-json-contract.md` R11's live FK whitelist (2026-08-10 snapshot) additionally lists `AIModelConfigID` **303, 312, 321** as valid shared (`AccountId=0`) rows — three IDs not yet in the table above or in `model-catalog.md`. Their `Name`/`AIModelTypeId`/active status haven't been captured from a `Data.sql` dump, so Skill 3 does not fabricate rows for them: they're unusable as Skill 1 catalog choices until someone with DB access adds real entries to both this table and `model-catalog.md`. Not a defect in existing output — a coverage gap flagged for follow-up.
+
+### D.12 `PersonaID` (`ActiveVersionInfo.PersonaID`)
+
+Per `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7/R11. `Persona.PersonaID` is a `bigint NOT NULL` FK on `BotVersion` — no golden production export captured to date includes it (persona selection isn't yet a Skill 1 interview field), so Skill 3 emits the one known shared row unconditionally.
+
+| ID | Name | When |
+|---|---|---|
+| **3** | TTSScriptReader | **v1 default — always emitted** (`AccountId=0`) |
+
+If a future spec revision adds a persona-catalog field (mirroring how `model-catalog.md` resolves `AIModelConfigID`), extend this table with the additional named rows at that time — do not invent names for ids outside `{3}` today. CHK-25 asserts the emitted value stays inside this whitelist.

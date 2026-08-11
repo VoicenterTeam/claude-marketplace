@@ -31,6 +31,13 @@ import sys
 # Pinned assembly instant (§4.2.1 order 6 format "YYYY-MM-DD HH:MM:SS").
 ASSEMBLY_TS = "2026-08-08 09:15:00"
 
+# §4.2.2 row 11 / Appendix D.12 — the only known shared Persona row (AccountId=0).
+PERSONA_ID = 3
+
+# Which wire-format baseline to emit. "current" = shipping output. "1.17.0" omits
+# ActiveVersionInfo.PersonaID so the frozen S0 golden stays byte-reproducible.
+WIRE_BASELINE = "current"
+
 # §4.3.2 ParameterType system dictionary — copied verbatim, never re-authored.
 PARAM_TYPES = {
     1:  {"Name": "STRING",  "Description": "Basic text input",                  "ValidationPattern": None,                        "IsCustomValidationAllowed": 1, "CreatedDate": "2025-01-21 11:25:25"},
@@ -459,7 +466,7 @@ def assemble(spec):
             "prebuiltVoiceConfig": {"voiceName": ident['Voice Name']}}}}
 
     # ---- §4.2.1 root ----
-    return {
+    out = {
         "Name": ident['Bot Name'],
         "BotID": -1,
         "AccountID": acct,
@@ -521,12 +528,27 @@ def assemble(spec):
         },
     }
 
+    # §4.2.2 row 11 — PersonaID, added by the functional v1.18.0 per
+    # voicebot-json-contract.md R7. Appended last (position unverified against a
+    # golden export). Omitted under --wire-baseline 1.17.0 so the frozen S0 golden
+    # stays byte-reproducible: that fixture's job is proving the *restructure* was
+    # inert, and it predates this field.
+    if WIRE_BASELINE != "1.17.0":
+        out["ActiveVersionInfo"]["PersonaID"] = PERSONA_ID
+
+    return out
+
 
 def main():
+    global WIRE_BASELINE
     ap = argparse.ArgumentParser()
     ap.add_argument("spec")
     ap.add_argument("-o", "--out", required=True)
+    ap.add_argument("--wire-baseline", choices=["current", "1.17.0"], default="current",
+                    help="'current' emits shipping output; '1.17.0' omits "
+                         "ActiveVersionInfo.PersonaID to reproduce the frozen S0 golden")
     a = ap.parse_args()
+    WIRE_BASELINE = a.wire_baseline
     spec = parse_spec(open(a.spec, encoding="utf-8").read())
     out = assemble(spec)
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:

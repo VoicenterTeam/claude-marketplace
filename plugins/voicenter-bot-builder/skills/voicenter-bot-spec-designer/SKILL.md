@@ -153,7 +153,7 @@ deletion introduced; mark `<UNKNOWN>` and surface it in 7.4.
 Run on **every greenfield close-out** and **after every patch**, before declaring the spec
 ready. Read `stages/self-validation.md` for the 24 checks and their exact failure messages.
 
-These are Skill 1's checks on its own output. They are **not** Skill 3's CHK-01…CHK-24
+These are Skill 1's checks on its own output. They are **not** Skill 3's CHK-01…CHK-25
 cross-reference pass, which validates the assembled JSON — the two numbering schemes are
 unrelated and must not be cross-referenced by number.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical transcription of Skill 3 v1.17.0 §6 — the 24-check cross-reference pass.
+"""Mechanical transcription of Skill 3 §6 — the 25-check cross-reference pass.
 
 Implements the detections in Skill 3 SKILL.md §6.2, run against the assembled
 wire structure (plus the spec, which checks 16-24 additionally consult).
@@ -8,12 +8,16 @@ Used twice in S0: to confirm F1 assembles clean, and to record which checks fire
 on the F2 seeded fixture (the v1.17.0 detection baseline that V-C3/V-C4/V-A2
 compare against).
 
-Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, then 8, 9, 10, 14.
+Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, then 8, 9, 10, 14, 25.
 Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half). 8 is banded.
-9, 14, 22, 23 advisory; 10 blocking on mismatch.
+9, 14, 22, 23, 25 advisory; 10 blocking on mismatch.
+
+CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.0
+reports it as `skipped` rather than failing it.
 
 Usage:
-    python verify.py sample-spec-detailed.md expected-output.json
+    python verify.py sample-spec-detailed.md expected-output-1.19.0.json
+    python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
 """
 
 import json
@@ -42,7 +46,11 @@ NAMES = {
     22: "No authored edges into type-2 globals (FP-9)",
     23: "Off-topic global present (FP-6)",
     24: "Turn-yield announcement gating (FP-3)",
+    25: "Persona FK sanity (contract R7/R11)",
 }
+
+# Appendix D.12 — the only known shared Persona row (AccountId=0).
+PERSONA_WHITELIST = {3}
 
 
 def norm(s):
@@ -71,6 +79,7 @@ def run(spec, bot):
     for i in ints:
         ident_of[i["IntentId"]] = i["IntentToolName"]
     fails = {}
+    skipped = []
 
     def fail(n, msg):
         fails.setdefault(n, []).append(msg)
@@ -306,11 +315,28 @@ def run(spec, bot):
             if k in bot["ActiveVersionInfo"]["AIModelConfig"]["created"]:
                 fail(10, f"created.{k} present — v1.5.0 lean payload omits")
 
-    return fails, tok, gated
+    # 25 persona FK sanity (advisory) — runs last, per the procedure file's run order.
+    # Skipped against the frozen v1.17.0 baseline, which predates the field; a skipped
+    # model/baseline-gated check is still reported as a row.
+    if A.WIRE_BASELINE == "1.17.0":
+        skipped.append((25, "pre-dates ActiveVersionInfo.PersonaID (frozen v1.17.0 baseline)"))
+    else:
+        pid = bot["ActiveVersionInfo"].get("PersonaID")
+        if pid is None:
+            fail(25, "ActiveVersionInfo.PersonaID absent or null — the proc would fall back "
+                     "to the first AccountId=0 Persona row (contract R7)")
+        elif pid not in PERSONA_WHITELIST:
+            fail(25, f"PersonaID {pid} outside known shared whitelist "
+                     f"{sorted(PERSONA_WHITELIST)} — confirm the row exists on the target account")
+
+    return fails, tok, gated, skipped
 
 
 def main():
-    spec_path, json_path = sys.argv[1], sys.argv[2]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--wire-baseline=1.17.0" in sys.argv:
+        A.WIRE_BASELINE = "1.17.0"
+    spec_path, json_path = args[0], args[1]
     raw = open(spec_path, encoding="utf-8").read()
     spec = A.parse_spec(raw)
     v = raw.split("## 4.5 Available Variables")[1].split("## 4.6")[0]
@@ -326,18 +352,21 @@ def main():
             spec["_terminal_outcome"][blk.split("\n")[0].strip()] = t
     bot = json.load(open(json_path, encoding="utf-8"))
 
-    fails, tok, gated = run(spec, bot)
+    fails, tok, gated, skipped = run(spec, bot)
     blocking = sorted(n for n in fails if n in BLOCKING
                       and not all("ADVISORY" in m for m in fails[n]))
+    ran = 25 - len(skipped)
     print(f"Token estimate: {tok} tok (checks 8/9/10 {'FIRE' if gated else 'skip'})")
-    print(f"Checks run: 24 | failed: {len(fails)} | blocking: {len(blocking)}\n")
+    print(f"Checks run: {ran} | failed: {len(fails)} | blocking: {len(blocking)}\n")
     for n in sorted(fails):
         sev = "BLOCKING" if n in blocking else "advisory"
         print(f"Check {n} [{sev}] — {NAMES[n]}")
         for m in fails[n]:
             print(f"    - {m}")
+    for n, why in skipped:
+        print(f"Check {n} [skipped]  — {NAMES[n]}: {why}")
     if not fails:
-        print("ALL 24 CHECKS PASS — assembly may proceed to §7 emission.")
+        print(f"ALL {ran} CHECKS PASS — assembly may proceed to §7 emission.")
     return 1 if blocking else 0
 
 

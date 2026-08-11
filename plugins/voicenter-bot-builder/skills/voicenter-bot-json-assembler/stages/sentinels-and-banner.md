@@ -109,6 +109,7 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - [...]
 #
 # MANDATORY POST-IMPORT STEP (v1.14.0 — emitted whenever silence_behaviour.intent is a placeholder):
@@ -181,6 +182,7 @@ Sample banner for a hypothetical bot with: 1 unknown webhook URL, no model confi
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
+#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
 #   - intentCategories: single default category, IntentCategoryId = -3
 #   - All §16 quirks emitted per Appendix A checklist

@@ -1,4 +1,4 @@
-# v1.18.0 Overview — Goals, Constraints, Milestone Map
+# v1.19.0 Overview — Goals, Constraints, Milestone Map
 
 ## 1. Why this release exists
 
@@ -51,7 +51,7 @@ Continue the existing A–P registry:
   implemented as "inline default, delegation opportunistic." No skill text may
   instruct probing for tool availability; no branch may block on it. Rationale:
   C1 — the probe mechanism does not exist in any documented form.
-- **R — Skill 2 drafting subagent deferred.** Not in v1.18.0. Re-evaluate only
+- **R — Skill 2 drafting subagent deferred.** Not in v1.19.0. Re-evaluate only
   after ~50 post-release builds show whether late-batch quality decay persists
   in a lean-context world. Do not re-litigate inside this release.
 - **S — No functional changes ride along.** Pending Conv 3a items (S1
@@ -71,7 +71,7 @@ Each milestone leaves the plugin installable and functional in both runtimes.
 | 5 | Commands & polish | `/bot-spec` `/bot-detail` `/bot-assemble` commands; `model: haiku` on Assembler; TodoWrite mirror note; RTL hardening | MS3 |
 | 6 | Validation & release | Eval harness (golden-file byte-compare + trigger tests), full V-suite pass, version bump, tag, submission | MS1–5 |
 
-## 6. Out of scope for v1.18.0
+## 6. Out of scope for v1.19.0
 
 - Skill 2 per-batch drafting subagent (decision R)
 - Conv 3a functional patches (decision S)
@@ -79,7 +79,7 @@ Each milestone leaves the plugin installable and functional in both runtimes.
   (progressive enhancement, never load-bearing; see milestone-5 §5)
 - BotIntentTypeID semantics (still awaiting production observation)
 - **Field-mapping content compression** — recorded as the next version after
-  v1.18.0. MS3 proved progressive disclosure cannot reduce a full-assembly run
+  v1.19.0. MS3 proved progressive disclosure cannot reduce a full-assembly run
   (it must read every mapping rule); shrinking that path needs the interleaved
   v1.5.0/v1.13.0/v1.14.0 changelog prose deduplicated out of the live rules.
   That is a content rewrite, so it gets its own version where the golden fixture

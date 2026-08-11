@@ -1,7 +1,7 @@
 # Milestone 6 — Eval Harness, Full Validation Pass, Release & Submission
 
 **Objective:** prove equivalence and non-regression, wire permanent regression
-protection into CI, ship v1.18.0, submit to the directory.
+protection into CI, ship v1.19.0, submit to the directory.
 
 **Depends on:** MS1–5 complete.
 
@@ -49,8 +49,14 @@ gate — notably:
 
 ### 6.3 Release
 
-1. Final `CHANGELOG.md` entry; bump `plugin.json` to `1.18.0`; git tag
-   `voicenter-bot-builder-v1.18.0`.
+1. Final `CHANGELOG.md` entry; bump `plugin.json` to `1.19.0`; then tag with
+   **`claude plugin tag ./plugins/voicenter-bot-builder`** rather than a hand-written
+   `git tag`. The CLI mints `{name}--v{version}` (**double** hyphen —
+   `voicenter-bot-builder--v1.19.0`, not the single-hyphen form this doc originally
+   specified) and **validates that `plugin.json` and the enclosing marketplace entry
+   agree** before creating it. That is exactly the lockstep-version rule CLAUDE.md
+   imposes, enforced by a tool instead of by discipline. Use `--dry-run` first;
+   `--push` when the version bump is final.
 2. Update plugin `description` in plugin.json + marketplace.json if the MS3
    rewrites changed the one-liner.
 3. Push. Remind self-hosted-marketplace users: third-party marketplaces
@@ -79,7 +85,7 @@ Per `../reference/marketplace-requirements.md`:
 ### 6.5 Post-release watch items
 
 Open a tracking note (feeds the next planning cycle):
-- ~50 builds on v1.18.0 → re-evaluate locked decision R (Skill 2 drafting
+- ~50 builds on v1.19.0 → re-evaluate locked decision R (Skill 2 drafting
   subagent) against observed late-batch quality.
 - Conv 3a patches (decision S) → v1.19.0 candidate, with the golden files
   updated deliberately in the same commit.
@@ -93,6 +99,6 @@ Open a tracking note (feeds the next planning cycle):
 
 - [ ] Both eval families green in CI
 - [ ] Full V-suite pass recorded; all acceptance criteria met
-- [ ] v1.18.0 tagged, CHANGELOG/plugin.json/tag consistent
+- [ ] v1.19.0 tagged, CHANGELOG/plugin.json/tag consistent
 - [ ] Directory submission sent; submission date + channel recorded
 - [ ] Post-release watch note opened

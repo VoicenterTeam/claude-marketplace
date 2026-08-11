@@ -33,9 +33,10 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 
 | Read | Why |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 24 checks (CHK-01…CHK-24) — read and execute this file; §6 only decides which path runs it** |
+| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 25 checks (CHK-01…CHK-25) — read and execute this file; §6 only decides which path runs it** |
 | `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | FP-1…FP-13 incl. the FP-3 turn-yield rule; verified by CHK-16…CHK-24 |
 | `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine; Skill 3 owns CHK-08 (rule 1), CHK-09 (rule 2), CHK-10 (rule 12) and the banner sentinels (rule 13) |
+| `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot; Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 |
 | Doc 2 §3.7 — Strict-template enforcement | The §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | What this file implements |
 
@@ -184,11 +185,11 @@ drift-reporting format.
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run the **24-check cross-reference pass**.
+After §4 assembly and §5 sanity check: run the **25-check cross-reference pass**.
 
 **The checks live in exactly one place.** Read and execute
 `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries
-CHK-01…CHK-24 with their run order, model gating, severity assignment, per-check failure
+CHK-01…CHK-25 with their run order, model gating, severity assignment, per-check failure
 routing, and the output contract both execution paths emit. No check procedure text is
 duplicated here — if you find yourself recalling a check from memory, re-read the file.
 
@@ -197,9 +198,10 @@ What stays in this SKILL.md is **decision logic**: which path executes the proce
 
 Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4,
 three from Compass doctrine, three botIntents-role integrity checks, one
-duplicate-global-intent check, and nine field-placement doctrine checks. CHK-01…CHK-07,
-CHK-11…CHK-13, CHK-15, CHK-16…CHK-21 and CHK-24 are blocking; CHK-08 is banded by token
-count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22, CHK-23 are advisory.
+duplicate-global-intent check, nine field-placement doctrine checks, and one persona-FK
+sanity check. CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21 and CHK-24 are blocking;
+CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22,
+CHK-23, CHK-25 are advisory.
 
 ### 6.0 Execution mode
 
@@ -249,7 +251,7 @@ When a report comes back from the verifier:
 
 ### 6.2 Inline path (degraded mode)
 
-This is **degraded mode** — not because the checks are weaker (they are the same 24 from the
+This is **degraded mode** — not because the checks are weaker (they are the same 25 from the
 same file), but because there is no context isolation. You watched this spec get built, so
 your memory of what was intended can quietly substitute for what is written. That asymmetry
 is the only difference between the two paths, and it is why the discipline below is

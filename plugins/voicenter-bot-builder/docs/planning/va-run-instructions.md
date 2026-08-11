@@ -5,7 +5,7 @@ claude.ai runs the *skills portion only* of a plugin (constraint C8), so agents,
 `model` pinning are inert there. Everything load-bearing has to work skills-only, and the only
 way to prove it is to run the pipeline on claude.ai.
 
-Run these before v1.18.0 is tagged. Report results back into
+Run these before v1.19.0 is tagged. Report results back into
 `../reference/validation-checklist.md` §3 and the release notes.
 
 ## Setup

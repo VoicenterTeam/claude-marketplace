@@ -1,4 +1,4 @@
-# Session Prompts — v1.18.0 Implementation
+# Session Prompts — v1.19.0 Implementation
 
 Copy-paste start prompts for each Claude Code session. Sessions map to
 milestones as follows (grouping rationale: context weight and dependency,
@@ -31,7 +31,7 @@ plugins/voicenter-bot-builder/docs/README.md and
 docs/planning/00-overview.md first, then
 docs/reference/validation-checklist.md §Fixtures.
 
-Task — baseline capture. This must complete BEFORE any v1.18.0 milestone
+Task — baseline capture. This must complete BEFORE any v1.19.0 milestone
 work, because the release's byte-comparability gate (V-C2) compares against
 output frozen from the current, untouched v1.17.0.
 
@@ -187,7 +187,7 @@ Sequence: V-S full pass → build both eval families (§6.1) and wire into CI
 here: emit docs/planning/va-run-instructions.md with the exact steps,
 fixtures, and pass criteria for the human to execute) → on green V-S/V-C
 and confirmed V-A results from the user: release steps §6.3 (CHANGELOG,
-version bump to 1.18.0, tag) and submission prep §6.4 (final validate on
+version bump to 1.19.0, tag) and submission prep §6.4 (final validate on
 HEAD, submission checklist). Do not perform the directory submission
 itself — that is a human action via the in-app form.
 
@@ -204,7 +204,7 @@ dependency), and submitting via the in-app form.
 ## Resume prompt (any session, after interruption)
 
 ```
-Resume v1.18.0 work on plugins/voicenter-bot-builder. Read
+Resume v1.19.0 work on plugins/voicenter-bot-builder. Read
 docs/README.md and docs/planning/00-overview.md, then determine current
 state from the repo itself: check git log for milestone commits and each
 milestone's done-criteria checklist against the actual files. Continue from

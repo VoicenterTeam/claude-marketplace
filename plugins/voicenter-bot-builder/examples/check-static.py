@@ -18,8 +18,9 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
-import unicodedata
 
 RESULTS = []
 
@@ -175,11 +176,26 @@ def main(root):
     except Exception as e:  # noqa: BLE001
         record("MS4-4.1", "plugin.json complete", False, str(e))
 
-    # ---- V-S8 and the LLM-dependent families ----
-    skip("V-S8", "claude plugin validate --strict",
-         "needs the Claude Code CLI; run in CI (.github/workflows/plugin-validate.yml)")
+    # ---- V-S8: manifest validation, if the CLI is on PATH ----
+    cli = shutil.which("claude") or shutil.which("claude.cmd")
+    if cli:
+        try:
+            p = subprocess.run([cli, "plugin", "validate", root, "--strict"],
+                               capture_output=True, text=True, timeout=120)
+            out = " ".join((p.stdout + p.stderr).split())[:200]
+            record("V-S8", "claude plugin validate --strict", p.returncode == 0,
+                   out or f"exit {p.returncode}")
+        except (OSError, subprocess.SubprocessError) as e:  # noqa: BLE001
+            skip("V-S8", "claude plugin validate --strict", f"CLI present but failed to run: {e}")
+    else:
+        skip("V-S8", "claude plugin validate --strict",
+             "Claude Code CLI not on PATH; gated in CI instead "
+             "(.github/workflows/plugin-validate.yml, job `validate`)")
+
+    # ---- the LLM-dependent families ----
     skip("V-C*", "Claude Code functional suite",
-         "needs a marketplace install + live skill invocation")
+         "needs a marketplace install + live skill invocation — "
+         "see docs/planning/vc-run-instructions.md")
     skip("V-A*", "claude.ai regression suite",
          "must be executed by a human on claude.ai — see docs/planning/va-run-instructions.md")
 

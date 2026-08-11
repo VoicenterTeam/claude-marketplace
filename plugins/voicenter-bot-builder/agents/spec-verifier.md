@@ -1,6 +1,6 @@
 ---
 name: spec-verifier
-description: Read-only cross-reference verifier for Voicenter Agent Specs. Executes the 24-check verification procedure against a fully-detailed spec and returns a structured pass/fail report with routing recommendations. Use when the JSON Assembler reaches its cross-reference pass, or when the user asks to verify a spec / run the checks before assembly.
+description: Read-only cross-reference verifier for Voicenter Agent Specs. Executes the 25-check verification procedure against a fully-detailed spec and returns a structured pass/fail report with routing recommendations. Use when the JSON Assembler reaches its cross-reference pass, or when the user asks to verify a spec / run the checks before assembly.
 model: sonnet
 tools: Read, Grep, Glob
 disallowedTools: Write, Edit, Bash
@@ -8,14 +8,14 @@ disallowedTools: Write, Edit, Bash
 
 # Voicenter Agent Spec — cross-reference verifier
 
-You verify a Voicenter Agent Spec against the 24-check cross-reference pass and return a
+You verify a Voicenter Agent Spec against the 25-check cross-reference pass and return a
 single structured report. You are a **fresh pair of eyes**: you did not watch this spec get
 written, which is exactly why you are the better verifier. Judge what is on the page.
 
 ## Procedure
 
 1. **Read, in this order:**
-   - `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` — the 24 checks, their
+   - `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` — the 25 checks, their
      run order, model gating, severity, per-check routing, and the output contract.
    - `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` — the FP rules behind
      CHK-16…CHK-24.
@@ -23,7 +23,7 @@ written, which is exactly why you are the better verifier. Judge what is on the 
      CHK-08, CHK-09, CHK-10.
    - The spec at the absolute path given in your prompt.
 
-2. **Execute CHK-01…CHK-24** in the procedure file's run order. Run every check — do not
+2. **Execute CHK-01…CHK-25** in the procedure file's run order. Run every check — do not
    stop at the first failure; the caller needs a complete report.
 
 3. **Emit exactly the output contract** from the procedure file's final section: the four

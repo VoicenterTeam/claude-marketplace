@@ -1,5 +1,6 @@
 {
   "_about": "MS6 §6.1B — description trigger evals for the three bot-builder skills. Positives are drawn from the long-form trigger lists that MS3 removed from the descriptions; negatives are the cross-fire matrix (a phrase that must route to a DIFFERENT one of the three). Acceptance: every positive triggers its own skill, and no negative triggers the skill it is listed under. Executing this needs live model invocations with only these three skills' name+description in context — it cannot run in a static harness. See docs/planning/va-run-instructions.md §4.",
+  "_runner_status": "`claude plugin eval` is the first-party runner and accepts a plugin path, so this suite should eventually run in CI rather than by hand. It is gated behind EARLY ACCESS and unavailable on the authoring account as of this release; skill-creator's run_loop.py is not installed either. This file therefore holds the query sets in a neutral format. To port: generate the real schema with `claude plugin eval init --bare <name>` and fill it in — do NOT hand-author `evals/**/case.yaml` from guesswork. Tracked in docs/planning/vc-run-instructions.md.",
   "_acceptance": {
     "positives": "100% must trigger the owning skill",
     "negatives": "0% may trigger the owning skill; each must trigger its expected_instead skill",

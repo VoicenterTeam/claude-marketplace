@@ -23,7 +23,7 @@ Current manifest has `name`, `description`, `version`, `keywords` only. Add:
 {
   "name": "voicenter-bot-builder",
   "displayName": "Voicenter Bot Builder",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "description": "<one crisp line — reuse the README tagline>",
   "author": { "name": "Voicenter", "email": "<support email>", "url": "https://www.voicenter.com" },
   "homepage": "<docs or product page URL>",
@@ -69,9 +69,9 @@ Required content (Directory Policy §3):
 ### 4.4 CHANGELOG.md
 
 Backfill from the version history you have (1.12.0 → 1.17.0 highlights are
-recoverable from in-file version annotations), then the full v1.18.0 entry.
+recoverable from in-file version annotations), then the full v1.19.0 entry.
 Keep-a-Changelog format. Git tags must match `plugin.json` versions from
-v1.18.0 onward.
+v1.19.0 onward.
 
 ### 4.5 Reviewer test kit
 

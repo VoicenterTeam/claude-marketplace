@@ -1,6 +1,6 @@
-# voicenter-bot-builder — v1.18.0 Implementation Docs
+# voicenter-bot-builder — v1.19.0 Implementation Docs
 
-Working docs for the v1.18.0 redesign of `plugins/voicenter-bot-builder`:
+Working docs for the v1.19.0 redesign of `plugins/voicenter-bot-builder`:
 subagent verification, progressive disclosure restructuring, and Anthropic
 plugin directory publication readiness.
 
@@ -23,7 +23,7 @@ Rules for the implementing agent:
    wins. If the reference seems wrong, stop and ask the user — do not
    improvise around it.
 4. **Never bundle unrelated fixes.** Pending items (Conv 3a Identifier field,
-   RT sub-label grammar) are explicitly OUT of scope for v1.18.0 — byte
+   RT sub-label grammar) are explicitly OUT of scope for v1.19.0 — byte
    comparability of Skill 3 output (V-C2) depends on this.
 5. When a milestone changes any file, re-run the static checks in
    `reference/validation-checklist.md` §1 before declaring the milestone done.
@@ -53,7 +53,7 @@ docs/
 ## Version anchors
 
 - Plugin baseline: **v1.17.0** (skills-only; SKILL.md sizes 1,106 / 825 / 1,386 lines)
-- Target: **v1.18.0**
+- Target: **v1.19.0**
 - Research verified against docs current as of **2026-08-08**. Claude Code
   subagent mechanics change frequently within minor versions — re-verify
   `reference/runtime-constraints.md` items marked ⚠ before relying on them.

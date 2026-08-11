@@ -12,7 +12,8 @@ full suite; individual milestones cite subsets in their done-criteria.
   1. blocking structural — RT=2 pairing break (CHK-05/06 class)
   2. Mustache resolvability break (CHK-07 class)
   3. one advisory field-placement violation (FP class)
-- **F1-expected:** `examples/expected-output.json` — F1's exact assembly
+- **F1-expected:** `examples/expected-output.json` (frozen v1.17.0 wire baseline) and
+  `examples/expected-output-1.19.0.json` (shipping) — F1's exact assembly
   output under v1.17.0 (generated once from the v1.17.0 baseline, then frozen).
 
 ## 1. V-S — Static checks

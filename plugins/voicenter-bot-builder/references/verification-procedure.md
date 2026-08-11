@@ -1,15 +1,21 @@
-# Verification Procedure (24-check cross-reference pass)
+# Verification Procedure (25-check cross-reference pass)
 
 **Single source of truth** for the Voicenter Bot cross-reference verification pass. Every
 consumer executes this file and nothing else: the `spec-verifier` subagent, Skill 3's
 inline path, and any future CI harness. No check text lives anywhere else in the plugin.
 
 Origin: Doc 1 §15.4 (checks 1–8), Compass doctrine (9, 10, 14 via
-`voice-prompt-doctrine.md`), botIntents-role integrity (11–13), duplicate-global (15), and
-field-placement doctrine (16–24 via `field-placement-doctrine.md`).
+`voice-prompt-doctrine.md`), botIntents-role integrity (11–13), duplicate-global (15),
+field-placement doctrine (16–24 via `field-placement-doctrine.md`), and the
+`ImportBotFromJSON` stored-procedure contract (25 via `voicebot-json-contract.md`).
 
-Check IDs `CHK-01`…`CHK-24` map 1:1 to the pre-v1.18.0 numbering. **Never renumber.**
+Check IDs `CHK-01`…`CHK-25` map 1:1 to the legacy numbering. **Never renumber.**
 Retire an ID if a check is removed; append new IDs at the end.
+
+> **CHK-25 was appended, not renumbered.** It arrived with the functional v1.18.0
+> (`ActiveVersionInfo.PersonaID` emission) after this file became canonical. Adding a check
+> means: one entry below, one TOC line, one severity-table cell, one run-order position —
+> and nothing else anywhere in the plugin. That is the property this file exists to provide.
 
 ---
 
@@ -41,6 +47,7 @@ Retire an ID if a check is removed; append new IDs at the end.
   - [CHK-22 — No authored edges into type-2 globals](#chk-22--no-authored-edges-into-type-2-globals)
   - [CHK-23 — Off-topic global present](#chk-23--off-topic-global-present)
   - [CHK-24 — Turn-yield announcement gating](#chk-24--turn-yield-announcement-gating)
+  - [CHK-25 — Persona FK sanity](#chk-25--persona-fk-sanity)
 - [Output contract](#output-contract)
 
 ---
@@ -66,7 +73,7 @@ derive the wire structure per Skill 3 §4 first, then run the checks against it.
 
 ```
 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20
-  → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14
+  → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25
 ```
 
 **All checks run unconditionally — no short-circuit on first failure.** The caller gets a
@@ -76,8 +83,8 @@ complete failure report rather than fixing one issue at a time.
 
 CHK-08, CHK-09 and CHK-10 fire only when `AiModelConfig.AIModelConfig.created.model` is
 `models/gemini-3.1-flash-live-preview`. On any other model they **skip silently**, with a
-one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15 and CHK-16…CHK-24
-are model-agnostic.
+one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24 and
+CHK-25 are model-agnostic.
 
 ### Severity
 
@@ -86,7 +93,7 @@ are model-agnostic.
 | **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half) |
 | **banded** | CHK-08 — advisory 1,500–4,999 tok; blocking ≥ 5,000; forced decomposition ≥ 6,000 |
 | **blocking on mismatch** | CHK-10 |
-| **advisory** | CHK-09, CHK-14, CHK-22, CHK-23, CHK-24 (wait-rule half) |
+| **advisory** | CHK-09, CHK-14, CHK-22, CHK-23, CHK-24 (wait-rule half), CHK-25 |
 
 **Failure of any blocking check halts emission.** Advisory failures are reported and do
 not halt.
@@ -393,6 +400,14 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **Severity:** `blocking` (announcement half) · `advisory` (wait-rule half)
 - **On failure route to:** **Skill 2 reactivation** — empty the flagged `announcement`; move any line the caller must still hear to an FP-4 quoted line in the intent's `intentInstructions` immediately before the forward instruction, and replace any wait rule with the immediate-forward instruction.
 - **Procedure:** A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose spec section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement` equal to the empty string — a non-empty value there stalls the call into the silence loop. RT=1 is covered by CHK-20 (no announcement key at all); RT=4 is exempt (pre-dial speech, platform dials immediately after). Walk RT=2/RT=3 intents; read section-4 `**Asks next:**`; when `[none]`, assert `announcement === ""` (blocking on failure, reporting intent + the offending text). **Advisory scan** on the same intents: regex `(?i)(stop and wait|wait for (the customer|their|a) (explicit )?(answer|response))` or Hebrew `המתן לתשוב` inside `Configuration.intentInstructions` → banner line routing to Skill 2 reactivation.
+
+### CHK-25 — Persona FK sanity
+
+- **Verifies:** `ActiveVersionInfo.PersonaID` is present and names a `Persona` row that will exist on the target account.
+- **Source:** `voicebot-json-contract.md` R7/R11 (functional v1.18.0)
+- **Severity:** `advisory`
+- **On failure route to:** Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import (FK). **Not user-actionable during authoring in v1** (Skill 1 has no persona-selection field yet); relevant once that feature ships. Do not route to a skill.
+- **Procedure:** Assert `ActiveVersionInfo.PersonaID` is present and non-null, and that its value is in the known shared whitelist `{3}` (`TTSScriptReader`, `AccountId=0`). v1 always emits `3` by construction, so this check is **trivial today** — the same "trivial but explicit" rationale as CHK-04. It exists so that a later spec-level persona-selection feature cannot introduce an unverified FK silently. If the value is absent or null: report `FAIL` (advisory) — the stored procedure would fall back to the first `Persona` row with `AccountId=0`, and if that row is missing on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent. If the value is present but outside the whitelist: report `FAIL` (advisory) with a banner line asking the operator to confirm that row exists on the target account.
 
 ---
 
