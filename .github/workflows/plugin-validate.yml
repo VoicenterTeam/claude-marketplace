@@ -1,0 +1,210 @@
+name: plugin-validate
+
+# MS4 step 4.7 — manifest validation on every PR and every push to main.
+#
+# Strict mode fails on warnings (misspelled or unrecognized manifest fields),
+# which is what a directory-published plugin needs: a silently-ignored typo in
+# plugin.json is how a plugin loads with zero skills.
+#
+# Everything is gated strictly. The `author` field that previously made --strict
+# fail on the marketplace root and on voicenter-mcp / voicenter-api is now present
+# on all three (re-applying origin/submission-prep's ce41742, which never merged),
+# so the earlier "bot-builder strict, siblings informational" split is retired.
+#
+# NOTE: `claude plugin validate` does NOT verify that a marketplace entry's
+# `source` directory exists — a stale voicenter-dashboard entry pointed at a
+# directory present in no branch and validation still passed clean. The entry has
+# been removed; the `Every marketplace entry resolves` step below now asserts this
+# property directly so it cannot regress silently.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate marketplace root and every plugin (strict)
+        run: |
+          claude plugin validate . --strict
+          for p in voicenter-mcp voicenter-api voicenter-bot-builder; do
+            echo "::group::$p"
+            claude plugin validate "./plugins/$p" --strict
+            echo "::endgroup::"
+          done
+
+      # What the validator won't check, and what an external indexer got wrong:
+      #
+      #   * that each marketplace entry's `source` directory actually exists
+      #     (a stale entry shipped for months and validation stayed green);
+      #   * that entry name == plugin.json name == directory basename, so a
+      #     manifest can never be published under a name that isn't its own;
+      #   * that NO plugin is named the same as the marketplace itself.
+      #
+      # That last one is why this step exists. The community marketplace indexed
+      # this repo as a plugin called `voicenter` — which is the MARKETPLACE name,
+      # not a plugin (claude-plugins-community issue #6). Nothing in the repo was
+      # wrong, but a plugin sharing the marketplace name would make that
+      # confusion unresolvable, so it is now a build failure.
+      - name: Marketplace entries resolve, agree, carry full metadata, and don't collide
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+
+          # Every field a directory listing renders. `claude plugin validate` treats
+          # all of these as optional, so absence is silent — and voicenter-mcp shipped
+          # with only 4 of them while being the sole entry proposed for the community
+          # marketplace. Required here so the listing can never quietly go bare again.
+          REQUIRED_MANIFEST = ["name", "displayName", "version", "description",
+                               "author", "homepage", "repository", "license", "keywords"]
+          REQUIRED_ENTRY = ["name", "source", "description", "version", "author",
+                            "homepage", "repository", "license", "category", "keywords"]
+
+          m = json.load(open('.claude-plugin/marketplace.json', encoding='utf-8'))
+          market = m['name']
+          bad = []
+          for p in m['plugins']:
+              name, src = p['name'], p['source'].lstrip('./')
+              manifest = os.path.join(src, '.claude-plugin', 'plugin.json')
+
+              # `voicenter` is the marketplace name, never a plugin name (issue #6)
+              if name == market:
+                  bad.append(f"{name}: plugin name collides with the marketplace name")
+
+              for f in REQUIRED_ENTRY:
+                  if f not in p:
+                      bad.append(f"{name}: marketplace entry missing '{f}'")
+
+              if not os.path.isdir(src):
+                  bad.append(f"{name}: source '{p['source']}' does not exist")
+                  continue
+              if os.path.basename(src) != name:
+                  bad.append(f"{name}: directory is '{os.path.basename(src)}'")
+              if not os.path.isfile(os.path.join(src, 'LICENSE')):
+                  bad.append(f"{name}: no LICENSE file in the plugin directory")
+              if not os.path.isfile(manifest):
+                  bad.append(f"{name}: no {manifest}")
+                  continue
+
+              mf = json.load(open(manifest, encoding='utf-8'))
+              for f in REQUIRED_MANIFEST:
+                  if f not in mf:
+                      bad.append(f"{name}: plugin.json missing '{f}'")
+              if mf.get('name') != name:
+                  bad.append(f"{name}: plugin.json name is '{mf.get('name')}'")
+              if mf.get('version') != p['version']:
+                  bad.append(f"{name}: marketplace={p['version']} plugin.json={mf.get('version')}")
+
+          for b in bad:
+              print('FAIL', b)
+          print(f"marketplace '{market}': "
+                f"{len(m['plugins'])} entries, {len(bad)} problem(s)")
+          sys.exit(1 if bad else 0)
+          PY
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: V-S static suite
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python check-static.py --plugin ..
+
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Two goldens, two different claims:
+      #   expected-output.json        (frozen, v1.17.0 wire baseline)
+      #     -> proves the progressive-disclosure restructure changed ZERO bytes.
+      #        Never regenerate. --wire-baseline 1.17.0 omits PersonaID, which
+      #        postdates it.
+      #   expected-output-shipping.json (shipping)
+      #     -> proves current emission is correct, including the PersonaID field
+      #        added by the functional v1.18.0 (contract R7).
+      # The delta between them must stay exactly one key. That assertion is the
+      # point: it bounds what upstream's functional release changed.
+      - name: F1 reproduces the frozen v1.17.0 golden byte-for-byte
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-detailed.md --wire-baseline 1.17.0 -o /tmp/f1-frozen.json
+          diff /tmp/f1-frozen.json expected-output.json
+
+      - name: F1 reproduces the shipping golden byte-for-byte
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-detailed.md -o /tmp/f1.json
+          diff /tmp/f1.json expected-output-shipping.json
+
+      - name: The two goldens differ by exactly PersonaID
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          diff expected-output.json expected-output-shipping.json > /tmp/delta.txt || true
+          cat /tmp/delta.txt
+          test "$(grep -c '^>' /tmp/delta.txt)" -eq 2      # BotVersionStatusId re-emitted with comma, + PersonaID
+          grep -q '^> *"PersonaID": 3' /tmp/delta.txt
+
+      - name: F1 passes the cross-reference checks on both baselines
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
+          python verify.py sample-spec-detailed.md expected-output-shipping.json
+
+      - name: CHK-25 actually fires (a check that cannot fail proves nothing)
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python - <<'PY'
+          import io, json
+          d = json.load(io.open('expected-output-shipping.json', encoding='utf-8'))
+          del d['ActiveVersionInfo']['PersonaID']
+          io.open('/tmp/chk25-absent.json', 'w', encoding='utf-8', newline='\n').write(
+              json.dumps(d, ensure_ascii=False, indent=2) + '\n')
+          PY
+          python verify.py sample-spec-detailed.md /tmp/chk25-absent.json > /tmp/c25.txt
+          cat /tmp/c25.txt
+          grep -q 'Check 25 \[advisory\]' /tmp/c25.txt
+
+      # Finding N1: Skill 1's canonical opening-behaviour template tripped CHK-19 and
+      # blocked assembly. Fixed by paraphrasing the template AND excluding
+      # fully-parenthesised lines from FP-4 quote extraction. Case 3 is the guard —
+      # it asserts a genuine duplicate still fails, i.e. that narrowing a BLOCKING
+      # check did not blind it.
+      - name: CHK-19 regression (N1 fixed, sensitivity retained)
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python test-chk19-regression.py
+
+      - name: F2 fires exactly the three seeded violations
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-seeded.md -o /tmp/f2.json
+          # exits 1 by design (two blocking failures) — assert the exact check set
+          python verify.py sample-spec-seeded.md /tmp/f2.json > /tmp/report.txt || true
+          cat /tmp/report.txt
+          grep -q 'Check 3 \[BLOCKING\]'  /tmp/report.txt
+          grep -q 'Check 7 \[BLOCKING\]'  /tmp/report.txt
+          grep -q 'Check 22 \[advisory\]' /tmp/report.txt
+          test "$(grep -c '^Check ' /tmp/report.txt)" -eq 3

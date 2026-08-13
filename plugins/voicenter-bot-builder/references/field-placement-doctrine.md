@@ -4,11 +4,35 @@
 
 **Read this when:** loaded by Skill 1, Skill 2, and Skill 3 at invocation per their §1 required-reading tables.
 
-**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6 (including the v1.14.0 off-topic rule). Skill 2 owns FP-3 (including the v1.17.0 turn-yield rule), FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies (cross-reference checks 16–24).
+**Rule ownership:** Skill 1 owns FP-2 (structural staggering), FP-8, FP-9, FP-11 (interview), FP-12, and the persona half of FP-6 (including the v1.14.0 off-topic rule). Skill 2 owns FP-3 (including the v1.17.0 turn-yield rule), FP-4, FP-5, FP-7, and the per-intent half of FP-6. Skill 3 verifies at assembly time — enforced by CHK-16…CHK-24; see [`verification-procedure.md`](verification-procedure.md). The check procedures live there and nowhere else; this file owns the rules, not their verification steps.
 
 **One-line doctrine:**
 
 > **announcement** asks it *and waits for the answer*, **validationPrompt** captures it, **intentInstructions** routes it (and speaks without yielding the turn), **intentLoadingAnnouncement** covers the wait, **persona** rules it — each fact exactly once, in exactly one layer.
+
+---
+
+## Table of contents
+
+- [1. The runtime-consumer model — who reads what](#1-the-runtime-consumer-model-who-reads-what)
+  - [Consumer 1 — the live voice model (e.g., Gemini Live)](#consumer-1-the-live-voice-model-eg-gemini-live)
+  - [Consumer 2 — the Intent Agent (parameter extraction/validation)](#consumer-2-the-intent-agent-parameter-extractionvalidation)
+  - [Consumer 3 — the platform / IVR layer](#consumer-3-the-platform-ivr-layer)
+- [2. Rule catalog](#2-rule-catalog)
+  - [FP-1 — Field-placement hard-rule table (blocking, all skills)](#fp-1-field-placement-hard-rule-table-blocking-all-skills)
+  - [FP-2 — Staggered pipeline (BINDING; supersedes any conflicting phrasing in older docs)](#fp-2-staggered-pipeline-binding-supersedes-any-conflicting-phrasing-in-older-docs)
+  - [FP-3 — Script home + the turn-yield rule (blocking, Skill 2; verified by CHK-24)](#fp-3-script-home-the-turn-yield-rule-blocking-skill-2-verified-by-chk-24)
+  - [FP-4 — Quote convention for mandated speech (blocking, Skill 2; Skill 1 for §2.4/persona)](#fp-4-quote-convention-for-mandated-speech-blocking-skill-2-skill-1-for-24persona)
+  - [FP-5 — validationPrompt is capture mapping only (blocking, Skill 2; verified by CHK-16)](#fp-5-validationprompt-is-capture-mapping-only-blocking-skill-2-verified-by-chk-16)
+  - [FP-6 — Say-once / rules-once (blocking; persona half Skill 1, per-intent half Skill 2; verified by CHK-19)](#fp-6-say-once-rules-once-blocking-persona-half-skill-1-per-intent-half-skill-2-verified-by-chk-19)
+  - [FP-7 — intentLoadingAnnouncement mandatory on every RT=3 intent (blocking, Skill 2; verified by CHK-17)](#fp-7-intentloadingannouncement-mandatory-on-every-rt3-intent-blocking-skill-2-verified-by-chk-17)
+  - [FP-8 — Terminal doctrine (blocking, Skill 1; verified by CHK-18/CHK-20)](#fp-8-terminal-doctrine-blocking-skill-1-verified-by-chk-18chk-20)
+  - [FP-9 — Minimal graph (blocking at Skill 1; CHK-22 advisory)](#fp-9-minimal-graph-blocking-at-skill-1-chk-22-advisory)
+  - [FP-10 — Description doctrine (blocking, Skill 1)](#fp-10-description-doctrine-blocking-skill-1)
+  - [FP-11 — CustomData keys are never invented (blocking; Skill 1 interview, CHK-07)](#fp-11-customdata-keys-are-never-invented-blocking-skill-1-interview-chk-07)
+  - [FP-12 — Callback date/time interpretation block (blocking when a callback/scheduling time is collected; Skill 1 check 21)](#fp-12-callback-datetime-interpretation-block-blocking-when-a-callbackscheduling-time-is-collected-skill-1-check-21)
+  - [FP-13 — ENUM doctrine (blocking, Skill 1 Appendix B mapping)](#fp-13-enum-doctrine-blocking-skill-1-appendix-b-mapping)
+- [3. Anti-pattern table (all observed in production or in v1.12 pipeline output)](#3-anti-pattern-table-all-observed-in-production-or-in-v112-pipeline-output)
 
 ---
 
@@ -76,7 +100,7 @@ Intent B  confirm_health_declaration  (Description: "confirming health declarati
 
 Structural encoding in the spec: section 4 fields `**Captures answer to:**` and `**Asks next:**` (Skill 1 fills them while walking the happy path).
 
-### FP-3 — Script home + the turn-yield rule (blocking, Skill 2; verified by Skill 3 check 24)
+### FP-3 — Script home + the turn-yield rule (blocking, Skill 2; verified by CHK-24)
 
 **Turn-yield platform fact (v1.17.0 — confirmed on live test-bot calls):** a non-empty `announcement` makes the bot speak it and then **yield the turn — it waits for the caller to answer** before doing anything else. `announcement` is not merely "the spoken-content home"; it is a **wait-for-answer directive**. The placement rule follows directly from section-4 `**Asks next:**`:
 
@@ -110,7 +134,7 @@ Examples (golden bot verbatim):
 
 Never used in `validationPrompt` — it never speaks. The quoting also satisfies Compass rule 11 (RTL isolation).
 
-### FP-5 — validationPrompt is capture mapping only (blocking, Skill 2; verified by Skill 3 check 16)
+### FP-5 — validationPrompt is capture mapping only (blocking, Skill 2; verified by CHK-16)
 
 1–3 bullet lines in save/capture/set language, one per outcome or slot:
 
@@ -126,7 +150,7 @@ For a terminal's outcome slot, write the form matching the **user-chosen value m
 
 **Forbidden here:** scripts to speak, questions to ask, greetings, turn-taking guards, routing. All of that is invisible to the voice model and noise to the Intent Agent.
 
-### FP-6 — Say-once / rules-once (blocking; persona half Skill 1, per-intent half Skill 2; verified by Skill 3 check 19)
+### FP-6 — Say-once / rules-once (blocking; persona half Skill 1, per-intent half Skill 2; verified by CHK-19)
 
 Every speak-obligation exists exactly once across all fields. Call-wide behavioral rules are stated exactly once, in `persona`:
 - the turn-taking rule — golden wording: **"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."**
@@ -136,11 +160,11 @@ Every speak-obligation exists exactly once across all fields. Call-wide behavior
 
 Never paste these into per-intent fields; duplicated obligations are the diagnosed root cause of the bot saying things twice.
 
-### FP-7 — intentLoadingAnnouncement mandatory on every RT=3 intent (blocking, Skill 2; verified by Skill 3 check 17)
+### FP-7 — intentLoadingAnnouncement mandatory on every RT=3 intent (blocking, Skill 2; verified by CHK-17)
 
 An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directive — a verified production trigger for duplicated phrases and dead air. Author a short natural filler in the bot's persona and grammatical gender ("מצויין, אני רושמת", "אין בעיה, שניה רושמת"). On RT=1 terminals the loading announcement is the intent's **ONLY spoken content** (v1.14.0) — a short "יום טוב"-style goodbye ("יום טוב!", "מעביר לנציג אנושי.") — NEVER the full farewell, which lives in the previous intent's `intentInstructions` per the RT=1 farewell trigger rule (FP-1/FP-8).
 
-### FP-8 — Terminal doctrine (blocking, Skill 1; verified by Skill 3 checks 18/20)
+### FP-8 — Terminal doctrine (blocking, Skill 1; verified by CHK-18/CHK-20)
 
 - One terminal intent per distinct call outcome: `ResponseTypeId: 1` with a real `layer`, one hop to hang-up/transfer.
 - Each terminal **owns** its status/outcome parameter. The value mode is per-terminal, understood from the characterization material the user sent or asked when unclear: **fixed** exact string, **captured** customer utterance, or **dynamic** per-call text (see FP-5).
@@ -149,7 +173,7 @@ An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directi
 - **Gates NEVER reference or set another intent's parameter.** An intent can only set its own `IntentParameters` — "Set status_X to …" on a gate that doesn't own status_X is un-executable.
 - The "call dropped mid-way" outcome is the *absence* of any terminal having set the status (handled downstream, e.g., in n8n) — the bot never sets it.
 
-### FP-9 — Minimal graph (blocking at Skill 1; Skill 3 check 22 advisory)
+### FP-9 — Minimal graph (blocking at Skill 1; CHK-22 advisory)
 
 `intentRelations` carry only the linear happy-path spine + true branches. Exception outcomes (human-rep request, decline/not-confirmed) are registered in `botIntents` with `BotIntentTypeID: 2` (globally triggerable) and routed by the persona's FP-6 call-wide rules — no explicit edge from every gate. Announcements/instructions reference next intents by their section-4 **Description text** (that is how the voice model identifies them), never by tool name. Golden reference: 6 edges for a 9-intent flow.
 
@@ -167,7 +191,7 @@ An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directi
 
 `llmDescription` is out of scope for this doctrine — it keeps its existing pipeline behavior (emitted `""`, Skill 3 Appendix A quirk 14).
 
-### FP-11 — CustomData keys are never invented (blocking; Skill 1 interview, Skill 3 check 7)
+### FP-11 — CustomData keys are never invented (blocking; Skill 1 interview, CHK-07)
 
 Every `{{placeholder}}` used anywhere must exactly match a key declared in spec §4.5 — including the per-call payload list in §4.5.5 — or a platform context var (e.g., `{{todayHe}}`, `{{timeHe}}`). A wrong or invented key means the caller hears the literal token or nothing. Skill 1's interview collects the exact key list; Skills 2/3 may only use keys from that list.
 
@@ -191,19 +215,19 @@ ENUM (ParameterTypeId 19, with `OptionList`) is used only when a parameter selec
 
 | Anti-pattern | Consequence | Rule | Caught by |
 |---|---|---|---|
-| Spoken script inside validationPrompt | Never reaches the voice model — the caller doesn't hear the gate | FP-5 | Skill 2 check 3; Skill 3 check 16 |
-| Same sentence mandated in two fields (announcement + intentInstructions, or intent + bot-level) | Bot says it twice | FP-6 | Skill 2 check 14; Skill 3 check 19 |
-| Missing intentLoadingAnnouncement on RT=3 | Default "." SAY directive → duplicated phrases / dead air | FP-7 | Skill 2 check 12; Skill 3 check 17 |
-| Gate instructed to set another intent's parameter | Un-executable; ignored or hallucinated around | FP-8 | Skill 2 check 13; Skill 3 check 18 |
+| Spoken script inside validationPrompt | Never reaches the voice model — the caller doesn't hear the gate | FP-5 | Skill 2 check 3; CHK-16 |
+| Same sentence mandated in two fields (announcement + intentInstructions, or intent + bot-level) | Bot says it twice | FP-6 | Skill 2 check 14; CHK-19 |
+| Missing intentLoadingAnnouncement on RT=3 | Default "." SAY directive → duplicated phrases / dead air | FP-7 | Skill 2 check 12; CHK-17 |
+| Gate instructed to set another intent's parameter | Un-executable; ignored or hallucinated around | FP-8 | Skill 2 check 13; CHK-18 |
 | One "finalize" intent computing status via IF/ELSE-IF | Non-deterministic outcome; depends on LLM recall | FP-8 | Skill 1 check 19 |
-| Terminal chain (finalize → end_call) | Extra tool round-trips; multiple farewells | FP-8 | Skill 1 check 19; Skill 3 check 20 |
+| Terminal chain (finalize → end_call) | Extra tool round-trips; multiple farewells | FP-8 | Skill 1 check 19; CHK-20 |
 | Dedicated yes/no gate for the opening question | Wasted turn before the first real question | FP-2 | Skill 1 check 18 |
-| Turn-taking guard pasted into every intent | Prompt bloat in a layer the voice model never sees | FP-6 | Skill 1 check 20; Skill 3 checks 16/19 |
-| Invented `{{placeholder}}` names | Literal tokens read aloud to the caller | FP-11 | Skill 3 check 7 |
+| Turn-taking guard pasted into every intent | Prompt bloat in a layer the voice model never sees | FP-6 | Skill 1 check 20; CHK-16/CHK-19 |
+| Invented `{{placeholder}}` names | Literal tokens read aloud to the caller | FP-11 | CHK-07 |
 | Stage markers / dialogue / business logic in Description | Degrades tool routing; leaks workflow into the tool layer | FP-10 | Skill 1 §3.4.3 authoring rule |
-| Re-authored ParameterType blocks | Schema drift vs the platform's system dictionary | — | Skill 3 check 21 |
+| Re-authored ParameterType blocks | Schema drift vs the platform's system dictionary | — | CHK-21 |
 | "תודה." filler announcements | Stilted rhythm; extra speech obligation per turn | FP-3 | Skill 2 filler advisory |
-| Non-empty `announcement` on an auto-chaining intent (`Asks next:` [none]) (v1.17.0) | Bot speaks it, yields the turn, and waits for an answer that never comes → silence loop → "האם אתם עדיין על הקו?" | FP-3 | Skill 2 checks 10/16; Skill 3 check 24 |
-| Explicit wait rule ("stop and wait for the customer's answer") in an auto-chaining intent's `intentInstructions` (v1.17.0) | Voice model obeys post-execution, stalls waiting for a turn that never comes → silence loop | FP-3 | Skill 2 step-4 authoring rule; Skill 3 check 24 (advisory half) |
-| Full farewell inside an RT=1 terminal's `announcement` / loading announcement (v1.14.0) | Double farewell + farewell spoken from the wrong layer; predecessor forwards mid-sentence | FP-8 | Skill 2 check 18; Skill 3 check 20 |
-| No off-topic rule in persona / no dedicated off-topic global intent (v1.14.0) | Bot chats off-scope indefinitely; no escape hatch when the caller won't return to the flow | FP-6 | Skill 1 checks 20/22; Skill 3 check 23 |
+| Non-empty `announcement` on an auto-chaining intent (`Asks next:` [none]) (v1.17.0) | Bot speaks it, yields the turn, and waits for an answer that never comes → silence loop → "האם אתם עדיין על הקו?" | FP-3 | Skill 2 checks 10/16; CHK-24 |
+| Explicit wait rule ("stop and wait for the customer's answer") in an auto-chaining intent's `intentInstructions` (v1.17.0) | Voice model obeys post-execution, stalls waiting for a turn that never comes → silence loop | FP-3 | Skill 2 step-4 authoring rule; CHK-24 (advisory half) |
+| Full farewell inside an RT=1 terminal's `announcement` / loading announcement (v1.14.0) | Double farewell + farewell spoken from the wrong layer; predecessor forwards mid-sentence | FP-8 | Skill 2 check 18; CHK-20 |
+| No off-topic rule in persona / no dedicated off-topic global intent (v1.14.0) | Bot chats off-scope indefinitely; no escape hatch when the caller won't return to the flow | FP-6 | Skill 1 checks 20/22; CHK-23 |

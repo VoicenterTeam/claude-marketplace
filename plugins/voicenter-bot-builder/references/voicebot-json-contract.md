@@ -14,6 +14,21 @@
 > rule set, including rules that don't currently apply to Skill 3's wire shapes (e.g. R5's
 > `IntentSelect_1`/`IntentSelect_4` reference, which Skill 3 does not emit).
 
+## Table of contents
+
+- [0. Why this exists](#0-why-this-exists)
+- [1. Hard rules — violating ANY of these breaks the import](#1-hard-rules--violating-any-of-these-breaks-the-import) (R1–R12)
+- [2. Types](#2-types)
+- [3. Skeleton (minimal correct shape)](#3-skeleton-minimal-correct-shape)
+- [4. Mandatory gate before returning any JSON](#4-mandatory-gate-before-returning-any-json)
+- [5. Validator (runnable, self-contained — Python 3 stdlib only)](#5-validator-runnable-self-contained--python-3-stdlib-only)
+- [6. JSON Schema (draft 2020-12, structural checks only — optional fast gate)](#6-json-schema-draft-2020-12-structural-checks-only--optional-fast-gate)
+
+**What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 in
+[`verification-procedure.md`](verification-procedure.md). The `AIModelConfigID` whitelist in R11
+lists three ids (303, 312, 321) not yet in the assembler's catalog — see the known-gap note in
+`skills/voicenter-bot-json-assembler/stages/assembly-mapping.md` Appendix D.11.
+
 ## 0. Why this exists
 
 The importer's error handling is a trap: any SQL error inside the loops trips a

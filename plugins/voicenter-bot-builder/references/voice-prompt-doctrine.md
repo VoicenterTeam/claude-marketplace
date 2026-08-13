@@ -8,6 +8,29 @@
 
 ---
 
+## Table of contents
+
+- [1. Rule catalog](#1-rule-catalog)
+  - [Rule 1 — Assembled-prompt token budget](#rule-1-assembled-prompt-token-budget)
+  - [Rule 2 — Session-resumption ceiling](#rule-2-session-resumption-ceiling)
+  - [Rule 3 — English operational, target-language utterances](#rule-3-english-operational-target-language-utterances)
+  - [Rule 4 — Intent description in English](#rule-4-intent-description-in-english)
+  - [Rule 5 — Recency-slot language-lock guardrail](#rule-5-recency-slot-language-lock-guardrail)
+  - [Rule 6 — Contradictory pacing/length](#rule-6-contradictory-pacinglength)
+  - [Rule 7 — Generic-policy boilerplate](#rule-7-generic-policy-boilerplate)
+  - [Rule 8 — TTS-safe formatting in voice output](#rule-8-tts-safe-formatting-in-voice-output)
+  - [Rule 9 — Date math in prompt](#rule-9-date-math-in-prompt)
+  - [Rule 10 — Few-shot transcript example cap](#rule-10-few-shot-transcript-example-cap)
+  - [Rule 11 — Hebrew-utterance isolation](#rule-11-hebrew-utterance-isolation)
+  - [Rule 12 — Model-config doctrine (Gemini Live 3.1)](#rule-12-model-config-doctrine-gemini-live-31)
+  - [Rule 13 — Doctrine banner sentinels](#rule-13-doctrine-banner-sentinels)
+- [2. Token-counting method (v1 — char-based, ±15% accuracy)](#2-token-counting-method-v1-char-based-15-accuracy)
+- [3. In-prompt vs platform boundary table](#3-in-prompt-vs-platform-boundary-table)
+- [4. Token budget table](#4-token-budget-table)
+- [5. The 10 operating rules (Compass §8) — closing checklist](#5-the-10-operating-rules-compass-8-closing-checklist)
+
+---
+
 ## 1. Rule catalog
 
 Severity legend: **blocking** = skill refuses to proceed until resolved; **advisory** = skill warns, records resolution in spec section 7.3, continues; **structural** = auto-applied (no user prompt).
@@ -18,7 +41,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §4 budget table, §8 operating rule 2.
 **Applies to:** assembled `systemInstruction` content (= `prompts.persona` + `prompts.voiceInstructions` + `prompts.intentInstructions` + sum of every intent's `validationPrompt` + sum of every intent's post-execution `intentInstructions`).
-**Owning skill:** Skill 3 (§6.2 cross-reference check 8).
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-08; see [`verification-procedure.md`](verification-procedure.md).
 **Severity:** advisory at 1,500–4,999 tok; **blocking** at ≥ 5,000 tok (forced decomposition at ≥ 6,000 tok).
 **Gating:** `[GL3.1]`.
 **Why:** Gemini Live 3.1 Flash does not support context caching — the assembled prompt is paid in full on every session start, and every subsequent turn re-attends over it. Above 2,500 tok, first-turn TTFA materially degrades and instruction-drop risk rises (Compass §1, §4). **Enforcement note:** the pipeline gate is deliberately set *higher* than the Compass degradation point — advisory through 4,999, blocking only at ≥ 5,000 — an operator decision that accepts the documented 2,500–4,999 degradation as advisory-only to give authors working room. The Compass measurement (degradation begins ~2,500) is unchanged; only the pipeline's block threshold is relaxed. See §4.
@@ -29,7 +52,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §1 (cookbook #1197 Issue 11), §4.
 **Applies to:** same assembled systemInstruction as rule 1, but the threshold is 200 tok.
-**Owning skill:** Skill 3 (§6.2 cross-reference check 9). Fires only when the spec declares cross-session continuity is required.
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-09; see [`verification-procedure.md`](verification-procedure.md). Fires only when the spec declares cross-session continuity is required.
 **Severity:** advisory.
 **Gating:** `[GL3.1]`.
 **Why:** above ~200 tok, `sessionResumption.handle` silently breaks on Gemini Live 3.1 native-audio sessions. The only mitigation is a stateless prompt + injected per-session summary.
@@ -141,7 +164,7 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 
 **Source:** Compass §1 (3.1 regression list — synchronous tool calls only, no `affective_dialog`, no `proactive_audio`, default `thinkingLevel=minimal`); §7 reference Python config.
 **Applies to:** assembled `AiModelConfig.created.generationConfig` and pinned model string.
-**Owning skill:** Skill 3 (§6.2 cross-reference check 10).
+**Owning skill:** Skill 3 — enforced at assembly time by CHK-10; see [`verification-procedure.md`](verification-procedure.md).
 **Severity:** **blocking** on any mismatch.
 **Gating:** `[GL3.1]`.
 **Detection method:**

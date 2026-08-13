@@ -2,7 +2,7 @@
 
 **Purpose:** concrete templates and worked examples for the fields Skill 2 authors — the capture-mapping `validationPrompt`, the spoken `announcement` / `intentLoadingAnnouncement`, and post-execution `intentInstructions`. Supports Skill 2 (Intent Detail Author) — Skill 2 references this file during steps 2–4.
 
-**Scope (v1.13.0):** Conversation Routines style (headers / numbered steps / IF-ELSE / IRON RULES) applies to `intentInstructions`. `validationPrompt` uses the FP-5 **capture-mapping form** — it is consumed only by the Intent Agent and is never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) is Conversation-Routines styled but is Skill 1's domain. See `../../references/field-placement-doctrine.md` for the full placement doctrine.
+**Scope (v1.13.0):** Conversation Routines style (headers / numbered steps / IF-ELSE / IRON RULES) applies to `intentInstructions`. `validationPrompt` uses the FP-5 **capture-mapping form** — it is consumed only by the Intent Agent and is never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) is Conversation-Routines styled but is Skill 1's domain. See `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` for the full placement doctrine.
 
 **Source:** Doc 1 §14.3.2 defines the CR style; field-placement doctrine v1.13.0 defines what goes where. This file expands with concrete patterns.
 
@@ -381,7 +381,7 @@ TURN-TAKING GUARD: wait for the customer's answer before proceeding...
 
 Why bad: the Intent Agent is the ONLY consumer of `validationPrompt` — the voice model never sees it. The caller never hears the read-back or the question; the gate silently doesn't happen. The turn-taking guard is equally invisible.
 
-Fix: script + question → `announcement` (§3b); guard → persona, once (FP-6); `validationPrompt` keeps only the capture mapping (C1). Caught by Skill 2 check 3 and Skill 3 check 16.
+Fix: script + question → `announcement` (§3b); guard → persona, once (FP-6); `validationPrompt` keeps only the capture mapping (C1). Caught by Skill 2 check 3 and CHK-16.
 
 ### Pitfall 6 — Setting another intent's parameter (v1.13.0, FP-8)
 
@@ -393,7 +393,7 @@ Bad — in a gate's `intentInstructions`:
 
 Why bad: `status_shikuf` belongs to a different intent. An intent can only set its own `IntentParameters` — this line is un-executable; at best ignored, at worst vocalized or hallucinated around.
 
-Fix: the status lives on the terminal that represents this outcome, with its value written by that terminal's own `validationPrompt` (pattern C3). The gate just routes: `* If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.` Caught by Skill 2 check 13 and Skill 3 check 18.
+Fix: the status lives on the terminal that represents this outcome, with its value written by that terminal's own `validationPrompt` (pattern C3). The gate just routes: `* If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.` Caught by Skill 2 check 13 and CHK-18.
 
 ### Pitfall 7 — Duplicated farewell obligations (v1.13.0, FP-6)
 
@@ -407,7 +407,7 @@ end_call.intentLoadingAnnouncement: "יום טוב ולהתראות."
 
 Why bad: three separate speech obligations at call end — the diagnosed mechanism behind farewell-said-twice bugs. Plus an extra tool round-trip through the chained terminal.
 
-Fix (v1.14.0): ONE terminal per outcome; the full closing line as an FP-4 quoted line in the **predecessor's** `intentInstructions` (last spoken line, then forward immediately — no wait, no reveal); the terminal keeps only the short loading goodbye. No terminal→terminal chains. Caught by Skill 2 checks 14/18 and Skill 3 checks 19/20.
+Fix (v1.14.0): ONE terminal per outcome; the full closing line as an FP-4 quoted line in the **predecessor's** `intentInstructions` (last spoken line, then forward immediately — no wait, no reveal); the terminal keeps only the short loading goodbye. No terminal→terminal chains. Caught by Skill 2 checks 14/18 and CHK-19/CHK-20.
 
 ### Pitfall 8 — "תודה." filler announcement (v1.13.0, FP-3)
 

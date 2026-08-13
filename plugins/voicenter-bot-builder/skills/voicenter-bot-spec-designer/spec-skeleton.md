@@ -7,7 +7,7 @@
 ## 1. Bot Identity
 
 **Bot Name:** [name]
-**Identifier:** [snake_case ASCII identifier; e.g., yuval, refua, customer_support — used for the emitted JSON filename]
+**Identifier:** [snake_case ASCII identifier; e.g., acme_support, city_clinic, customer_support — used for the emitted JSON filename]
 **Description:** [description]
 **Account ID:** [int, or `<UNKNOWN: Account ID>`]
 **Primary Language:** [BCP-47 code, e.g., `he-IL`, `en-US`]

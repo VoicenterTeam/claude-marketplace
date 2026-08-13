@@ -2,6 +2,22 @@
 
 Official Claude Code plugins for integrating the Voicenter telephony platform into your application or CRM.
 
+## Plugins in this repository
+
+This repo is a **marketplace** (a monorepo of plugins), not a single plugin. `voicenter` is the
+name of the *marketplace* — it is the `@marketplace` suffix in an install command and the MCP
+server key, and it is **not** a plugin. Each plugin below lives in its own subdirectory with its
+own `plugin.json`, and installs under its own name:
+
+| Plugin | Directory | Install |
+|---|---|---|
+| **voicenter-mcp** | [`plugins/voicenter-mcp`](plugins/voicenter-mcp) | `/plugin install voicenter-mcp@voicenter` |
+| **voicenter-api** | [`plugins/voicenter-api`](plugins/voicenter-api) | `/plugin install voicenter-api@voicenter` |
+| **voicenter-bot-builder** | [`plugins/voicenter-bot-builder`](plugins/voicenter-bot-builder) | `/plugin install voicenter-bot-builder@voicenter` |
+
+> **Indexing this repo?** Read the three `plugins/*/.claude-plugin/plugin.json` manifests, not the
+> root `.claude-plugin/marketplace.json` `name`. There is deliberately no plugin named `voicenter`.
+
 ## Quick Start
 
 ```bash
@@ -11,14 +27,12 @@ Official Claude Code plugins for integrating the Voicenter telephony platform in
 # 2. Install the live MCP plugin (direct API access from Claude)
 /plugin install voicenter-mcp@voicenter
 
-# 3. Install the API skills plugin (integration guides for all 14 APIs)
+# 3. Install the API skills plugin (integration guides for all 16 API skills)
 /plugin install voicenter-api@voicenter
 
 # 4. (Optional) Install the bot-builder plugin (design Voicenter Bots end-to-end)
 /plugin install voicenter-bot-builder@voicenter
 
-# 5. (Optional) Install the Dashboard knowledge base (end-user reports & support-center docs)
-/plugin install voicenter-dashboard@voicenter
 ```
 
 ---
@@ -33,7 +47,7 @@ Connects Claude Code directly to `https://mcp01.voicenter.co/mcp`. Authenticatio
 
 ---
 
-### `voicenter-api` — 14 API Integration Skills
+### `voicenter-api` — 16 API Integration Skills
 
 Each skill teaches Claude exactly how to help you build a specific Voicenter API integration — correct endpoints, real request/response examples, and TypeScript code.
 
@@ -53,6 +67,8 @@ Each skill teaches Claude exactly how to help you build a specific Voicenter API
 | `/login-logout` | In/Out | Set agent login/logout and status from your CRM |
 | `/lead-tracker` | Incoming | Track which marketing campaign generated each call (JS SDK) |
 | `/active-calls` | In/Out | Snapshot of all live calls and queue activity |
+| `/get-call-history` | In/Out | Pull one call by `CallID` with AI analysis — summary, emotions, personality traits, insights |
+| `/crm-onboarding` | Playbook | Scoping a new CRM integration: API vs extension, Push vs Pull, screen-pop ownership, station codes |
 
 ---
 
@@ -64,17 +80,10 @@ Design and emit deployable Voicenter Bot JSON through a guided interview. Build-
 |---|---|---|
 | `/voicenter-bot-spec-designer` | 1 — Structural | Interview-driven design: identity, persona, intent graph, slots, RT specifics |
 | `/voicenter-bot-intent-detail-author` | 2 — Per-intent language | Slot descriptions, validationPrompt, RT-specific announcements, post-execution instructions (Conversation Routines style) |
-| `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs §15.4 cross-reference (7 blocking checks); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
+| `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs the §15.4 cross-reference pass (25 checks, most blocking); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
 
 ---
 
-### `voicenter-dashboard` — End-user Support Center Knowledge Base
-
-A local, searchable snapshot of Voicenter's public support center (`voicenter.co.il/מרכז-תמיכה`), for answering "how does this feature/report work" questions — as opposed to `voicenter-api`, which covers developer API integration.
-
-**Skills:** `/voicenter-Dashboard` — 439 articles across 15 categories, including all 193 Dashboard monitoring report/chart templates (with template numbers). Ships with a crawl script to refresh the snapshot when the site changes (see [docs/plugins/voicenter-dashboard.md](docs/plugins/voicenter-dashboard.md)).
-
----
 
 ## Authentication
 

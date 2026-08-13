@@ -1,6 +1,27 @@
 {
   "name": "voicenter-bot-builder",
-  "description": "Three-skill pipeline for designing and generating Voicenter Bot JSON: Agent Spec Designer (interview), Intent Detail Author (per-intent language), and JSON Assembler (wire-format projection). Produces a deployable bot-<name>-<date>.json file.",
-  "version": "1.18.0",
-  "keywords": ["voicenter", "voicebot", "voice-ai", "agent-spec", "bot-builder", "conversational-ai", "ivr", "intent-design", "json-emitter", "skill-suite"]
+  "displayName": "Voicenter Bot Builder",
+  "version": "1.20.0",
+  "description": "Design, detail and assemble deployable Voicenter voice/chat bot JSON through a three-skill authoring pipeline.",
+  "author": {
+    "name": "Voicenter",
+    "email": "api@voicenter.com",
+    "url": "https://www.voicenter.com"
+  },
+  "homepage": "https://www.voicenter.com/API",
+  "repository": "https://github.com/VoicenterTeam/claude-marketplace",
+  "license": "MIT",
+  "keywords": [
+    "voicenter",
+    "voicebot",
+    "voice-ai",
+    "ivr",
+    "conversational-ai",
+    "intent-design",
+    "json-generator",
+    "json-emitter",
+    "agent-spec",
+    "bot-builder",
+    "skill-suite"
+  ]
 }
