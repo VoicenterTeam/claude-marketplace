@@ -323,7 +323,7 @@ Where `<bot-snake-name>` is the spec section 1 `**Identifier:**` value (a snake_
 
 Companion banner file (Claude Code only): `bot-<bot-snake-name>-<YYYY-MM-DD>.banner.md`.
 
-If the file already exists in the workspace (Claude Code), append `-<counter>` before `.json` (e.g., `bot-yuval-2026-05-01-2.json`). Single-conv runtime doesn't have files; just emit the code block.
+If the file already exists in the workspace (Claude Code), append `-<counter>` before `.json` (e.g., `bot-acme-support-2026-05-01-2.json`). Single-conv runtime doesn't have files; just emit the code block.
 
 ### 7.4 Runtime-specific delivery
 

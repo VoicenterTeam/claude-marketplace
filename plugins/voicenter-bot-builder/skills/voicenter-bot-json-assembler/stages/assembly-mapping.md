@@ -199,13 +199,13 @@ If the spec marks any prompts field `<UNKNOWN>`, emit `""` and add the field pat
 
 #### 4.2.5 `silence_behaviour` (spec section 3, conditional)
 
-If section 3 reads `[not configured]`: **omit** the entire `silence_behaviour` field from `ActiveVersionInfo.AIModelConfig`. Do not emit it as `null`, do not emit it as `{}`. Refua's production sample omits it entirely; Skill 3 follows that pattern.
+If section 3 reads `[not configured]`: **omit** the entire `silence_behaviour` field from `ActiveVersionInfo.AIModelConfig`. Do not emit it as `null`, do not emit it as `{}`. Customer B's production sample omits it entirely; Skill 3 follows that pattern.
 
 If section 3 has its fields populated: emit them direct field-to-field.
 
 | Wire-format path | Spec source |
 |---|---|
-| `silence_behaviour.intent` | The `IntentId` of section 3's `silence failover intent:` (the intent to jump to when caller-silence loops are exhausted). Emit as the **first** key of the object (matches production shape). **IMPORT LIMITATION (empirically confirmed 2026-06-23, Matan bot, AccountID 15832):** the Voicenter import procedure remaps negative placeholders in `intents[]` / `botIntents[]` / `intentRelations[]` to real positive IDs, but it does **NOT** remap `silence_behaviour.intent` — a placeholder survives verbatim into the imported bot and the silence forward is blank in the UI until set by hand. Resolution rules (v1.14.0), in priority order: **(1)** if the failover names a **section-4.6 catalog intent** (user-supplied), emit its **real positive `IntentId`** verbatim — it survives import unchanged. **(2)** the normal case — the failover names a **bot-own intent** (the dedicated silence-forwarding intent Skill 1 always creates, or the user-chosen existing flow intent): emit its **negative placeholder** from the cached ID map, and add the MANDATORY banner line: `silence_behaviour.intent is a pre-import placeholder the import procedure does NOT remap — after import, set the silence forward to <display name> in the UI (the target intent is identifiable by IsSilenceIntent: 1)`. **(3)** `-999` + banner only if section 3 is unresolvable. Never emit as a string identifier; never omit when `silence_behaviour` is emitted. *(v1.14.0 removed the pre-v1.14 "substitute canonical system global 19" mechanism — silence forwarding always targets a real, bot-own intent the user chose an outcome for.)* Production proof of the real-id form post-import: the operator/משרד-התחבורה export carries `silence_behaviour.intent: 7518`. |
+| `silence_behaviour.intent` | The `IntentId` of section 3's `silence failover intent:` (the intent to jump to when caller-silence loops are exhausted). Emit as the **first** key of the object (matches production shape). **IMPORT LIMITATION (empirically confirmed 2026-06-23, test bot, dev account):** the Voicenter import procedure remaps negative placeholders in `intents[]` / `botIntents[]` / `intentRelations[]` to real positive IDs, but it does **NOT** remap `silence_behaviour.intent` — a placeholder survives verbatim into the imported bot and the silence forward is blank in the UI until set by hand. Resolution rules (v1.14.0), in priority order: **(1)** if the failover names a **section-4.6 catalog intent** (user-supplied), emit its **real positive `IntentId`** verbatim — it survives import unchanged. **(2)** the normal case — the failover names a **bot-own intent** (the dedicated silence-forwarding intent Skill 1 always creates, or the user-chosen existing flow intent): emit its **negative placeholder** from the cached ID map, and add the MANDATORY banner line: `silence_behaviour.intent is a pre-import placeholder the import procedure does NOT remap — after import, set the silence forward to <display name> in the UI (the target intent is identifiable by IsSilenceIntent: 1)`. **(3)** `-999` + banner only if section 3 is unresolvable. Never emit as a string identifier; never omit when `silence_behaviour` is emitted. *(v1.14.0 removed the pre-v1.14 "substitute canonical system global 19" mechanism — silence forwarding always targets a real, bot-own intent the user chose an outcome for.)* Production proof of the real-id form post-import: an operator export carries `silence_behaviour.intent: 7518`. |
 | `silence_behaviour.silence_duration` | Section 3 `silence_duration` |
 | `silence_behaviour.silence_loops` | Section 3 `silence_loops` |
 | `silence_behaviour.silence_sentence` | Section 3 `silence_sentence` |
@@ -620,7 +620,7 @@ Path 2 (account-private new-config insert) is documented in §4.2.3 but not exer
 |---|---|---|
 | 1 | Draft | not emitted |
 | 2 | Testing | not emitted |
-| **3** | Approved | **v1 default — matches Yuval/Refua production samples** |
+| **3** | Approved | **v1 default — matches two production samples** |
 | 4 | Deployed | not emitted |
 | 5 | Archived | not emitted (inactive in DB) |
 

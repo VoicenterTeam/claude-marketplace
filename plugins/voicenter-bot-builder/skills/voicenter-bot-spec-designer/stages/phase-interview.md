@@ -85,7 +85,7 @@ Free-text capture remains correct for open-ended fields — bot name, identifier
 Ask, in order:
 
 1. **Bot name** (free text, often Hebrew). Required.
-2. **Identifier**: ASCII snake_case used as the filename prefix when Skill 3 emits the JSON. **Always auto-derive it from the Bot Name — never prompt.** If Bot Name is pure ASCII, snake_case it (`Customer Support` → `customer_support`). If Bot Name is Hebrew or other non-ASCII, transliterate it to Latin first, then snake_case (`יובל` → `yuval`, `מוקד רפואה` → `moked_refua`). Required. Written to spec section 1 as `**Identifier:**` without asking the user.
+2. **Identifier**: ASCII snake_case used as the filename prefix when Skill 3 emits the JSON. **Always auto-derive it from the Bot Name — never prompt.** If Bot Name is pure ASCII, snake_case it (`Customer Support` → `customer_support`). If Bot Name is Hebrew or other non-ASCII, transliterate it to Latin first, then snake_case (`יובל` → `yuval`, `מרפאת שיניים` → `mirpaat_shinaim`). Required. Written to spec section 1 as `**Identifier:**` without asking the user.
 3. **Description** (free text). May duplicate the name. Required.
 4. **Customer Account ID** (integer, references the Voicenter customer account). Per Section 2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Accounts"]` and display the returned accounts to the user as an id+name table. Then prompt via `AskUserQuestion` per Section 2.4.B (header: "Account"). If MCP is not connected or the user genuinely doesn't know: fall back to free-text capture and mark `<UNKNOWN: Account ID>`.
 5. **Primary language** (BCP-47, e.g., `he-IL`, `en-US`). Required.
