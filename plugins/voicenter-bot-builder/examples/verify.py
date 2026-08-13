@@ -52,6 +52,33 @@ NAMES = {
 # Appendix D.12 — the only known shared Persona row (AccountId=0).
 PERSONA_WHITELIST = {3}
 
+# A line that is wholly wrapped in parentheses is context, not a speech obligation.
+PAREN_LINE = re.compile(r"^\(.*\)$", re.S)
+
+
+def fp4_quotes(text):
+    """FP-4 quoted lines (`: "<line>"`) that are genuine speech obligations.
+
+    Fully-parenthesised lines are skipped (finding N1). FP-4's convention is
+    semantic — `<instruction verb> : "<verbatim line>"` — but the extraction is
+    syntactic, so it cannot tell "say this" from "this was already said". A
+    parenthetical restating the opening announcement is the latter, and treating
+    it as an obligation made CHK-19 block a bot authored exactly as Skill 1
+    documented. Parentheses already mean "context" by convention throughout these
+    specs, so honouring that is narrower than allow-listing instruction verbs,
+    which would risk false negatives on real double-speech.
+
+    Splitting on newlines means a quoted line that itself spans a newline is not
+    matched. That is not an authoring shape these specs use, and line granularity
+    is what makes "fully parenthesised" decidable.
+    """
+    out = []
+    for line in str(text or "").split("\n"):
+        if PAREN_LINE.match(line.strip()):
+            continue
+        out.extend(re.findall(r':\s*"([^"]+)"', line))
+    return out
+
 
 def norm(s):
     s = unicodedata.normalize("NFKC", s).strip().lower()
@@ -217,12 +244,12 @@ def run(spec, bot):
         cfg = i["IntentResponces"]["Configuration"]
         add(cfg.get("announcement", ""), f"{i['IntentToolName']}.announcement")
         add(cfg.get("intentLoadingAnnouncement", ""), f"{i['IntentToolName']}.loading")
-        for q in re.findall(r':\s*"([^"]+)"', str(cfg.get("intentInstructions", ""))):
+        for q in fp4_quotes(cfg.get("intentInstructions", "")):
             add(q, f"{i['IntentToolName']}.instr-quote")
     pr = bot["ActiveVersionInfo"]["AIModelConfig"]["prompts"]
     add(pr["openingAnnouncement"], "prompts.openingAnnouncement")
     for f in ("persona", "intentInstructions"):
-        for q in re.findall(r':\s*"([^"]+)"', pr[f]):
+        for q in fp4_quotes(pr[f]):
             add(q, f"prompts.{f}-quote")
     for n, w in sites.items():
         if len(w) > 1:
@@ -332,12 +359,8 @@ def run(spec, bot):
     return fails, tok, gated, skipped
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    if "--wire-baseline=1.17.0" in sys.argv:
-        A.WIRE_BASELINE = "1.17.0"
-    spec_path, json_path = args[0], args[1]
-    raw = open(spec_path, encoding="utf-8").read()
+def build_spec_context(raw):
+    """Parse a spec and attach the section-4/4.5 context the checks consult."""
     spec = A.parse_spec(raw)
     v = raw.split("## 4.5 Available Variables")[1].split("## 4.6")[0]
     spec["_45_1"] = v.split("### 4.5.1")[1].split("###")[0]
@@ -350,6 +373,15 @@ def main():
         t = A.field(blk, "Terminal outcome")
         if t:
             spec["_terminal_outcome"][blk.split("\n")[0].strip()] = t
+    return spec
+
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--wire-baseline=1.17.0" in sys.argv:
+        A.WIRE_BASELINE = "1.17.0"
+    spec_path, json_path = args[0], args[1]
+    spec = build_spec_context(open(spec_path, encoding="utf-8").read())
     bot = json.load(open(json_path, encoding="utf-8"))
 
     fails, tok, gated, skipped = run(spec, bot)

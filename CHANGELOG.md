@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+Structural release for `voicenter-bot-builder` (will ship as plugin **1.19.0** under marketplace **1.20.0**). Progressive disclosure, a single-source verification procedure, a read-only verifier subagent, slash commands, and directory-submission readiness. Held unreleased pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6.
+
+### Fixed
+
+- **CHK-19 no longer blocks a bot authored exactly as Skill 1 documents (finding N1).** Skill 1's canonical opening-behaviour template restated the opening announcement as a *quoted* parenthetical (`(Opening announcement already played: "<line>")`). That matches FP-4's `: "<line>"` speak-obligation shape, so CHK-19 counted the opening line in two sites and **halted emission** — the documented happy path produced a spec Skill 3 refused to assemble. Fixed on both sides: Skill 1's template now paraphrases (with an inline warning about why quoting breaks it), and CHK-19 skips lines wholly wrapped in parentheses, since a parenthetical is context by convention rather than a line to speak.
+
+  Allow-listing instruction verbs before the colon was considered and **rejected** — it needs a bilingual verb list and trades a known false positive for unknown false *negatives*, and duplicate speech is exactly what FP-6 exists to catch. Locked by `examples/test-chk19-regression.py`, whose third case asserts a genuine duplicate still fails.
+
+  **No emitted output changes.** The fix touches Skill 1's template (not any existing spec) and the check (not assembly), so both golden fixtures still reproduce byte-identically.
+
 ## [1.19.0] — 2026-08-10
 
 Compliance pass for the bot-builder pipeline (voicenter-bot-builder 1.18.0) against an external `ImportBotFromJSON` stored-procedure contract (hard rules R1–R12, 2026-08-10 schema/FK snapshot) handed to the pipeline for review.

@@ -354,12 +354,22 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **Source:** FP-6
 - **Severity:** `blocking`
 - **On failure route to:** **Skill 2 reactivation** for intent-field duplicates; **Skill 1 patch mode** when one site is persona / opening instructions / openingAnnouncement. Keep the sentence in exactly one field.
-- **Procedure:** No normalized speech obligation appears in two or more obligation sites — the diagnosed mechanism of double-speech bugs (e.g., a farewell in both a terminal's announcement and another field). Extract mandated-speech strings: sentences of every `announcement`, every `intentLoadingAnnouncement`, sentences of `prompts.openingAnnouncement`, and FP-4 quoted lines (`: "<...>"`) inside per-intent `Configuration.intentInstructions`, `prompts.intentInstructions`, and `prompts.persona`. Normalize each (trim; strip punctuation and niqqud; collapse whitespace). Any normalized string ≥ 12 characters appearing in 2+ sites fails, reporting both JSON paths.
+- **Procedure:** No normalized speech obligation appears in two or more obligation sites — the diagnosed mechanism of double-speech bugs (e.g., a farewell in both a terminal's announcement and another field). Extract mandated-speech strings: sentences of every `announcement`, every `intentLoadingAnnouncement`, sentences of `prompts.openingAnnouncement`, and FP-4 quoted lines (`: "<...>"`) inside per-intent `Configuration.intentInstructions`, `prompts.intentInstructions`, and `prompts.persona`. **Skip any line that is wholly wrapped in parentheses** — a parenthetical is context by convention, not a speech obligation (see the note below). Normalize each remaining string (trim; strip punctuation and niqqud; collapse whitespace). Any normalized string ≥ 12 characters appearing in 2+ sites fails, reporting both JSON paths.
 
-> **Known false positive.** A parenthetical context line in `prompts.intentInstructions`
-> that restates the opening announcement — the shape Skill 1's opening-behaviour template
-> produces — matches the FP-4 `: "<...>"` extraction and collides with
-> `prompts.openingAnnouncement`. Paraphrase the parenthetical rather than quoting it.
+> **Why parentheticals are excluded.** FP-4's convention is semantic —
+> `<instruction verb> : "<verbatim line>"` — but this extraction is syntactic, so it cannot
+> distinguish "say this" from "this was already said". A parenthetical restating the opening
+> announcement is the second kind, and counting it as an obligation made this check block a
+> bot authored exactly as Skill 1's canonical template documented (finding N1).
+>
+> The narrower fix was chosen deliberately. Allow-listing instruction verbs before the colon
+> would match FP-4's semantics more closely, but it needs a bilingual verb list and trades a
+> known false positive for unknown **false negatives** — and double-speech is precisely what
+> FP-6 exists to catch. Honouring the existing parentheses-mean-context convention costs no
+> sensitivity on instruction lines.
+>
+> Regression-tested by `examples/test-chk19-regression.py`, whose third case asserts a real
+> duplicate still fails. If that case ever goes quiet, this exclusion has gone too far.
 
 ### CHK-20 — Terminal shape
 

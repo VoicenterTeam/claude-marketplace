@@ -135,6 +135,15 @@ jobs:
           cat /tmp/c25.txt
           grep -q 'Check 25 \[advisory\]' /tmp/c25.txt
 
+      # Finding N1: Skill 1's canonical opening-behaviour template tripped CHK-19 and
+      # blocked assembly. Fixed by paraphrasing the template AND excluding
+      # fully-parenthesised lines from FP-4 quote extraction. Case 3 is the guard —
+      # it asserts a genuine duplicate still fails, i.e. that narrowing a BLOCKING
+      # check did not blind it.
+      - name: CHK-19 regression (N1 fixed, sensitivity retained)
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python test-chk19-regression.py
+
       - name: F2 fires exactly the three seeded violations
         working-directory: plugins/voicenter-bot-builder/examples
         run: |

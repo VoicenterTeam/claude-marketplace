@@ -96,11 +96,14 @@ release is numbered **1.19.0**. MS7 merged it. Three consequences worth carrying
 
 ## 7. The eight v1.17.0 findings in `examples/baseline-notes.md`
 
-Recorded during S0 and deliberately not fixed. Two are load-bearing and should be triaged first:
+Recorded during S0 and deliberately not fixed, except N1:
 
-- **N1** — Skill 1's canonical opening-behaviour template produces a parenthetical that trips
-  CHK-19 and **blocks assembly**. A bot authored exactly as Skill 1 documents will fail Skill 3.
-  This is the highest-value item on this page.
+- **N1 — FIXED.** Skill 1's template now paraphrases the opening context, and CHK-19 skips
+  fully-parenthesised lines. Shipped as a deliberate exception to decision S because the
+  fixtures do not move (fix A touches Skill 1's *template*, not F1's spec; fix B touches only
+  the check) and because it blocked the documented happy path. Locked by
+  `../../examples/test-chk19-regression.py` — **watch its third case**, which asserts a real
+  duplicate still fails. That case going quiet means the exclusion widened too far.
 - **N6** — V-C2's byte-comparability was unachievable as originally written (26 assembly-time
   timestamp fields). Worked around by pinning `ASSEMBLY_TS` in the harness; a real fix means
   either widening the normalization or giving Skill 3 a deterministic-timestamp mode.

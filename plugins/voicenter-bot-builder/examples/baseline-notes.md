@@ -30,9 +30,27 @@ assemble. Reproduced while authoring F1; confirmed by removing the quote.
 F1 sidesteps it by phrasing the parenthetical without a quoted line:
 `(The opening announcement has already greeted the caller and asked who is speaking. Do not repeat it.)`
 
-Candidate fixes (not applied): exclude parenthetical context lines from check 19's
-extraction, restrict extraction to lines carrying an instruction verb, or change the
-Skill 1 template to paraphrase rather than quote.
+### RESOLVED — both halves fixed
+
+Two of the three candidate fixes were applied together:
+
+- **Skill 1's template now paraphrases** instead of quoting
+  (`stages/phase-interview.md` §3.2.4), with an inline warning explaining why quoting the
+  already-played line trips CHK-19.
+- **CHK-19 skips fully-parenthesised lines** when extracting FP-4 quotes
+  (`references/verification-procedure.md`, mirrored in the docs page and implemented in
+  `verify.py:fp4_quotes`).
+
+The third candidate — allow-listing instruction verbs before the colon — was **rejected**:
+it needs a bilingual verb list and trades this known false positive for unknown false
+negatives, and double-speech is exactly what FP-6 exists to catch.
+
+Locked by `test-chk19-regression.py`, 4 cases. The third asserts a genuine duplicate still
+fails; if it ever goes quiet, the exclusion has gone too far and must be reverted.
+
+**The fixtures did not move.** Fix A changes Skill 1's template, not F1's spec file (F1
+already carried the paraphrase as its workaround), and fix B changes only the check, not
+emission. Both goldens still reproduce byte-identically.
 
 ---
 

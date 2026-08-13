@@ -175,9 +175,14 @@ Ask: "The opening announcement just asked '[the §3.2.3 closing question]'. What
 
 Draft in **Conversation Routines style** (ALL-CAPS headers, numbered steps, IF/ELSE, IRON RULES). Example shape:
 
+> **Paraphrase the opening context — never quote it.** The parenthetical states what the
+> caller has *already heard*; it is not a line to speak. Writing it as a quoted line
+> (`already played: "<the opening line>"`) matches FP-4's speak-obligation shape, so CHK-19
+> counts the opening announcement in two sites and **blocks assembly**. Describe it instead.
+
 ```
 OPENING BEHAVIOR
-(Opening announcement already played: "Hello, this is X's assistant. Who am I speaking with?")
+(The opening announcement has already greeted the caller and asked who is speaking. Do not repeat it.)
 1. Capture the caller's answer to the opening question (the caller's name).
 2. Route based on what the caller needs:
    - Scheduling → trigger validate_customer_address.
