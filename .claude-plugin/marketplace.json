@@ -5,7 +5,7 @@
     "email": "[email protected]"
   },
   "metadata": {
-    "description": "Official Voicenter Claude Code plugins — live MCP access, API integration skills for all 14 Voicenter APIs, a 3-skill bot-builder authoring pipeline",
+    "description": "Official Voicenter Claude Code plugins — live MCP access, integration skills for all 14 Voicenter APIs, a 3-skill bot-builder authoring pipeline",
     "version": "1.20.0",
     "pluginRoot": "./plugins"
   },
@@ -45,7 +45,7 @@
     {
       "name": "voicenter-api",
       "source": "./plugins/voicenter-api",
-      "description": "Skills for all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls.",
+      "description": "16 skills covering all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls — plus a GetCallHistory AI-enrichment skill and a CRM-onboarding scoping playbook.",
       "version": "1.1.9",
       "author": {
         "name": "Voicenter"

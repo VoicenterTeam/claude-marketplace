@@ -47,29 +47,48 @@ jobs:
             echo "::endgroup::"
           done
 
-      # What the validator won't check: that each marketplace entry's `source`
-      # actually exists. Assert it here, so an advertised-but-absent plugin fails
-      # the build instead of shipping an uninstallable entry.
-      - name: Every marketplace entry resolves to a real plugin directory
+      # What the validator won't check, and what an external indexer got wrong:
+      #
+      #   * that each marketplace entry's `source` directory actually exists
+      #     (a stale entry shipped for months and validation stayed green);
+      #   * that entry name == plugin.json name == directory basename, so a
+      #     manifest can never be published under a name that isn't its own;
+      #   * that NO plugin is named the same as the marketplace itself.
+      #
+      # That last one is why this step exists. The community marketplace indexed
+      # this repo as a plugin called `voicenter` — which is the MARKETPLACE name,
+      # not a plugin (claude-plugins-community issue #6). Nothing in the repo was
+      # wrong, but a plugin sharing the marketplace name would make that
+      # confusion unresolvable, so it is now a build failure.
+      - name: Marketplace entries resolve, agree, and don't collide with the marketplace name
         run: |
           python3 - <<'PY'
           import json, os, sys
           m = json.load(open('.claude-plugin/marketplace.json', encoding='utf-8'))
+          market = m['name']
           bad = []
           for p in m['plugins']:
-              src = p['source'].lstrip('./')
+              name, src = p['name'], p['source'].lstrip('./')
               manifest = os.path.join(src, '.claude-plugin', 'plugin.json')
+              if name == market:
+                  bad.append(f"{name}: plugin name collides with the marketplace name")
               if not os.path.isdir(src):
-                  bad.append(f"{p['name']}: source '{p['source']}' does not exist")
-              elif not os.path.isfile(manifest):
-                  bad.append(f"{p['name']}: no {manifest}")
-              else:
-                  v = json.load(open(manifest, encoding='utf-8')).get('version')
-                  if v != p['version']:
-                      bad.append(f"{p['name']}: marketplace={p['version']} plugin.json={v}")
+                  bad.append(f"{name}: source '{p['source']}' does not exist")
+                  continue
+              if os.path.basename(src) != name:
+                  bad.append(f"{name}: directory is '{os.path.basename(src)}'")
+              if not os.path.isfile(manifest):
+                  bad.append(f"{name}: no {manifest}")
+                  continue
+              mf = json.load(open(manifest, encoding='utf-8'))
+              if mf.get('name') != name:
+                  bad.append(f"{name}: plugin.json name is '{mf.get('name')}'")
+              if mf.get('version') != p['version']:
+                  bad.append(f"{name}: marketplace={p['version']} plugin.json={mf.get('version')}")
           for b in bad:
               print('FAIL', b)
-          print(f"{len(m['plugins']) - len(bad)}/{len(m['plugins'])} entries resolve and agree on version")
+          print(f"marketplace '{market}': "
+                f"{len(m['plugins']) - len(bad)}/{len(m['plugins'])} entries consistent")
           sys.exit(1 if bad else 0)
           PY
 

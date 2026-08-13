@@ -26,7 +26,7 @@ It is organized so you can:
 | Plugin | Documentation |
 |---|---|
 | `voicenter-mcp` (live MCP server) | [plugins/voicenter-mcp.md](plugins/voicenter-mcp.md) |
-| `voicenter-api` (14 integration skills) | [plugins/voicenter-api.md](plugins/voicenter-api.md) |
+| `voicenter-api` (16 integration skills) | [plugins/voicenter-api.md](plugins/voicenter-api.md) |
 | `voicenter-bot-builder` (3-skill bot authoring pipeline) | [plugins/voicenter-bot-builder.md](plugins/voicenter-bot-builder.md) |
 
 ### Skills
@@ -50,6 +50,8 @@ Every skill ships its own subfolder with a complete reference.
 | Login / Logout | voicenter-api | In/Out | REST | [skills/login-logout/README.md](skills/login-logout/README.md) |
 | Lead Tracker | voicenter-api | Incoming | JS SDK (browser) | [skills/lead-tracker/README.md](skills/lead-tracker/README.md) |
 | Active Calls | voicenter-api | In/Out | REST | [skills/active-calls/README.md](skills/active-calls/README.md) |
+| Get Call History | voicenter-api | In/Out | REST (AI enrichment) | [skills/get-call-history/README.md](skills/get-call-history/README.md) |
+| CRM Onboarding | voicenter-api | — | Scoping playbook | [skills/crm-onboarding/README.md](skills/crm-onboarding/README.md) |
 | Agent Spec Designer (Skill 1) | voicenter-bot-builder | — | Authoring (interview) | [skills/voicenter-bot-spec-designer/README.md](skills/voicenter-bot-spec-designer/README.md) |
 | Intent Detail Author (Skill 2) | voicenter-bot-builder | — | Authoring (per-intent language) | [skills/voicenter-bot-intent-detail-author/README.md](skills/voicenter-bot-intent-detail-author/README.md) |
 | JSON Assembler (Skill 3) | voicenter-bot-builder | — | Authoring (wire-format projection) | [skills/voicenter-bot-json-assembler/README.md](skills/voicenter-bot-json-assembler/README.md) |

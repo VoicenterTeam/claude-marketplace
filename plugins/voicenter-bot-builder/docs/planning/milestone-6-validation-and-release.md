@@ -74,6 +74,16 @@ Per `../reference/marketplace-requirements.md`:
    (Team/Enterprise org, Owner role) **or** Console at platform.claude.com
    (any account with Developer+ role). **Not a PR** — PRs against Anthropic's
    directory repos are auto-closed.
+
+   **Name the plugin and its subdirectory explicitly — never submit a bare
+   monorepo root.** This repo is a marketplace containing three plugins, and an
+   indexer given only the root URL captured the *marketplace* name `voicenter` as
+   if it were a plugin, producing an entry that could not resolve to any manifest
+   (claude-plugins-community issue #6 — see
+   `../../../../docs/community-marketplace-issue-6-reply.md` for the exchange and
+   what we changed). State: plugin name `voicenter-bot-builder`, path
+   `plugins/voicenter-bot-builder`, manifest
+   `plugins/voicenter-bot-builder/.claude-plugin/plugin.json`.
 4. Expect automated safety screening; review time varies with queue volume —
    no SLA. The skills-only, no-network, no-hooks profile is a strength; the
    README data-handling statement makes it legible to reviewers.
