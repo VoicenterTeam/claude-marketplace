@@ -91,11 +91,11 @@ updating every path reference in `session-prompts.md`).
 
 ### 3.2 Sibling manifests are not strict-clean
 
-`claude plugin validate --strict` passes on `voicenter-bot-builder` as of v1.19.0, but **fails
+`claude plugin validate --strict` passes on `voicenter-bot-builder` as of v1.20.0, but **fails
 on the marketplace root and on `voicenter-mcp` / `voicenter-api`**, all for the same reason:
 those `plugin.json` files carry no `author` block.
 
-This predates v1.19.0 and belongs to those plugins' own versioning — CLAUDE.md requires a
+This predates v1.20.0 and belongs to those plugins' own versioning — CLAUDE.md requires a
 version bump in lockstep with any manifest change, so adding `author` to three sibling
 manifests is their release, not this one. The CI job (`.github/workflows/plugin-validate.yml`)
 therefore gates bot-builder strictly and validates the siblings non-strict, reporting the

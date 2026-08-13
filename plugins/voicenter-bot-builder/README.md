@@ -186,7 +186,7 @@ expect.
 |---|---|
 | `sample-spec-detailed.md` | A finished Agent Spec for a fictional clinic: 10 intents covering every response type |
 | `expected-output.json` | That spec's assembly output, frozen at the v1.17.0 wire baseline |
-| `expected-output-1.19.0.json` | That spec's assembly output under current emission rules |
+| `expected-output-shipping.json` | That spec's assembly output under current emission rules |
 | `expected-banner.txt` | Its generation banner |
 | `sample-spec-seeded.md` | The same spec with three deliberate defects |
 | `expected-violations-report.md` | Which checks those defects trip, and why |

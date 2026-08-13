@@ -64,7 +64,7 @@ the plugin root break after install (external files are not copied).
 ## C6 — Skill structure limits
 
 - SKILL.md body: **≤ 500 lines** for optimal performance (official guidance;
-  v1.19.0 target 400 for headroom).
+  v1.20.0 target 400 for headroom).
 - Bundled references: keep **one level deep** from SKILL.md — deep chains
   (SKILL.md → a.md → b.md) risk partial reads (`head -100`-style previews).
 - **Table of contents required** in any reference file > 100 lines.

@@ -1,6 +1,6 @@
 # Baseline Fixtures — frozen v1.17.0
 
-Golden files for the v1.19.0 release, captured by session **S0**
+Golden files for the v1.20.0 release, captured by session **S0**
 (`../docs/planning/session-prompts.md`) against plugin **v1.17.0**, repo commit `cdc9922`.
 
 > **Never regenerate these after S0.** The whole release is gated on comparing against
@@ -17,7 +17,7 @@ shipping output." Resolution — keep both, because they prove different things:
 | Golden | Baseline | Proves |
 |---|---|---|
 | `expected-output.json` | v1.17.0, **frozen** | the progressive-disclosure restructure changed **zero bytes** (decision S) |
-| `expected-output-1.19.0.json` | shipping | current emission is correct, PersonaID included |
+| `expected-output-shipping.json` | shipping | current emission is correct, PersonaID included |
 
 `assemble.py --wire-baseline 1.17.0` reproduces the frozen one; the default reproduces the
 shipping one. CI asserts both **and** that the delta between them is exactly the one key —
@@ -32,7 +32,7 @@ which is what bounds the blast radius of the upstream functional change.
 |---|---|
 | `sample-spec-detailed.md` | **F1 clean** — complete Agent Spec, 10 intents, all `[detailed]`, assembles without failures |
 | `expected-output.json` | **F1-expected (frozen)** — F1's exact output under the v1.17.0 wire baseline |
-| `expected-output-1.19.0.json` | **F1-shipping** — F1's exact output under current emission rules |
+| `expected-output-shipping.json` | **F1-shipping** — F1's exact output under current emission rules |
 | `expected-banner.txt` | F1's generation banner (§7.2), v1.17.0 vintage — the shipping banner adds exactly one DEFAULTS APPLIED line (`ActiveVersionInfo.PersonaID = 3`) |
 | `sample-spec-seeded.md` | **F2 seeded** — F1 plus exactly three deliberate violations |
 | `seeded-violations.md` | What each seeded violation is, where it lives, and why |
@@ -69,11 +69,11 @@ python stub-api-server.py &
 python assemble.py sample-spec-detailed.md --wire-baseline 1.17.0 -o /tmp/f1-frozen.json
 diff /tmp/f1-frozen.json expected-output.json && echo "frozen golden intact"
 python assemble.py sample-spec-detailed.md -o /tmp/f1.json
-diff /tmp/f1.json expected-output-1.19.0.json && echo "shipping golden intact"
+diff /tmp/f1.json expected-output-shipping.json && echo "shipping golden intact"
 
 # 3. F1 must pass the checks on both baselines (24 + 1 skipped / 25)
 python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
-python verify.py sample-spec-detailed.md expected-output-1.19.0.json
+python verify.py sample-spec-detailed.md expected-output-shipping.json
 
 # 4. F2 must fire exactly checks 3, 7 (blocking) and 22 (advisory)
 python assemble.py sample-spec-seeded.md -o /tmp/f2.json

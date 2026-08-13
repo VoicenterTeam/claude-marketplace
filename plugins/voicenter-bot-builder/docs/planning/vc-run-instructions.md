@@ -57,7 +57,7 @@ confirm it appears in typeahead, and `/bot-` and confirm all three commands comp
 - The returned report matches the output contract in `../../references/verification-procedure.md`
   (all blocks present, in order, severities restated not re-decided).
 - Assembly proceeds; 25 checks reported.
-- Emitted JSON is byte-comparable to `../../examples/expected-output-1.19.0.json`.
+- Emitted JSON is byte-comparable to `../../examples/expected-output-shipping.json`.
 
 **Byte-comparability caveat (finding N6).** Skill 3 emits an assembly-time `CreatedDate` in 26
 places. Normalize those and the date in the filename before diffing — the harness pins

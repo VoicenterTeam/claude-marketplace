@@ -4,7 +4,6 @@ references/test-artifacts/output/
 database
 docs/superpowers/
 docs/json-bag/
-plugins/voicenter-dashboard/skills/voicenter-Dashboard/data/
 
 # Python bytecode from the bot-builder fixture harness
 __pycache__/

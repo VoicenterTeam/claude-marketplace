@@ -6,16 +6,16 @@ name: plugin-validate
 # which is what a directory-published plugin needs: a silently-ignored typo in
 # plugin.json is how a plugin loads with zero skills.
 #
-# Scope note. Only voicenter-bot-builder is gated strictly. As of v1.19.0 the
-# marketplace root and the voicenter-mcp / voicenter-api manifests do not carry
-# `author`, so --strict fails on them for a reason that predates this release and
-# belongs to those plugins' own versioning. They are validated non-strict here so
-# real regressions still fail the build, and the gap is tracked in
-# plugins/voicenter-bot-builder/docs/planning/license-decision.md §3 rather than
-# being fixed by a drive-by edit to three other plugins.
+# Everything is gated strictly. The `author` field that previously made --strict
+# fail on the marketplace root and on voicenter-mcp / voicenter-api is now present
+# on all three (re-applying origin/submission-prep's ce41742, which never merged),
+# so the earlier "bot-builder strict, siblings informational" split is retired.
 #
-# MS6 adds the eval harness (golden-file byte-compare + trigger evals) as a
-# separate job in this workflow.
+# NOTE: `claude plugin validate` does NOT verify that a marketplace entry's
+# `source` directory exists — a stale voicenter-dashboard entry pointed at a
+# directory present in no branch and validation still passed clean. The entry has
+# been removed; the `Every marketplace entry resolves` step below now asserts this
+# property directly so it cannot regress silently.
 
 on:
   pull_request:
@@ -38,30 +38,40 @@ jobs:
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Validate voicenter-bot-builder (strict — release gate)
-        run: claude plugin validate ./plugins/voicenter-bot-builder --strict
-
-      - name: Validate marketplace root and sibling plugins (non-strict)
+      - name: Validate marketplace root and every plugin (strict)
         run: |
-          claude plugin validate .
-          for p in voicenter-mcp voicenter-api voicenter-dashboard; do
-            if [ -d "./plugins/$p" ]; then
-              echo "::group::$p"
-              claude plugin validate "./plugins/$p"
-              echo "::endgroup::"
-            fi
+          claude plugin validate . --strict
+          for p in voicenter-mcp voicenter-api voicenter-bot-builder; do
+            echo "::group::$p"
+            claude plugin validate "./plugins/$p" --strict
+            echo "::endgroup::"
           done
 
-      - name: Report which manifests still fail strict
-        if: always()
+      # What the validator won't check: that each marketplace entry's `source`
+      # actually exists. Assert it here, so an advertised-but-absent plugin fails
+      # the build instead of shipping an uninstallable entry.
+      - name: Every marketplace entry resolves to a real plugin directory
         run: |
-          echo "Manifests not yet strict-clean (informational, does not fail the build):"
-          claude plugin validate . --strict 2>&1 | sed 's/^/  /' || true
-          for p in voicenter-mcp voicenter-api voicenter-dashboard; do
-            if [ -d "./plugins/$p" ]; then
-              claude plugin validate "./plugins/$p" --strict 2>&1 | sed "s/^/  [$p] /" || true
-            fi
-          done
+          python3 - <<'PY'
+          import json, os, sys
+          m = json.load(open('.claude-plugin/marketplace.json', encoding='utf-8'))
+          bad = []
+          for p in m['plugins']:
+              src = p['source'].lstrip('./')
+              manifest = os.path.join(src, '.claude-plugin', 'plugin.json')
+              if not os.path.isdir(src):
+                  bad.append(f"{p['name']}: source '{p['source']}' does not exist")
+              elif not os.path.isfile(manifest):
+                  bad.append(f"{p['name']}: no {manifest}")
+              else:
+                  v = json.load(open(manifest, encoding='utf-8')).get('version')
+                  if v != p['version']:
+                      bad.append(f"{p['name']}: marketplace={p['version']} plugin.json={v}")
+          for b in bad:
+              print('FAIL', b)
+          print(f"{len(m['plugins']) - len(bad)}/{len(m['plugins'])} entries resolve and agree on version")
+          sys.exit(1 if bad else 0)
+          PY
 
   static:
     runs-on: ubuntu-latest
@@ -90,7 +100,7 @@ jobs:
       #     -> proves the progressive-disclosure restructure changed ZERO bytes.
       #        Never regenerate. --wire-baseline 1.17.0 omits PersonaID, which
       #        postdates it.
-      #   expected-output-1.19.0.json (shipping)
+      #   expected-output-shipping.json (shipping)
       #     -> proves current emission is correct, including the PersonaID field
       #        added by the functional v1.18.0 (contract R7).
       # The delta between them must stay exactly one key. That assertion is the
@@ -105,12 +115,12 @@ jobs:
         working-directory: plugins/voicenter-bot-builder/examples
         run: |
           python assemble.py sample-spec-detailed.md -o /tmp/f1.json
-          diff /tmp/f1.json expected-output-1.19.0.json
+          diff /tmp/f1.json expected-output-shipping.json
 
       - name: The two goldens differ by exactly PersonaID
         working-directory: plugins/voicenter-bot-builder/examples
         run: |
-          diff expected-output.json expected-output-1.19.0.json > /tmp/delta.txt || true
+          diff expected-output.json expected-output-shipping.json > /tmp/delta.txt || true
           cat /tmp/delta.txt
           test "$(grep -c '^>' /tmp/delta.txt)" -eq 2      # BotVersionStatusId re-emitted with comma, + PersonaID
           grep -q '^> *"PersonaID": 3' /tmp/delta.txt
@@ -119,14 +129,14 @@ jobs:
         working-directory: plugins/voicenter-bot-builder/examples
         run: |
           python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
-          python verify.py sample-spec-detailed.md expected-output-1.19.0.json
+          python verify.py sample-spec-detailed.md expected-output-shipping.json
 
       - name: CHK-25 actually fires (a check that cannot fail proves nothing)
         working-directory: plugins/voicenter-bot-builder/examples
         run: |
           python - <<'PY'
           import io, json
-          d = json.load(io.open('expected-output-1.19.0.json', encoding='utf-8'))
+          d = json.load(io.open('expected-output-shipping.json', encoding='utf-8'))
           del d['ActiveVersionInfo']['PersonaID']
           io.open('/tmp/chk25-absent.json', 'w', encoding='utf-8', newline='\n').write(
               json.dumps(d, ensure_ascii=False, indent=2) + '\n')

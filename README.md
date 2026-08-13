@@ -11,14 +11,12 @@ Official Claude Code plugins for integrating the Voicenter telephony platform in
 # 2. Install the live MCP plugin (direct API access from Claude)
 /plugin install voicenter-mcp@voicenter
 
-# 3. Install the API skills plugin (integration guides for all 14 APIs)
+# 3. Install the API skills plugin (integration guides for all 16 API skills)
 /plugin install voicenter-api@voicenter
 
 # 4. (Optional) Install the bot-builder plugin (design Voicenter Bots end-to-end)
 /plugin install voicenter-bot-builder@voicenter
 
-# 5. (Optional) Install the Dashboard knowledge base (end-user reports & support-center docs)
-/plugin install voicenter-dashboard@voicenter
 ```
 
 ---
@@ -68,13 +66,6 @@ Design and emit deployable Voicenter Bot JSON through a guided interview. Build-
 
 ---
 
-### `voicenter-dashboard` — End-user Support Center Knowledge Base
-
-A local, searchable snapshot of Voicenter's public support center (`voicenter.co.il/מרכז-תמיכה`), for answering "how does this feature/report work" questions — as opposed to `voicenter-api`, which covers developer API integration.
-
-**Skills:** `/voicenter-Dashboard` — 439 articles across 15 categories, including all 193 Dashboard monitoring report/chart templates (with template numbers). Ships with a crawl script to refresh the snapshot when the site changes (see [docs/plugins/voicenter-dashboard.md](docs/plugins/voicenter-dashboard.md)).
-
----
 
 ## Authentication
 

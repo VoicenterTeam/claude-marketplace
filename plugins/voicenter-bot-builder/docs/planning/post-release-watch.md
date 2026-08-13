@@ -1,4 +1,4 @@
-# Post-release watch — v1.19.0
+# Post-release watch — v1.20.0
 
 Opened per MS6 §6.5. Feeds the next planning cycle. Nothing here is scheduled work yet; these
 are the things whose answers only production can supply.
@@ -7,7 +7,7 @@ are the things whose answers only production can supply.
 
 ## 1. Locked decision R — the Skill 2 drafting subagent
 
-**Revisit after ~50 builds on v1.19.0.**
+**Revisit after ~50 builds on v1.20.0.**
 
 R deferred a per-batch drafting subagent for Skill 2, on the theory that late-batch quality decay
 might be a context-pressure symptom that MS3's lean-context world would fix on its own. That is
@@ -19,9 +19,9 @@ weaker capture mappings, drifting register, more check-19 duplicates surfacing a
 If decay persists in a lean-context world, the context-pressure theory was wrong and the subagent
 is worth building. If it disappears, R can be retired rather than re-litigated.
 
-## 2. Conv 3a functional patches — v1.19.0 candidate
+## 2. Conv 3a functional patches — v1.21.0 candidate
 
-Held out of v1.19.0 by locked decision S so byte-comparability could prove the refactor was
+Held out of v1.20.0 by locked decision S so byte-comparability could prove the refactor was
 inert. Now unblocked:
 
 - **S1 `Identifier:` field** handling.
@@ -43,7 +43,7 @@ v1.5.0/v1.13.0/v1.14.0 changelog prose interleaved with the live field rules in
 Do it as its own version so the frozen golden gates byte-comparability honestly instead of being
 entangled with a structural refactor.
 
-## 4. Cowork-only PostToolUse validation hook — v1.19+ candidate
+## 4. Cowork-only PostToolUse validation hook — v1.21+ candidate
 
 Progressive enhancement only, **never load-bearing** (constraint C8: hooks are inert in claude.ai
 consumer chat). Idea: run the static V-S checks automatically after a skill writes a spec.
@@ -62,7 +62,7 @@ again:
 | **Subagent mechanics** | Nesting depth, the Task→Agent rename, concurrency defaults. The verifier is a leaf, so nesting is irrelevant *today* — but §6.0's wording deliberately says "delegate to the agent" rather than naming a tool, and that should stay true. |
 | **Plugin-agent frontmatter allow-list (C4)** | V-S4 lints against it. If the allow-list grows, the lint should follow rather than block a legitimate field. |
 
-## 6. Carried-forward gates from v1.19.0
+## 6. Carried-forward gates from v1.20.0
 
 Not watch items — **open obligations** that were not closed before this note was written:
 
@@ -79,7 +79,7 @@ Not watch items — **open obligations** that were not closed before this note w
 ## 6a. Upstream collision — what MS7 absorbed
 
 A **functional v1.18.0** (`1fa1351`) shipped on `main` mid-release, which is why the structural
-release is numbered **1.19.0**. MS7 merged it. Three consequences worth carrying forward:
+release is numbered **1.20.0**. MS7 merged it. Three consequences worth carrying forward:
 
 - **The single-source design was load-tested by accident and held.** Upstream added check 25;
   integrating it meant one entry in `verification-procedure.md` plus a TOC line, a severity cell

@@ -16,7 +16,7 @@ CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.
 reports it as `skipped` rather than failing it.
 
 Usage:
-    python verify.py sample-spec-detailed.md expected-output-1.19.0.json
+    python verify.py sample-spec-detailed.md expected-output-shipping.json
     python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
 """
 

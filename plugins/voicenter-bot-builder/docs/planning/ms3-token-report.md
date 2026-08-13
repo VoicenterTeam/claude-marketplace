@@ -12,7 +12,7 @@ not of a live invocation's full context.
 
 ## 1. Always-loaded body (what every invocation pays before doing anything)
 
-| Skill | v1.17.0 | v1.19.0 | Reduction |
+| Skill | v1.17.0 | v1.20.0 | Reduction |
 |---|---|---|---|
 | spec-designer | 26,284 tok / 1,107 ln | 4,402 tok / 290 ln | **−84%** |
 | intent-detail-author | 17,643 tok / 826 ln | 6,638 tok / 395 ln | **−63%** |
@@ -25,7 +25,7 @@ truncation, which the old ones blew past by 4–6×.
 
 ## 2. Per-scenario invocation cost — the number that actually matters
 
-| Scenario | v1.17.0 | v1.19.0 | Change |
+| Scenario | v1.17.0 | v1.20.0 | Change |
 |---|---|---|---|
 | Skill 3 — full assembly (happy path) | 33,068 | 35,781 | **+8%** |
 | Skill 3 — halts at a pre-flight gate | 33,068 | 8,768 | −74% |
@@ -72,7 +72,7 @@ rules, and tightening the field tables. That is a rewrite, which MS3 explicitly 
    bar) and measure happy-path cost separately as a non-gating metric. This matches what the
    objective O2 text actually describes — "measurable context reduction".
 2. **Keep V-A5 as an end-to-end target** and schedule a *content* compression pass as its own
-   version after v1.19.0, with the golden fixture proving byte-comparability across it.
+   version after v1.20.0, with the golden fixture proving byte-comparability across it.
 3. **Accept +8%** on the happy path as the cost of the conditional-path wins, and record it in
    the release notes.
 

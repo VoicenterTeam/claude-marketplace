@@ -32,7 +32,7 @@ import sys
 import assemble as A
 import verify as V
 
-GOLDEN = "expected-output-1.19.0.json"
+GOLDEN = "expected-output-shipping.json"
 SPEC = "sample-spec-detailed.md"
 
 

@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-Structural release for `voicenter-bot-builder` (will ship as plugin **1.19.0** under marketplace **1.20.0**). Progressive disclosure, a single-source verification procedure, a read-only verifier subagent, slash commands, and directory-submission readiness. Held unreleased pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6.
+Structural release for `voicenter-bot-builder` (ships as plugin **1.20.0** under marketplace **1.20.0** — the two were deliberately aligned on one number; bot-builder skips 1.19.0). Progressive disclosure, a single-source verification procedure, a read-only verifier subagent, slash commands, and directory-submission readiness. Held unreleased pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6.
 
 ### Fixed
 
