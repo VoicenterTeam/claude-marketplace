@@ -1,7 +1,33 @@
 {
   "name": "voicenter-api",
-  "description": "16 skills covering all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls — plus a GetCallHistory AI-enrichment skill and a CRM-onboarding scoping playbook.",
+  "displayName": "Voicenter API Skills",
   "version": "1.1.9",
-  "author": { "name": "Voicenter" },
-  "keywords": ["voicenter", "telephony", "crm", "integration", "click2call", "cdr", "dialer", "voip", "click-to-call", "pbx", "ccaas", "cti", "voicebot", "voiceai", "voice-ai", "callcenter", "contact-center"]
+  "description": "16 skills covering all 14 Voicenter APIs: VoiceBot, Click2Call, Pop-Up Screen, CDR Notification, External Layer, Call Log, Blacklist, Mute Recording, Extension List, Real-Time, Productive Dialer, Login/Logout, Lead Tracker, Active Calls — plus a GetCallHistory AI-enrichment skill and a CRM-onboarding scoping playbook.",
+  "author": {
+    "name": "Voicenter",
+    "email": "api@voicenter.com",
+    "url": "https://www.voicenter.com"
+  },
+  "homepage": "https://www.voicenter.com/API",
+  "repository": "https://github.com/VoicenterTeam/claude-marketplace",
+  "license": "MIT",
+  "keywords": [
+    "voicenter",
+    "telephony",
+    "crm",
+    "integration",
+    "click2call",
+    "cdr",
+    "dialer",
+    "voip",
+    "click-to-call",
+    "pbx",
+    "ccaas",
+    "cti",
+    "voicebot",
+    "voiceai",
+    "voice-ai",
+    "callcenter",
+    "contact-center"
+  ]
 }

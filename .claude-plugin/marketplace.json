@@ -19,6 +19,7 @@
         "name": "Voicenter"
       },
       "homepage": "https://mcp01.voicenter.co/mcp",
+      "repository": "https://github.com/VoicenterTeam/claude-marketplace",
       "license": "MIT",
       "category": "integrations",
       "keywords": [
@@ -51,6 +52,7 @@
         "name": "Voicenter"
       },
       "homepage": "https://www.voicenter.com/API",
+      "repository": "https://github.com/VoicenterTeam/claude-marketplace",
       "license": "MIT",
       "category": "integrations",
       "keywords": [
@@ -82,6 +84,7 @@
         "name": "Voicenter"
       },
       "homepage": "https://www.voicenter.com/API",
+      "repository": "https://github.com/VoicenterTeam/claude-marketplace",
       "license": "MIT",
       "category": "integrations",
       "keywords": [
@@ -94,15 +97,8 @@
         "ivr",
         "intent-design",
         "json-emitter",
+        "json-generator",
         "skill-suite"
-      ],
-      "tags": [
-        "voice-ai",
-        "voicebot",
-        "ivr",
-        "conversational-ai",
-        "intent-design",
-        "json-generator"
       ]
     }
   ]
