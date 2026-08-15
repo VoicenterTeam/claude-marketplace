@@ -53,7 +53,7 @@ Upload skills to a claude.ai test account with code execution enabled.
 | V-A2 | Skill 3 on F2, inline | same violations caught as V-C3. Sensitivity differences on *advisory* checks: document, don't fail. A missed **blocking** seeded violation: FAIL |
 | V-A3 | Fresh-eyes observable | inline verifier visibly re-reads the spec before checking |
 | V-A4 | TodoWrite absence | Skill 2 runs without attempting TodoWrite or erroring on absence |
-| V-A5 | Context measurement | **always-loaded** context vs v1.17.0 recorded; gate is **≥ 40% reduction in always-loaded body**. Per-scenario end-to-end costs are recorded as a **non-gating** metric. Re-scoped after MS3 — see `../planning/ms3-token-report.md` §3. |
+| V-A5 | Context measurement | **always-loaded** context vs v1.17.0 recorded; gate is **≥ 40% reduction in always-loaded body** (measured with `claude plugin details`, not the char estimate — see `../planning/ms3-token-report.md` §1b). Per-scenario end-to-end costs are recorded as a **non-gating** metric. Re-scoped after MS3 — see `../planning/ms3-token-report.md` §3. |
 | V-A6 | Bilingual smoke | Hebrew-language run of Skill 1 Phase 1–2: AskUserQuestion values stay LTR-stable; generated identifiers ASCII |
 
 ## 4. Release acceptance criteria (MS6 gate)
@@ -64,7 +64,7 @@ Upload skills to a claude.ai test account with code execution enabled.
 3. V-C4 equivalence holds — single source of truth proven.
 4. V-A1 passes clean — zero degradation artifacts in claude.ai.
 5. No blocking seeded violation missed in either runtime (V-C3, V-A2).
-6. V-A5 shows ≥ 40% reduction in **always-loaded** context (actual: −75%).
+6. V-A5 shows ≥ 40% reduction in **always-loaded** context (actual: **−68% skills-only**, −41% total plugin — `claude plugin details`, 2026-08-15; see `../planning/ms3-token-report.md` §1b).
    End-to-end happy-path cost is recorded, not gated: progressive disclosure
    cannot shrink a run that legitimately reads every rule, so a full assembly
    is flat-to-slightly-worse by construction. Content compression is scheduled

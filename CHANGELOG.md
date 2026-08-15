@@ -2,9 +2,47 @@
 
 ## [Unreleased]
 
+Two increments are staged here, neither tagged. **1.20.0** is merged to `main` and installable; it is held untagged pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6. **1.20.1** builds on it.
+
+---
+
+### 1.20.1 — layer portability, CHK-26, and assembly-mapping corrections
+
+Plugin `voicenter-bot-builder` 1.20.1 under marketplace 1.20.1. No emitted output changes: both golden fixtures reproduce byte-identically, F2 still fires exactly checks 3/7 blocking + 22 advisory, and the V-S suite passes 12/12.
+
+#### Fixed
+
+- **Skill 3's assembly mapping corrected in three places where the documented contract disagreed with actual emission.** Found by hand-assembling `examples/sample-spec-detailed.md` from the mapping file alone (no reference to `assemble.py`) and diffing against `expected-output-shipping.json`. Each gap let a doc-following author emit a byte-different file that still passed every cross-reference check:
+
+  1. **`silenceRelations` position (Appendix A row 12 vs §4.3.6).** Row 12 said "Top of `intentList`"; §4.3's sub-section numbering and both goldens put it **fifth of six**, between `intentCategories` and `apiSilenceRelations`. Row 12 corrected, and §4.3 gained an explicit six-collection emission order plus a note that no CHK inspects key order — the array is always `[]`, so a misplacement produces zero leaf-path differences and is caught only by byte-comparison.
+  2. **RT=2 `Configuration.body` had no row in the §4.4 mapping table**, despite SKILL.md §3.1 requiring a `**Body:**` parse label and CHK-06 naming `body` in its deep-equality key list. Added in its emission position (immediately after `headers`), with the key-omitted-when-absent rule for `GET`.
+  3. **RT=4's four language fields were sourced from the wrong section.** The §4.4 RT=4 table named section 4 for `announcement`, `intentLoadingAnnouncement`, `intentInstructions` and `response_success`, but those are Skill 2 output and live in **section 5**, exactly as for RT=1/2/3 — the section-4 labels are optional structural overrides. Now documented as section 5 first, section-4 label as fallback.
+
+  **No emitted output changes.** The corrections describe what Skill 3 already emits; both golden fixtures still reproduce byte-identically and the V-S static suite still passes 12/12. `docs/skills/voicenter-bot-json-assembler/README.md` mirrored for the same three items, and its RT=1 row corrected — it still listed an optional `announcement` key, which v1.14.0 Appendix A row 24 forbids and blocking check 20 rejects.
+
+- **`docs/skills/voicenter-bot-json-assembler/README.md` brought up to v1.14.0.** The page's version-history sections ran v1.5.0 → v1.8.0 → v1.13.0 → v1.18.0, skipping v1.14.0 entirely, so four defaults documented there had been wrong since that release: `max_turns` (documented RT=2 `15` / others `5`; actual uniform `5` with `10` as Skill 1's autonomous upgrade), `max_turns_sentence` (documented RT=2 Hebrew / others `""`; actual uniform masculine fallback), `maxDurationLayerId` (documented `3`; actual `0`), and `max_duration_sentence` (documented English; actual Hebrew, trailing space significant). The live tables and the banner-template block are corrected, and a new **v1.14.0 changes** section records what that release superseded — including the RT=1 no-`announcement` rule and the removal of the "canonical system global 19" silence-forward substitution. The v1.5.0 and v1.13.0 history sections are left intact as history, with the new section declared authoritative where they disagree.
+
+  Confirmed against emission rather than against the stage file alone: a hand-assembly following the corrected values reproduces `expected-output-shipping.json` byte-for-byte, so the stage file was right and only the mirror was stale.
+
+#### Added
+
+- **Two portable layer IDs, so a bot survives being imported into a different account.** Bots are routinely designed against one account and imported into another, where an account-specific layer number does not exist; the FK dangles and the platform UI renders the raw layer ID instead of the layer name. Skill 1 now offers **`666`** — the built-in hang-up layer, present on every account and not user-created — as the no-preference default for **every RT=1 terminal whose outcome is "end the call"**: the dedicated silence-forwarding intent, the dedicated API-timeout forwarding intent, the off-topic global terminal, and ordinary end-of-flow terminals. **`0`** (the first layer created on every account) becomes the last-resort placeholder for **human-transfer** terminals specifically, rather than the universal fallback it was.
+
+  Preference order per terminal is unchanged at the top: the MCP-fetched layer the user picks always wins, since an account's real transfer or hang-up layer may carry extra dialplan behaviour. The portable defaults apply only when the MCP is unavailable or the user has no better answer, and which rung was used is logged to spec section 7.3. `666` was previously unknown to the pipeline — it appeared nowhere in any of the three skills.
+
+- **CHK-26 — layer fields are integers (blocking), bringing the pass to 26 checks.** Asserts every RT=1 `Configuration.layer`, every RT=4 `Configuration.NEXT_VO_ID`, and the version-level `dailyLimitLayerId` / `maxDurationLayerId` / `IVRLayerSelect_2` is a JSON number rather than a quoted string — and explicitly rejects booleans, since `bool` subclasses `int` in Python and several other languages, which would otherwise let `true` pass as an integer. Blocking, because the check is mechanical with no false-positive surface and the failure is silent at import: the bot loads, then the layer dropdown renders the raw ID and the transfer lands nowhere. Routes to *Skill 3 internal bug* — the spec parse rules already require integers, so a string in the wire structure means the emission path stringified it. The check explicitly does **not** verify a layer *exists* on the target account; it has no platform access, and cross-account existence is what the `666` / `0` portable defaults address.
+
+  Implemented in `examples/verify.py` and **proven to fire** — a negative fixture with a stringified `layer`, a stringified `NEXT_VO_ID` and a boolean `maxDurationLayerId` reports all three and exits 1. Count propagated to all fourteen consumer references (procedure file, Skill 3 SKILL.md, `spec-verifier` agent, `/bot-assemble` command, both plugin READMEs, the docs mirror, the output-contract doc, Skill 1's cross-references, and the planning docs); both goldens still reproduce byte-identically, F2 still fires exactly checks 3/7/22, and the CHK-19 regression still passes 4/4.
+
+- **Layer-adjacent fields explicitly pinned to JSON integer.** `Configuration.layer`, `dailyLimitLayerId`, `maxDurationLayerId`, `IVRLayerSelect_2` and `NEXT_VO_ID` are documented as bare numbers (`"layer": 666`, never `"layer": "666"`). Raised from a field report of the UI's layer dropdown showing IDs instead of names; **both goldens were checked and every one of these is already `int`, so this is preventive, not a fix.** The gap it closes is that `references/voicebot-json-contract.md` §2's numeric-fields list does not name any of them, so nothing pinned them — while `recordAgentCalls` and `realtimeInputConfig...disabled` are deliberately string-typed and sit in the same objects, making over-generalization easy when hand-authoring. A note records that a quoted layer and a cross-account dangling layer produce the same dropdown symptom, so the JSON type must be checked before diagnosing.
+
+---
+
+### 1.20.0 — structural release
+
 Structural release for `voicenter-bot-builder` (ships as plugin **1.20.0** under marketplace **1.20.0** — the two were deliberately aligned on one number; bot-builder skips 1.19.0). Progressive disclosure, a single-source verification procedure, a read-only verifier subagent, slash commands, and directory-submission readiness. Held unreleased pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6.
 
-### Fixed
+#### Fixed
 
 - **CHK-19 no longer blocks a bot authored exactly as Skill 1 documents (finding N1).** Skill 1's canonical opening-behaviour template restated the opening announcement as a *quoted* parenthetical (`(Opening announcement already played: "<line>")`). That matches FP-4's `: "<line>"` speak-obligation shape, so CHK-19 counted the opening line in two sites and **halted emission** — the documented happy path produced a spec Skill 3 refused to assemble. Fixed on both sides: Skill 1's template now paraphrases (with an inline warning about why quoting breaks it), and CHK-19 skips lines wholly wrapped in parentheses, since a parenthetical is context by convention rather than a line to speak.
 

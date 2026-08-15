@@ -39,7 +39,7 @@ which is what bounds the blast radius of the upstream functional change.
 | `expected-violations-report.md` | v1.17.0's detection baseline for F2 (V-C3/V-C4/V-A2 reference) |
 | `baseline-notes.md` | Eight v1.17.0 findings observed while building the fixtures — recorded, not fixed |
 | `assemble.py` | Mechanical transcription of Skill 3 §3-§4 (spec → wire format) |
-| `verify.py` | Mechanical transcription of Skill 3 §6 (the 25-check cross-reference pass) |
+| `verify.py` | Mechanical transcription of Skill 3 §6 (the 26-check cross-reference pass) |
 | `stub-api-server.py` | Local API standing in for the fictional clinic's scheduling endpoint |
 | `check-static.py` | The V-S static check suite (MS6 §6.1) — runs in CI on every push |
 | `trigger-evals.json` | Description trigger evals: positive sets + the cross-fire matrix (needs a live run) |
@@ -53,7 +53,7 @@ Brightview Family Clinic Assistant — `en-US`, voice-only, Gemini 3.1 - LLM dri
 - Roles: 2 `entry`, 3 `global`, 5 `chained` → 5 `botIntents[]` rows, 5 `intentRelations[]`
 - 11 Mustache references across all five 4.5.x inventories
 - FP-12 callback date/time block; FP-6 off-topic global; v1.16.0 negative instructions
-- 25/25 cross-reference checks pass on the shipping baseline (24/24 + CHK-25 skipped on the frozen one); token estimate 1,961 (advisory band)
+- 26/26 cross-reference checks pass on the shipping baseline (25/25 + CHK-25 skipped on the frozen one); token estimate 1,961 (advisory band)
 
 ## Reproducing
 
@@ -71,7 +71,7 @@ diff /tmp/f1-frozen.json expected-output.json && echo "frozen golden intact"
 python assemble.py sample-spec-detailed.md -o /tmp/f1.json
 diff /tmp/f1.json expected-output-shipping.json && echo "shipping golden intact"
 
-# 3. F1 must pass the checks on both baselines (24 + 1 skipped / 25)
+# 3. F1 must pass the checks on both baselines (25 + 1 skipped / 26)
 python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
 python verify.py sample-spec-detailed.md expected-output-shipping.json
 

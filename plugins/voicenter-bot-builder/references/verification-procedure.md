@@ -1,4 +1,4 @@
-# Verification Procedure (25-check cross-reference pass)
+# Verification Procedure (26-check cross-reference pass)
 
 **Single source of truth** for the Voicenter Bot cross-reference verification pass. Every
 consumer executes this file and nothing else: the `spec-verifier` subagent, Skill 3's
@@ -7,15 +7,25 @@ inline path, and any future CI harness. No check text lives anywhere else in the
 Origin: Doc 1 §15.4 (checks 1–8), Compass doctrine (9, 10, 14 via
 `voice-prompt-doctrine.md`), botIntents-role integrity (11–13), duplicate-global (15),
 field-placement doctrine (16–24 via `field-placement-doctrine.md`), and the
-`ImportBotFromJSON` stored-procedure contract (25 via `voicebot-json-contract.md`).
+`ImportBotFromJSON` stored-procedure contract (25–26 via `voicebot-json-contract.md`).
 
-Check IDs `CHK-01`…`CHK-25` map 1:1 to the legacy numbering. **Never renumber.**
+Check IDs `CHK-01`…`CHK-26` map 1:1 to the legacy numbering. **Never renumber.**
 Retire an ID if a check is removed; append new IDs at the end.
 
-> **CHK-25 was appended, not renumbered.** It arrived with the functional v1.18.0
-> (`ActiveVersionInfo.PersonaID` emission) after this file became canonical. Adding a check
-> means: one entry below, one TOC line, one severity-table cell, one run-order position —
-> and nothing else anywhere in the plugin. That is the property this file exists to provide.
+> **CHK-25 and CHK-26 were appended, not renumbered.** CHK-25 arrived with the functional
+> v1.18.0 (`ActiveVersionInfo.PersonaID` emission) after this file became canonical;
+> CHK-26 followed in v1.20.1. Adding a check means: one entry below, one TOC line, one
+> severity-table cell, one run-order position — and nothing else anywhere in the plugin.
+> That is the property this file exists to provide.
+>
+> **The count, however, is not confined here.** "26-check" and `CHK-01…CHK-26` appear in
+> the consumers too (Skill 3's SKILL.md, the `spec-verifier` agent, the `/bot-assemble`
+> command, both READMEs, the docs mirror, and `examples/verify.py`). CHK-25 shipped with
+> three of those stale — both the output contract below and the consumer-side validity
+> check still bounded the report at twenty-four rows, which would have
+> made a correct report be discarded as malformed. That drift is now caught by **V-S9** in
+> `examples/check-static.py`, which scans every `.md` in the plugin and asserts each stated
+> count equals the number of `### CHK-` entries here. Run it after appending a check.
 
 ---
 
@@ -48,6 +58,7 @@ Retire an ID if a check is removed; append new IDs at the end.
   - [CHK-23 — Off-topic global present](#chk-23--off-topic-global-present)
   - [CHK-24 — Turn-yield announcement gating](#chk-24--turn-yield-announcement-gating)
   - [CHK-25 — Persona FK sanity](#chk-25--persona-fk-sanity)
+  - [CHK-26 — Layer fields are integers](#chk-26--layer-fields-are-integers)
 - [Output contract](#output-contract)
 
 ---
@@ -73,7 +84,7 @@ derive the wire structure per Skill 3 §4 first, then run the checks against it.
 
 ```
 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20
-  → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25
+  → 21 → 22 → 23 → 24 → 26 → 8 → 9 → 10 → 14 → 25
 ```
 
 **All checks run unconditionally — no short-circuit on first failure.** The caller gets a
@@ -83,14 +94,14 @@ complete failure report rather than fixing one issue at a time.
 
 CHK-08, CHK-09 and CHK-10 fire only when `AiModelConfig.AIModelConfig.created.model` is
 `models/gemini-3.1-flash-live-preview`. On any other model they **skip silently**, with a
-one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24 and
-CHK-25 are model-agnostic.
+one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24,
+CHK-25 and CHK-26 are model-agnostic.
 
 ### Severity
 
 | Severity | Checks |
 |---|---|
-| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half) |
+| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half), CHK-26 |
 | **banded** | CHK-08 — advisory 1,500–4,999 tok; blocking ≥ 5,000; forced decomposition ≥ 6,000 |
 | **blocking on mismatch** | CHK-10 |
 | **advisory** | CHK-09, CHK-14, CHK-22, CHK-23, CHK-24 (wait-rule half), CHK-25 |
@@ -419,6 +430,20 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **On failure route to:** Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import (FK). **Not user-actionable during authoring in v1** (Skill 1 has no persona-selection field yet); relevant once that feature ships. Do not route to a skill.
 - **Procedure:** Assert `ActiveVersionInfo.PersonaID` is present and non-null, and that its value is in the known shared whitelist `{3}` (`TTSScriptReader`, `AccountId=0`). v1 always emits `3` by construction, so this check is **trivial today** — the same "trivial but explicit" rationale as CHK-04. It exists so that a later spec-level persona-selection feature cannot introduce an unverified FK silently. If the value is absent or null: report `FAIL` (advisory) — the stored procedure would fall back to the first `Persona` row with `AccountId=0`, and if that row is missing on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent. If the value is present but outside the whitelist: report `FAIL` (advisory) with a banner line asking the operator to confirm that row exists on the target account.
 
+### CHK-26 — Layer fields are integers
+
+- **Verifies:** every layer and layer-adjacent ID is emitted as a JSON number, not a quoted string.
+- **Source:** `voicebot-json-contract.md` §2 Types (which enumerates the numeric fields but names none of these) + the v1.20.1 layer-typing rule in `stages/assembly-mapping.md` §4.4
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — the spec's parse rules already require an integer for `**Layer:**` / `**NEXT_VO_ID:**` / the section-1 layer fields, so a string reaching the wire structure means the emission path stringified it. Report and halt; user files a skill-level issue. (If the spec itself carries a quoted value, §3.1 should have raised a parse error first — that is the bug to report.)
+- **Procedure:** For every RT=1 intent, assert `IntentResponces.Configuration.layer` is an `int` (JSON number with no fractional part). For every RT=4 intent, assert `Configuration.NEXT_VO_ID` is an `int`. At the version level, assert `ActiveVersionInfo.AIModelConfig.dailyLimitLayerId`, `.maxDurationLayerId` and `.IVRLayerSelect_2` are each an `int` when present. A value that is a string, a float, or a boolean fails, reporting the JSON path and the offending value with its type.
+
+**Implementation note — exclude booleans explicitly.** In several languages (Python included) `bool` is a subclass of `int`, so a naive `isinstance(v, int)` accepts `true`/`false`. Test for `bool` first and reject.
+
+**Why this is blocking rather than advisory.** The check is mechanical and has no false-positive surface — the field is either a number or it is not. A quoted layer is an FK the platform cannot resolve, and the failure is silent at import: the bot imports, then the layer dropdown renders the raw ID instead of the layer name and the transfer lands nowhere. That symptom is *identical* to the one produced by a layer that simply doesn't exist on the target account, so operators cannot distinguish the two by looking at the UI — which is precisely why it needs catching before emission.
+
+**Scope note.** This check does NOT verify that a layer *exists* on the target account; it cannot, since the pass has no platform access. Cross-account existence is handled by Skill 1's portable-layer defaults (`666` built-in hang-up, `0` first-layer) and by the banner's post-import verification note.
+
 ---
 
 ## Output contract
@@ -439,7 +464,7 @@ Executed: <delegated | inline>
 |-----|----------|---------|--------|
 | CHK-01 | blocking | pass | — |
 | CHK-02 | blocking | FAIL | <one-line: what, where in the spec (section/intent id)> |
-| …all 25 rows, in order, no omissions… |
+| …all 26 rows, in order, no omissions… |
 
 ### Blocking failures
 <numbered list of every blocking FAIL: CHK id, spec location, one-line description.
@@ -457,7 +482,7 @@ Executed: <delegated | inline>
 
 ### Rules
 
-- **All 25 rows, always, in CHK order.** A skipped check is itself a malformed report.
+- **All 26 rows, always, in CHK order.** A skipped check is itself a malformed report.
   A model- or baseline-gated check that did not fire is still a row, with its verdict
   recorded as `error` (unrunnable) or noted as skipped in the detail column.
 - Verdict vocabulary: `pass` | `FAIL` | `error` (check could not be executed — detail says why). `error` on a blocking check is treated as blocking.
@@ -485,6 +510,6 @@ the main conversation) but must not guess.
 ### Consumer-side validity check
 
 A delegated report is valid iff: the `## Verification Report` header is present, the
-Verdicts table contains exactly CHK-01…CHK-25 in order, and every verdict is in the
+Verdicts table contains exactly CHK-01…CHK-26 in order, and every verdict is in the
 allowed vocabulary. Anything else → discard, log one line to the user (`verifier report
 malformed — running checks inline`), and fall back to the inline path.

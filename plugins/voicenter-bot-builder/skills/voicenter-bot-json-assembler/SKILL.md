@@ -33,7 +33,7 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 
 | Read | Why |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 25 checks (CHK-01…CHK-25) — read and execute this file; §6 only decides which path runs it** |
+| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 26 checks (CHK-01…CHK-26) — read and execute this file; §6 only decides which path runs it** |
 | `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | FP-1…FP-13 incl. the FP-3 turn-yield rule; verified by CHK-16…CHK-24 |
 | `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine; Skill 3 owns CHK-08 (rule 1), CHK-09 (rule 2), CHK-10 (rule 12) and the banner sentinels (rule 13) |
 | `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot; Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 |
@@ -185,11 +185,11 @@ drift-reporting format.
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run the **25-check cross-reference pass**.
+After §4 assembly and §5 sanity check: run the **26-check cross-reference pass**.
 
 **The checks live in exactly one place.** Read and execute
 `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries
-CHK-01…CHK-25 with their run order, model gating, severity assignment, per-check failure
+CHK-01…CHK-26 with their run order, model gating, severity assignment, per-check failure
 routing, and the output contract both execution paths emit. No check procedure text is
 duplicated here — if you find yourself recalling a check from memory, re-read the file.
 
@@ -237,7 +237,7 @@ When a report comes back from the verifier:
 
 1. **Validate it against the contract** before trusting it. A report is valid iff the
    `## Verification Report` header is present, the Verdicts table contains exactly
-   CHK-01…CHK-25 in order, and every verdict is in the allowed vocabulary
+   CHK-01…CHK-26 in order, and every verdict is in the allowed vocabulary
    (`pass` / `FAIL` / `error`).
 2. **If valid: consume it verbatim.** Apply blocking/advisory handling (§6.4) and the
    report's routing recommendations exactly as the inline path would apply its own results.
@@ -251,7 +251,7 @@ When a report comes back from the verifier:
 
 ### 6.2 Inline path (degraded mode)
 
-This is **degraded mode** — not because the checks are weaker (they are the same 25 from the
+This is **degraded mode** — not because the checks are weaker (they are the same 26 from the
 same file), but because there is no context isolation. You watched this spec get built, so
 your memory of what was intended can quietly substitute for what is written. That asymmetry
 is the only difference between the two paths, and it is why the discipline below is
@@ -264,7 +264,7 @@ checks (the CHK-07 and CHK-16…CHK-20 classes).
 > against what is written, not what was intended. Treat the spec as if someone else authored
 > it.
 
-Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-25
+Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-26
 in its run order, apply its severity assignments, and emit the same output contract a
 delegated run would produce. The contract is not optional on this path — MS6's equivalence
 test compares the two paths' reports mechanically.

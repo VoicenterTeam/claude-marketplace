@@ -1,7 +1,7 @@
 # Skill 1 stage — Self-validation checklist (24 checks)
 
 *Load at greenfield close-out and after every patch, before declaring the spec ready. These
-are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-25
+are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-26
 cross-reference pass, which validates the assembled JSON. The two numbering schemes are
 unrelated; do not cross-reference them by number.*
 

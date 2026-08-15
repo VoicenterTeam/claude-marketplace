@@ -200,6 +200,39 @@ is 3. The CHK-NN routing table written in MS1 should reflect the actual detector
 
 ---
 
+## N9 — `expected-banner.txt` names the wrong intent ID, and nothing checks it (found 2026-08-15)
+
+The frozen banner's MANDATORY POST-IMPORT STEP reads:
+
+```
+#   - silence_behaviour.intent = -19 is a pre-import placeholder the import procedure does NOT
+#     remap — after import, set the silence forward to "Handing the call to a human representative"
+```
+
+Both goldens emit `silence_behaviour.intent` = **-18**. In this fixture `-18` is
+`transfer_to_human` and `-19` is `end_off_topic`, so the banner's prose names the right target
+while its numeral points at the off-topic terminal. An operator following the step literally
+would look up `-19` and land on the wrong intent — and this is the one banner line the operator
+*must* act on, because the import procedure does not remap the field.
+
+**Why it survived.** Nothing verifies the banner against the JSON. `assemble.py` has no banner
+generator — `--help` exposes only `-o` for JSON — so `expected-banner.txt` was hand-captured and
+is mechanically unreproducible. The 26-check pass operates on the wire structure and never reads
+the banner; V-S9 explicitly excludes the file (its `24` is legitimately historical).
+
+**Not hand-patched**, per the frozen-fixture rule in `README.md` — a hand-edited golden stops
+proving what it exists to prove. Two routes, both needing a decision:
+
+1. Rerun S0 to regenerate the banner from the current pipeline.
+2. Add a CI assertion that parses `silence_behaviour.intent = <n>` out of the banner and diffs
+   it against the JSON. This catches the class permanently and is a small addition to
+   `check-static.py` — but it only covers the IDs that appear in the banner text, so it is a
+   guard, not a generator.
+
+If the banner was hand-typed, treat every other ID in it as unverified too.
+
+---
+
 ## Verification environment
 
 - Plugin baseline: v1.17.0 (`plugin.json`), repo commit `cdc9922`

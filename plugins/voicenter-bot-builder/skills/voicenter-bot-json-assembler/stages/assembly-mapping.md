@@ -217,6 +217,8 @@ The `silence_behaviour.intent` failover is bot-level (caller silence regardless 
 
 Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. Skill 3 builds them from the cached ID map (§4.1) and section 4-5 content.
 
+**Emit the six collections in the sub-section order below** — `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`. Like every other table in this file, the order is contractual. Note that `silenceRelations` is always `[]` and therefore easy to misplace without any check firing: no CHK-NN inspects key order, so a misordered emission still passes all 26 checks and is caught only by byte-comparison against a golden.
+
 #### 4.3.1 `intents[]`
 
 For each section 4 intent (in order), build a 17-field entry per the v1.5.0 production-aligned shape. Emit fields in this order (matches production export):
@@ -449,11 +451,13 @@ Per intent, branch on `Response Type` (section 4) to assemble the correct `Confi
 |---|---|
 | `ResponseTypeId` | `1` |
 | `IsActive` | `1` (per §16 quirk #15 — required inside every `IntentResponces`) |
-| `Configuration.layer` | Section 5 "Layer" — the real layer number (fetched from the MCP during Skill 1, §2.4.A). Defaults to `0` (root layer) when the spec omits it. **No `-999` sentinel for layer** (v1.12.0 — `0` is a valid landing layer, a deliberate exception to fail-loud; see anti-list §"Suppress fail-loud sentinels"). |
+| `Configuration.layer` | Section 5 "Layer" — the real layer number (fetched from the MCP during Skill 1, §2.4.A), emitted as a **JSON integer, never a quoted string** (see the layer-typing rule below). Defaults to `0` (root layer) when the spec omits it. **No `-999` sentinel for layer** (v1.12.0 — `0` is a valid landing layer, a deliberate exception to fail-loud; see anti-list §"Suppress fail-loud sentinels"). Two layer IDs are portable across accounts and are Skill 1's no-preference defaults (v1.20.1): **`666`** = the built-in hang-up layer, present on every account, for terminals whose outcome is "end the call"; **`0`** = the first layer created on every account, for human-transfer terminals. Skill 3 emits whatever the spec carries — it does not substitute either value — but banner-notes any account-specific layer for post-import verification. |
 | `Configuration.announcement` | **Always omitted (v1.14.0 hard rule).** RT=1 never carries an `announcement` key — the farewell lives in the PREVIOUS intent's `intentInstructions` (FP-8 farewell trigger rule; production: every layer-transfer intent has only `intentLoadingAnnouncement`). If a legacy spec supplies one, that is a **check-20 failure**, not an emission choice. |
 | `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim. **Always emitted** for RT=1 — the terminal's only utterance, a short "יום טוב"-style line. |
 
 RT=1 intents do **not** emit `intentInstructions` (post-execution behavior on a terminal intent has no meaning per Doc 1 §11.5).
+
+**Layer and layer-adjacent fields are JSON integers (v1.20.1).** Emit `Configuration.layer`, `dailyLimitLayerId`, `maxDurationLayerId`, `IVRLayerSelect_2` and `NEXT_VO_ID` as bare numbers — `"layer": 666`, never `"layer": "666"`. The `ImportBotFromJSON` contract's §2 Types list enumerates the fields it requires as numbers and **does not name any of these**, so nothing upstream pins them; they are correct today only by construction. The hazard is proximity: `recordAgentCalls` and `realtimeInputConfig.automaticActivityDetection.disabled` are deliberately string-typed (Appendix A rows 17–18) and sit in the same objects, so "these platform flags are strings" is an easy over-generalization when hand-authoring. A quoted layer is an FK the platform cannot resolve — the observed symptom is the UI's layer dropdown rendering the raw ID instead of the layer name (the same symptom a dangling cross-account layer produces, so do not use the dropdown to tell the two apart).
 
 Terminal doctrine (FP-8, v1.14.0) — one RT=1 terminal per outcome, owning its outcome slot, no terminal→anything relations, no `announcement` (farewell on the predecessor) — is validated by CHK-20 (§6).
 
@@ -466,6 +470,7 @@ Terminal doctrine (FP-8, v1.14.0) — one RT=1 terminal per outcome, owning its 
 | `Configuration.url` | Section 5 "URL"; `<USER_TO_FILL: webhook_url>` if `<UNKNOWN>` |
 | `Configuration.method` | Section 5 "Method" (`"POST"` or `"GET"`) |
 | `Configuration.headers` | Section 5 "Headers" object; `{}` if not specified |
+| `Configuration.body` | Section 5 "Body" object verbatim (Mustache placeholders preserved as written); **key omitted entirely** when the spec declares no `**Body:**` (typical for `GET`). Emitted immediately after `headers` — the position is contractual, and CHK-06's deep-equality key list includes `body`. |
 | `Configuration.fail_output` | Section 5 verbatim |
 | `Configuration.announcement` | Section 5 "Announcement (after API success)" verbatim. **v1.5.0 — renamed from `apiResponseAnnouncement` in prior baseline.** May be the empty string when the intent auto-chains (`**Asks next:**` [none]) — FP-3 turn-yield, v1.17.0; Skill 2 check 10 gates upstream, CHK-24 backstops. |
 | `Configuration.function_output` | Section 5 "Fail-output fallback map" — **object shape** `{ "default": "<fallback string>" }` (v1.5.0 — was a string of LLM guidance in prior baseline). User may extend with per-code keys; Skill 3 passes the object through verbatim. |
@@ -530,10 +535,12 @@ RT=4 has two operating modes selected by section 4 `**Dial source:**`. Both mode
 | `Configuration.NEXT_VO_ID` | Section 4 `**NEXT_VO_ID:**` (int); `-999` sentinel if `<UNKNOWN>` |
 | `Configuration.MAX_DIAL_DURATION` | Section 4 `**MAX_DIAL_DURATION:**` (int seconds) |
 | `Configuration.record` | Section 4 `**Record:**` (boolean) |
-| `Configuration.announcement` | Section 4 `**Announcement:**` verbatim; key omitted if absent in spec |
-| `Configuration.intentLoadingAnnouncement` | Section 4 `**Loading announcement:**` verbatim; key omitted if absent |
-| `Configuration.intentInstructions` | Section 4 `**Post-execution intent instructions:**` verbatim; emit `""` if absent (parallel to RT=2/RT=3 §16 convention) |
-| `Configuration.response_success` | Section 4 `**Response success:**` object (e.g., `{ "instructions": "<text>" }`); emit `{}` if absent |
+| `Configuration.announcement` | Section 5 "Announcement" verbatim; else the section-4 `**Announcement:**` override; else key omitted (see the sourcing note below) |
+| `Configuration.intentLoadingAnnouncement` | Section 5 "Loading announcement" verbatim; else the section-4 `**Loading announcement:**` override; else key omitted |
+| `Configuration.intentInstructions` | Section 5 "Post-execution intentInstructions" verbatim; else the section-4 `**Post-execution intent instructions:**` override; else `""` (parallel to RT=2/RT=3 §16 convention) |
+| `Configuration.response_success` | Section 5 "response_success" object (e.g., `{ "instructions": "<text>" }`); else the section-4 `**Response success:**` override; else `{}` |
+
+**Sourcing note — these four are language content, so section 5 wins.** The other RT=4 rows above are structural and live in section 4's RT-specific block, which is why the whole table used to name section 4 as the source. But `announcement`, `intentLoadingAnnouncement`, `intentInstructions` and `response_success` are Skill 2's output and are normally authored into the intent's **section 5** entry, exactly as they are for RT=1/2/3 — the section-4 labels listed in SKILL.md §3.1 are *optional structural overrides*, not the primary home. Read section 5 first; fall back to the section-4 label only when section 5 has no entry for the field; apply the absent-default only when neither carries it. (Corrected after a v1.20.0 hand-assembly of `examples/sample-spec-detailed.md`, whose `dial_on_call_nurse` carries all four in section 5 and none in section 4.)
 
 **Empty-phone handling.** A spec entry of `""` for `Phone1`, `Phone2`, or `Phone3` is preserved as `""` in the JSON — the dialer's runtime contract is "try in order, skip empties." Do not coerce empty phones to `null` and do not collapse the keys.
 
@@ -562,7 +569,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 9 | `ValidationRules: {}` | Per parameter | Emit empty object. |
 | 10 | `ValidationPattern: null` | Per parameter | Emit `null`. |
 | 11 | `IntentConditionList: []` | Inside `ConditionGroupList` (when present) | Emit empty array. v1 always empty. |
-| 12 | `silenceRelations: []` | Top of `intentList` | Emit empty array. v1 always empty. |
+| 12 | `silenceRelations: []` | `intentList` — **fifth of six**, between `intentCategories` and `apiSilenceRelations` (§4.3 sub-section order: `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`) | Emit empty array. v1 always empty. Earlier wording said "top of `intentList`", which contradicted §4.3.6's position and the production export; the §4.3 order is authoritative. |
 | 13 | `BotLanguages: []` | Bot top-level | Emit empty array. |
 | 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
 | 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the **first** key inside `IntentResponces`, before `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **v1.5.0 update:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation; the prior v1.4.1 "anti-quirk" wording was incomplete). Intent-root `IsDeleted` remains NOT emitted (production doesn't have it). The platform reads `IntentResponces.IsActive` for the per-intent active flag (unchanged); the intent-root `IsActive` is for audit/UI display. |

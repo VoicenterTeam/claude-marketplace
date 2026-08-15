@@ -1,6 +1,6 @@
 # Milestone 1 — Single-Source Verification Procedure
 
-**Objective:** every consumer of the 25-check cross-reference pass (24 at MS1 time) — inline
+**Objective:** every consumer of the 26-check cross-reference pass (24 at MS1 time) — inline
 path, subagent (MS2), future CI — executes one file:
 `references/verification-procedure.md`. No check text survives in two places.
 
@@ -22,7 +22,7 @@ Copy Skill 3 §6 checks 1–24 **verbatim** — this is a move, not a rewrite.
 Structure:
 
 ```
-# Verification Procedure (25-check cross-reference pass)
+# Verification Procedure (26-check cross-reference pass)
 ## Table of contents          ← required, file will exceed 100 lines (C6)
 ## How to execute this file   ← ordering rule, blocking vs advisory handling
 ## Checks

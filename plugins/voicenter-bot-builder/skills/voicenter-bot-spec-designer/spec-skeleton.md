@@ -105,7 +105,7 @@
     - silence_ending_sentence: [string]
     - silence_instructions: [string, often `""`]
     - fallback intent: [intent identifier from section 4. v1.14.0 default: the **dedicated API-timeout forwarding intent** Skill 1 always creates once per bot (outcome per the user: Hang up or Human rep, RT=1) — unless the user asked for an existing flow intent (e.g., main menu) or overrides per intent.]
-  - **Layer:** [int — the real layer number fetched from the MCP (§2.4.A); defaults to 0 (root layer) if omitted]   (RT=1 only)
+  - **Layer:** [**int** (a bare JSON number — never a quoted string); the real layer number fetched from the MCP (§2.4.A). With no MCP and no user preference, use the portable default for the outcome: **`666`** for hang-up/end-the-call terminals (built-in on every account) or **`0`** for human-transfer terminals. Defaults to `0` if omitted entirely.]   (RT=1 only)
   - **Dial source:** [`parameter` | `static`]   (RT=4 only — chooses whether the dialed number comes from a slot or is hard-coded)
   - **Parameter phone:** [slot identifier from this intent's slot list]   (RT=4 only, dial-source=parameter)
   - **Phone1 / Phone2 / Phone3:** [E.164 with leading `+`, attempted in order]   (RT=4 only, dial-source=static; any unused slot may be `""`)
