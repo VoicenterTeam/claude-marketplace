@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Official Voicenter Claude Code plugins — live MCP access, integration skills for all 14 Voicenter APIs, a 3-skill bot-builder authoring pipeline",
-    "version": "1.20.2",
+    "version": "1.20.3",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -79,7 +79,7 @@
       "name": "voicenter-bot-builder",
       "source": "./plugins/voicenter-bot-builder",
       "description": "Design, detail and assemble deployable Voicenter voice/chat bot JSON through a three-skill authoring pipeline.",
-      "version": "1.20.2",
+      "version": "1.20.3",
       "author": {
         "name": "Voicenter"
       },

@@ -167,6 +167,8 @@ what is written here.
 - **On failure route to:** **Skill 1 patch mode** — RT=2 structural authoring incomplete.
 - **Procedure:** Every intent with `IntentResponces.ResponseTypeId = 2` has (a) a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`, and (b) a `Configuration.api_silence_behaviour.intent` that is a present, non-null integer equal to that entry's `ApiSilenceIntentID`. Walk RT=2 intents; for each, verify the row exists AND the inline `intent` failover key is present and matches `ApiSilenceIntentID`. A missing/null/string `intent` is a blocking failure — the intent has no failover.
 
+  **Equality is the test, not resolvability.** Two matching `-999` sentinels satisfy CHK-05: the pairing is intact and the two copies agree, which is all this check owns. Whether the target intent actually exists is CHK-03's job. Do not fail CHK-05 for an unresolvable-but-paired failover — one authoring error would then report as two blocking defects and route the user twice for a single fix. (Added after a delegated run failed CHK-05 on F2's seeded dangling identifier, which the frozen baseline records as a CHK-05 pass; V-C3, 2026-08-16.)
+
 ### CHK-06 — Configuration deep equality
 
 - **Verifies:** the RT=2 registry copy of `Configuration` has not drifted from the intent's own.

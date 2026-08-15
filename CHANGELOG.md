@@ -6,6 +6,24 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.20.3 — the delegated verifier now derives the wire structure
+
+Plugin `voicenter-bot-builder` 1.20.3 under marketplace 1.20.3. Fixes a **missed detection** in the delegated verification path. No emitted-output change.
+
+**The bug.** V-C3's first real run (2026-08-16) missed seeded violation V3 — an FP-9 edge into a type-2 global, authored into section 4's `**Transitions out:**` but never mirrored into §6.2. `CHK-22` passed when it should have fired advisory, and `CHK-02` reported 5 transition edges where section 4 has 6.
+
+**Why.** The checks are written against the **assembled** wire structure. Skill 3's inline path assembles at §4 and verifies at §6, so the arrays exist when its checks run. The `spec-verifier` subagent is handed only a spec path and never assembles. `verification-procedure.md` already told it to "derive the wire structure per Skill 3 §4 first" — but `agents/spec-verifier.md` did not list `stages/assembly-mapping.md` among the files to read, and an iron rule asserted that the spec, the procedure file and the two doctrine files were *everything required*. Told to derive from a file it was told it didn't need, the agent substituted §6.2 — a derivative summary that sections 4–5 can outrun.
+
+This is the single-source design holding up: the procedure file was correct and is unchanged. The defect and its fix are both confined to the agent definition.
+
+**Fix.** `agents/spec-verifier.md` gains `assembly-mapping.md` in its reading list, an explicit derive-before-checking step naming the five arrays to build, a hard rule that **spec section 6 is never a source** (derivation wins; disagreement is a Drift note), and a corrected iron rule.
+
+**Also — CHK-05 disambiguated.** The same run failed `CHK-05` on F2's dangling failover identifier, which the frozen baseline records as a pass. Both readings fit the old wording. `CHK-05` now states that equality is the test, not resolvability: two matching `-999` sentinels satisfy it, and target existence is `CHK-03`'s job. Without this, one authoring error reports as two blocking defects and routes the user twice. This is the only change to `verification-procedure.md`, and it adds no check.
+
+Files: `agents/spec-verifier.md`, `references/verification-procedure.md`.
+
+---
+
 ### 1.20.2 — prompt provenance moves out-of-band
 
 Plugin `voicenter-bot-builder` 1.20.2 under marketplace 1.20.2. **Skill 1 behavior change**; Skill 2 and Skill 3 untouched.
