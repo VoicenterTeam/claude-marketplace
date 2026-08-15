@@ -62,18 +62,34 @@ confirm it appears in typeahead, and `/bot` and confirm all three commands compl
   delegation actually engages rather than §6.0 silently always falling inline.
 - The returned report matches the output contract in `../../references/verification-procedure.md`
   (all blocks present, in order, severities restated not re-decided).
-- Assembly proceeds; 25 checks reported.
+- Assembly proceeds; 26 checks reported.
 - Emitted JSON is byte-comparable to `../../examples/expected-output-shipping.json`.
 
-**Byte-comparability caveat (finding N6).** Skill 3 emits an assembly-time `CreatedDate` in 26
-places. Normalize those and the date in the filename before diffing — the harness pins
-`ASSEMBLY_TS` for exactly this reason. A diff limited to timestamp fields is a **pass**.
+**Byte-comparability caveat (finding N6).** Skill 3 stamps the assembly instant into **24 fields
+across two names** — 13 `CreatedDate` (root, `ActiveVersionInfo`, `AiModelConfig`, and one per
+`intentList.intents[].IntentParameters[]` entry) and 11 `ModifiedDate` (`AiModelConfig` plus one
+per `IntentParameters[]` entry). Normalize those and the date in the filename before diffing —
+the harness pins `ASSEMBLY_TS` for exactly this reason. A diff limited to those fields is a
+**pass**.
+
+**Normalize by path, never by field name.** Ten further `CreatedDate` values live at
+`intentList.intents[].IntentParameters[].ParameterType` and carry the frozen literal
+`2025-01-21 11:25:25`. Those are the CHK-21 ParameterType-dictionary byte-match assertion: a
+name-scoped sweep rewrites them and blinds the diff to precisely the regression it exists to
+catch. Twelve `ModifiedDate` fields are `null` for the same reason and must stay `null`.
 
 ## V-C3 — Skill 3 on F2, delegated
 
-**Pass criteria:** exactly checks **3 and 7 blocking, 22 advisory**; no JSON emitted; routing
-names Skill 1 for 3, Skill 2 for 7 (with the Skill 1 alternative offered), Skill 1 for 22.
-Compare against `../../examples/expected-violations-report.md`.
+**Pass criteria:** exactly checks **3 and 7 blocking, check 22 advisory** (22 is a check number,
+not a count); no JSON emitted; routing names Skill 1 for 3, Skill 2 for 7 (with the Skill 1
+alternative offered), Skill 1 for 22. Compare against
+`../../examples/expected-violations-report.md`.
+
+**Fixture-drift caveat.** That fixture is frozen at v1.17.0 and its outcome block reads
+`Checks failed: 3 of 24` / `Checks passed: 21`. The pass is now 26 checks, so a current run
+prints `3 of 26` / `23 passed`. Compare the **per-check rows** — which checks fired, their
+severities, their routing — not the totals line. The fixture is deliberately not regenerated;
+only the arithmetic moved.
 
 ## V-C4 — Force-inline equivalence *(the load-bearing test)*
 
@@ -147,7 +163,8 @@ neutral format pending one of:
 1. early access to `claude plugin eval`, then port the JSON to `evals/**/case.yaml` — **do not
    hand-author that schema blind**, generate a template with `claude plugin eval init --bare`
    and fill it in, or
-2. a manual run per `va-run-instructions.md` §4.
+2. a manual run per the trigger-evals section of `va-run-instructions.md` — *"Also needs a live
+   run: the trigger evals (MS6 §6.1B)"*.
 
 ## Reporting
 

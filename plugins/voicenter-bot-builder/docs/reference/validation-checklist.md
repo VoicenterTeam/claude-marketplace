@@ -34,7 +34,7 @@ full suite; individual milestones cite subsets in their done-criteria.
 | ID | Test | Pass criterion |
 |---|---|---|
 | V-C1 | Install from marketplace clone; check typeahead | `@voicenter-bot-builder:spec-verifier` appears; skills listed |
-| V-C2 | Skill 3 on F1 | delegation occurs (Agent tool call visible); report matches contract; assembly proceeds; JSON **byte-comparable** to F1-expected (normalize date-in-filename only) |
+| V-C2 | Skill 3 on F1 | delegation occurs (Agent tool call visible); report matches contract; assembly proceeds; JSON **byte-comparable** to F1-expected (normalize the filename date plus the 24 assembly-time timestamps — 13 `CreatedDate` + 11 `ModifiedDate`; normalize **by path, never by field name**, or the 10 frozen `ParameterType.CreatedDate` values that carry CHK-21 get rewritten. See `../planning/vc-run-instructions.md` V-C2) |
 | V-C3 | Skill 3 on F2 | all 3 seeded violations caught; correct severity; blocking ones block; routing names the correct skill |
 | V-C4 | Force-inline (temporarily rename `agents/`), rerun V-C2 + V-C3 | **identical verdicts** to delegated runs — the single-source equivalence proof |
 | V-C5 | Isolation probe | verifier report references only spec content, never conversation history |
@@ -42,6 +42,24 @@ full suite; individual milestones cite subsets in their done-criteria.
 | V-C7 | Skill 1 greenfield + patch smoke tests | stage files load at the right phases; no missing-instruction failures |
 | V-C8 | Commands | `/voicenter-bot-builder:{bot-spec,bot-detail,bot-assemble}` invoke the correct skills; behavior identical to description-triggered invocation. Commands are namespaced — the bare form does not resolve |
 | V-C9 | Haiku gate | V-C2 byte-comparability holds with `model: haiku` on the Assembler (else fall back to sonnet, document) |
+
+### 2a. V-C results
+
+`vc-run-instructions.md` requires pass/fail, surface, date and the **version string from
+`claude plugin details`** for every run — a V-C result without the version it ran against is not
+evidence. Record them here; one row per run, newest version first. Do not overwrite older rows.
+
+| ID | Result | Version | Date | Surface | Notes |
+|---|---|---|---|---|---|
+| V-C1 | — | | | | not yet run against 1.20.1 |
+| V-C2 | — | | | | not yet run against 1.20.1 |
+| V-C3 | — | | | | not yet run against 1.20.1 |
+| V-C4 | — | | | | not yet run against 1.20.1 |
+| V-C5 | — | | | | not yet run against 1.20.1 |
+| V-C6 | — | | | | not yet run against 1.20.1 |
+| V-C7 | — | | | | not yet run against 1.20.1 |
+| V-C8 | — | | | | not yet run against 1.20.1 |
+| V-C9 | — | | | | not yet run against 1.20.1 |
 
 ## 3. V-A — claude.ai regression (the constraint that must not break)
 

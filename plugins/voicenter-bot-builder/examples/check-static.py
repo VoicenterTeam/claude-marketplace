@@ -193,9 +193,17 @@ def main(root):
         (r"(\d+)-check (?:cross-reference|verification)", "'NN-check pass' label"),
         (r"the (\d+) checks \(CHK-", "'the NN checks (CHK-…)' label"),
         (r"same (\d+) from the\s+same file", "inline-path equivalence claim"),
+        # The run-instruction docs state the count as an expected *runtime observation*
+        # ("Assembly proceeds; 26 checks reported") rather than as a label. CHK-26 shipped
+        # with vc-run-instructions.md still saying 25 because none of the patterns above
+        # match that phrasing — the one file that tells a tester what count to expect was
+        # the one file this check could not see.
+        (r"(\d+) checks? (?:reported|failed|passed)", "'NN checks reported' runtime claim"),
     ]
     # The frozen v1.17.0 banner legitimately records 24; Skill 1's self-validation is a
-    # different, coincidentally-24 list that never uses the CHK- prefix.
+    # different, coincidentally-24 list that never uses the CHK- prefix. The frozen F2
+    # detection baseline writes its totals as "Checks failed: 3 of 24", which no pattern
+    # above matches — deliberately, since that fixture is never regenerated.
     EXCLUDE = ("expected-banner.txt",)
     # `CHK-01…CHK-04` (ID resolution) and `CHK-01…CHK-07` (the blocking prefix) are
     # legitimate sub-ranges that also start at 01. Only treat a range as a claimed
