@@ -68,7 +68,7 @@ Each milestone leaves the plugin installable and functional in both runtimes.
 | 2 | Verifier agent + dispatch | `agents/spec-verifier.md`; Skill 3 §6.0–6.2 soft dispatch + fresh-eyes inline mode | MS1 |
 | 3 | Progressive disclosure | All three SKILL.md ≤ 400 lines with `stages/` files; all three descriptions rewritten ≤ 200 chars | MS1 (Skill 3 §6 already slimmed) |
 | 4 | Marketplace readiness | `plugin.json` manifest, LICENSE, README (≥3 example prompts, support contact), CHANGELOG, privacy statement, validate-clean | — (parallelizable with 1–3) |
-| 5 | Commands & polish | `/bot-spec` `/bot-detail` `/bot-assemble` commands; `model: haiku` on Assembler; TodoWrite mirror note; RTL hardening | MS3 |
+| 5 | Commands & polish | `/voicenter-bot-builder:bot-{spec,detail,assemble}` commands; `model: haiku` on Assembler; TodoWrite mirror note; RTL hardening | MS3 |
 | 6 | Validation & release | Eval harness (golden-file byte-compare + trigger tests), full V-suite pass, version bump, tag, submission | MS1–5 |
 
 ## 6. Out of scope for v1.20.0

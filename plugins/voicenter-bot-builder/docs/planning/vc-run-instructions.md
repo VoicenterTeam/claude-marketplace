@@ -30,7 +30,12 @@ Step 4 is the gate on every other test in this file. The output must show:
 
 - the **version** you expect,
 - **Agents (1)** — `spec-verifier`. If it says `Agents (0)` you are on a pre-MS2 copy,
-- **Commands (3)** — `bot-spec`, `bot-detail`, `bot-assemble`.
+- **Skills (6)** — the three skills *plus* `bot-assemble`, `bot-detail`, `bot-spec`.
+
+`claude plugin details` has no `Commands` category and counts `commands/*.md` under **Skills**,
+so 6 is correct and does not mean the commands mis-registered. Confirm they really are commands
+by typing `/bot` in the composer: they appear as `/voicenter-bot-builder:bot-*`, distinct from
+the skills.
 
 `claude plugin details` also prints projected token cost, which is the cheapest way to
 sanity-check V-A5's always-loaded number without a live conversation.
@@ -45,7 +50,8 @@ For any RT=2 step, start `../../examples/stub-api-server.py` first.
 ## V-C1 — Install and typeahead
 
 Covered by setup step 4, plus: type `@voicenter-bot-builder:spec-verifier` in the composer and
-confirm it appears in typeahead, and `/bot-` and confirm all three commands complete.
+confirm it appears in typeahead, and `/bot` and confirm all three commands complete as
+`/voicenter-bot-builder:bot-*`.
 
 ## V-C2 — Skill 3 on F1, delegated
 
@@ -107,8 +113,12 @@ broke.
 
 ## V-C8 — Commands
 
-**Pass criteria:** each `/bot-*` command invokes its skill and behaves identically to
-description-triggered invocation. The commands hand over immediately — if Claude starts
+**Pass criteria:** each `/voicenter-bot-builder:bot-*` command invokes its skill and behaves
+identically to description-triggered invocation.
+
+**Commands are namespaced.** The bare form (`/bot-spec`) does not resolve — autocomplete expands
+the prefix, but typing it literally does nothing. The plugin README documented the bare form
+until this was caught during the first real V-C install. The commands hand over immediately — if Claude starts
 interpreting the request before invoking the skill, the command body's "hand over immediately"
 instruction isn't landing.
 

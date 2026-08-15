@@ -40,7 +40,7 @@ full suite; individual milestones cite subsets in their done-criteria.
 | V-C5 | Isolation probe | verifier report references only spec content, never conversation history |
 | V-C6 | Skill 2 full run, 8–10-intent spec, pause mid-way, re-invoke | checkpoint mechanic unchanged; queue rebuilt from section 5; TodoWrite mirror (if present) never consulted for state |
 | V-C7 | Skill 1 greenfield + patch smoke tests | stage files load at the right phases; no missing-instruction failures |
-| V-C8 | Commands | `/bot-spec`, `/bot-detail`, `/bot-assemble` invoke the correct skills; behavior identical to description-triggered invocation |
+| V-C8 | Commands | `/voicenter-bot-builder:{bot-spec,bot-detail,bot-assemble}` invoke the correct skills; behavior identical to description-triggered invocation. Commands are namespaced — the bare form does not resolve |
 | V-C9 | Haiku gate | V-C2 byte-comparability holds with `model: haiku` on the Assembler (else fall back to sonnet, document) |
 
 ## 3. V-A — claude.ai regression (the constraint that must not break)

@@ -43,9 +43,13 @@ Three commands give deterministic entry points into the pipeline:
 
 | Command | Runs |
 |---|---|
-| `/bot-spec` | Skill 1 — the skill's own mode detection picks greenfield or patch |
-| `/bot-detail` | Skill 2 — rebuilds its queue from the spec's section-5 markers |
-| `/bot-assemble` | Skill 3 — parse, assemble, verify, emit |
+| `/voicenter-bot-builder:bot-spec` | Skill 1 — the skill's own mode detection picks greenfield or patch |
+| `/voicenter-bot-builder:bot-detail` | Skill 2 — rebuilds its queue from the spec's section-5 markers |
+| `/voicenter-bot-builder:bot-assemble` | Skill 3 — parse, assemble, verify, emit |
+
+Plugin commands are **namespaced** — the bare form (`/bot-spec`) does not resolve on its own.
+Typing `/bot` and picking from autocomplete inserts the full name for you; typing the short
+form literally does nothing.
 
 The commands carry no logic of their own; they hand straight over. Plain-language requests
 ("design a bot", "assemble the JSON") still work everywhere, including claude.ai, where slash
