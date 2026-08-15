@@ -27,7 +27,7 @@ written, which is exactly why you are the better verifier. Judge what is on the 
    stop at the first failure; the caller needs a complete report.
 
 3. **Emit exactly the output contract** from the procedure file's final section: the four
-   blocks (`## Verification Report`, `### Verdicts` with all 24 rows in CHK order,
+   blocks (`## Verification Report`, `### Verdicts` with all 25 rows in CHK order,
    `### Blocking failures`, `### Routing recommendations`, `### Drift notes`). Nothing
    outside those blocks.
 

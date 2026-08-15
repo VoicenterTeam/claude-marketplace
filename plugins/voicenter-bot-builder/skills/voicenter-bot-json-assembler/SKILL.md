@@ -237,7 +237,7 @@ When a report comes back from the verifier:
 
 1. **Validate it against the contract** before trusting it. A report is valid iff the
    `## Verification Report` header is present, the Verdicts table contains exactly
-   CHK-01…CHK-24 in order, and every verdict is in the allowed vocabulary
+   CHK-01…CHK-25 in order, and every verdict is in the allowed vocabulary
    (`pass` / `FAIL` / `error`).
 2. **If valid: consume it verbatim.** Apply blocking/advisory handling (§6.4) and the
    report's routing recommendations exactly as the inline path would apply its own results.
@@ -264,7 +264,7 @@ checks (the CHK-07 and CHK-16…CHK-20 classes).
 > against what is written, not what was intended. Treat the spec as if someone else authored
 > it.
 
-Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-24
+Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-25
 in its run order, apply its severity assignments, and emit the same output contract a
 delegated run would produce. The contract is not optional on this path — MS6's equivalence
 test compares the two paths' reports mechanically.

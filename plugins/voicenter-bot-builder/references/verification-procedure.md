@@ -439,7 +439,7 @@ Executed: <delegated | inline>
 |-----|----------|---------|--------|
 | CHK-01 | blocking | pass | — |
 | CHK-02 | blocking | FAIL | <one-line: what, where in the spec (section/intent id)> |
-| …all 24 rows, in order, no omissions… |
+| …all 25 rows, in order, no omissions… |
 
 ### Blocking failures
 <numbered list of every blocking FAIL: CHK id, spec location, one-line description.
@@ -457,7 +457,9 @@ Executed: <delegated | inline>
 
 ### Rules
 
-- **All 24 rows, always, in CHK order.** A skipped check is itself a malformed report.
+- **All 25 rows, always, in CHK order.** A skipped check is itself a malformed report.
+  A model- or baseline-gated check that did not fire is still a row, with its verdict
+  recorded as `error` (unrunnable) or noted as skipped in the detail column.
 - Verdict vocabulary: `pass` | `FAIL` | `error` (check could not be executed — detail says why). `error` on a blocking check is treated as blocking.
 - Severity column restates this file's assignment — the consumer never re-decides severity.
 - Detail lines are one line each. The report is a verdict artifact, not an essay; explanation depth belongs in the routing recommendation.
@@ -483,6 +485,6 @@ the main conversation) but must not guess.
 ### Consumer-side validity check
 
 A delegated report is valid iff: the `## Verification Report` header is present, the
-Verdicts table contains exactly CHK-01…CHK-24 in order, and every verdict is in the
+Verdicts table contains exactly CHK-01…CHK-25 in order, and every verdict is in the
 allowed vocabulary. Anything else → discard, log one line to the user (`verifier report
 malformed — running checks inline`), and fall back to the inline path.

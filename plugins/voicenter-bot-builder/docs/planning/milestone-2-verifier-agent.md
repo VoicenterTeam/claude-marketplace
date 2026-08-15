@@ -1,6 +1,6 @@
 # Milestone 2 — Verifier Agent + Soft Dual-Path Dispatch
 
-**Objective:** in Claude Code / Cowork, the 24-check pass runs in a
+**Objective:** in Claude Code / Cowork, the 25-check pass (24 at MS2 time) runs in a
 fresh-context, read-only subagent. Everywhere else (claude.ai consumer chat),
 it runs inline with an explicit anti-anchoring discipline. Neither path is
 gated on detecting the other.
@@ -26,7 +26,7 @@ Frontmatter (exactly these fields — see constraint C4; `hooks`/`mcpServers`/
 ---
 name: spec-verifier
 description: Read-only cross-reference verifier for Voicenter Agent Specs.
-  Executes the 24-check verification procedure against a fully-detailed spec
+  Executes the 25-check verification procedure against a fully-detailed spec
   and returns a structured pass/fail report with routing recommendations.
   Use when the JSON Assembler reaches its cross-reference pass, or when the
   user asks to verify a spec / run the checks before assembly.
@@ -49,7 +49,8 @@ Notes:
 Body — keep short, the procedure lives in the reference file:
 1. Read `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` first,
    then both doctrine files, then the spec at the path given in the prompt.
-2. Execute CHK-01…CHK-24 in order. Emit exactly the output contract.
+2. Execute CHK-01…CHK-25 in order. Emit exactly the output contract.
+   (MS2 shipped with 24; CHK-25 was appended by MS7 with the functional v1.18.0 merge.)
 3. Iron rules: **report only, never fix**; if the spec path is missing or
    unreadable, return the contract's structured-error form — do not hunt for
    files; verify what is written, not what seems intended; you have no
