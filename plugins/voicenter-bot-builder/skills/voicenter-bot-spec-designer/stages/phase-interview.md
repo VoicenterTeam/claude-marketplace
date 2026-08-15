@@ -139,8 +139,14 @@ For each **active** channel:
 
 For each **inactive** channel: emit the templated default automatically per `templates/voice-default.md` or `templates/chat-default.md`. Substitute `[[PERSONA_IDENTITY]]` (extracted from the just-authored persona — first sentence or two establishing identity) and `[[PRIMARY_LANGUAGE]]` (mapped from the language code in section 1 to a human-readable name, e.g., `he-IL` → "Hebrew"). Show the result to the user. Prompt via `AskUserQuestion` per Section 2.4.B (header: "Channel default", 2 options: "Accept default" / "Override").
 
-If user accepts: write to spec preceded by `[default — not user-authored]`.
-If user overrides: capture the override; do not include the marker.
+If user accepts: write the template body to the section-2 subsection **unmarked**, and record the
+default as a line in §7.7 Prompt provenance.
+If user overrides: capture the override into the subsection; write no §7.7 line for it.
+
+**Never write the provenance into the section-2 body** (v1.20.2). Skill 3 copies that body
+verbatim into the wire `prompts` object, so a marker there becomes text the model reads at call
+time. §7.7 is out-of-band by construction — Skill 3 reads §7.4/§7.5/§7.6 for its gates and
+appends to §7.3, but never copies section 7 into the JSON.
 
 #### 3.2.3 Draft `prompts.openingAnnouncement`
 

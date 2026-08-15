@@ -6,6 +6,22 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.20.2 — prompt provenance moves out-of-band
+
+Plugin `voicenter-bot-builder` 1.20.2 under marketplace 1.20.2. **Skill 1 behavior change**; Skill 2 and Skill 3 untouched.
+
+**Spec-authoring change.** Skill 1 no longer writes `[default — not user-authored]` into the section-2 body when a channel's instructions are accepted as a template default. The fact is now recorded in a new spec section **§7.7 Prompt provenance**, which Skill 3 never copies into the wire JSON.
+
+**Why.** Skill 3 copies each section-2 subsection verbatim into the wire `prompts` object, so anything in that body is prompt text the model reads at call time. The templates opened with the marker *and* closed with a "regenerate this section through Skill 1 patch mode" sentence — both shipped into the deployed prompt. Latent on inactive channels (their prompts are unused), but live on any **active** channel whose instructions the user accepted as a default: `templates/voice-default.md` would put both strings into `prompts.voiceInstructions` on a voice bot. Found by the first real V-C2 run (2026-08-16), which diffed a hand assembly of F1 against the frozen golden and disagreed on exactly this field.
+
+**Migration.** Skill 1's self-validation Check 10 now strips the legacy inline marker and trailing maintenance sentence from a section-2 body and writes the §7.7 line instead, logging `Migrated inline prompt-provenance marker to §7.7 (v1.20.2)` to §7.3. Existing specs are fixed on their next Skill 1 run; no manual edit needed.
+
+**Fixtures not regenerated.** `sample-spec-detailed.md`, `sample-spec-seeded.md` and both goldens still carry the pre-1.20.2 inline form — they are frozen v1.17.0 baselines. V-C2 byte-comparability therefore has one known, documented divergence on `prompts.chatInstructions` until the baselines are re-frozen. That re-freeze is a separate decision; see `docs/reference/validation-checklist.md` §2a.
+
+Files: `skills/voicenter-bot-spec-designer/templates/{voice,chat}-default.md`, `spec-skeleton.md`, `stages/{phase-interview,self-validation,patch-mode}.md`, `docs/skills/voicenter-bot-spec-designer/README.md`.
+
+---
+
 ### 1.20.1 — layer portability, CHK-26, and assembly-mapping corrections
 
 Plugin `voicenter-bot-builder` 1.20.1 under marketplace 1.20.1. No emitted output changes: both golden fixtures reproduce byte-identically, F2 still fires exactly checks 3/7 blocking + 22 advisory, and the V-S suite passes 12/12.

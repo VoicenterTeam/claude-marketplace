@@ -110,11 +110,11 @@ the exact failure message given.
 
 **Remediation:** revisit Phase 2.2 for the missing channel.
 
-### Check 10 — Inactive-channel `prompts` have templated defaults marked (decision D) — structural-correctness (auto-fix)
+### Check 10 — Inactive-channel `prompts` have templated defaults, recorded in §7.7 (decision D) — structural-correctness (auto-fix)
 
-**Trigger:** a channel marked inactive in section 1 has `prompts.[name]` empty (no template emitted) OR has template content not marked `[default — not user-authored]`.
+**Trigger:** a channel marked inactive in section 1 has `prompts.[name]` empty (no template emitted) OR has template content with no matching line in §7.7 Prompt provenance. **Also fires** when the section-2 body still carries a literal `[default — not user-authored]` marker — that is the pre-v1.20.2 inline form, and it ships into the deployed prompt.
 
-**Action:** auto-fix — emit the template if missing, add the marker if missing. Log to 7.3: "Auto-applied templated default for inactive channel `[name]`."
+**Action:** auto-fix — emit the template if missing, add the §7.7 line if missing, and strip any inline `[default — not user-authored]` marker (plus the legacy trailing "regenerate this section through Skill 1 patch mode" sentence) from the section-2 body. Log to 7.3: "Auto-applied templated default for inactive channel `[name]`." and, when a legacy marker was stripped, "Migrated inline prompt-provenance marker to §7.7 (v1.20.2)."
 
 No user prompt required.
 

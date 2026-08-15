@@ -51,9 +51,9 @@ evidence. Record them here; one row per run, newest version first. Do not overwr
 
 | ID | Result | Version | Date | Surface | Notes |
 |---|---|---|---|---|---|
-| V-C1 | — | | | | not yet run against 1.20.1 |
-| V-C2 | — | | | | not yet run against 1.20.1 |
-| V-C3 | — | | | | not yet run against 1.20.1 |
+| V-C1 | partial | 1.20.1 | 2026-08-16 | Claude Code (win32) | `plugin details` gate green: Skills (6), Agents (1) `spec-verifier`, always-on ~551 tok. Composer typeahead not eyeball-verified. |
+| V-C2 | FAIL (1 field) | 1.20.1 | 2026-08-16 | Claude Code (win32) | Delegation engaged (real `spec-verifier` Agent call); report contract-valid; 26 checks, 0 blocking (CHK-08 banded-advisory ~1,860 tok). Assembly reproduced the golden on **1139 of 1140 lines** after path-scoped TS normalization. Sole divergence: `prompts.chatInstructions` — golden carries the leading `[default — not user-authored]` provenance marker as prompt content; hand-assembly stripped it. See the §3.1 marker-vocabulary gap below. |
+| V-C3 | FAIL | 1.20.2 | 2026-08-16 | Claude Code (win32) | Both **blocking** seeded violations caught (V1→CHK-03, V2→CHK-07) and emission correctly halted. But **V3 (advisory, FP-9) was missed** — CHK-22 passed. Two further divergences from the frozen baseline: CHK-05 fired blocking (baseline says it must not), CHK-24's advisory half fired (not in baseline). Root cause: the spec-only verifier derived `intentRelations[]` from §6.2 (derivative) instead of §4 "Transitions out" (authoritative), so it saw 5 edges, not 6. See the wire-array derivation gap below. |
 | V-C4 | — | | | | not yet run against 1.20.1 |
 | V-C5 | — | | | | not yet run against 1.20.1 |
 | V-C6 | — | | | | not yet run against 1.20.1 |

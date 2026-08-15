@@ -136,7 +136,9 @@ Iron rules enforced during this phase:
 - No persistent policy embedded in single intents (move to `persona`)
 - **Call-wide rules stated ONCE, in persona (v1.13.0, FP-6).** The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: *"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."*; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists. These rules are NEVER repeated in per-intent fields — enforced by Check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known.
 
-For inactive channels, Skill 1 emits templated defaults from `templates/voice-default.md` or `templates/chat-default.md`, marked `[default — not user-authored]`.
+For inactive channels, Skill 1 emits templated defaults from `templates/voice-default.md` or `templates/chat-default.md`. The default is recorded **out-of-band in spec §7.7 Prompt provenance** — never as a marker inside the section-2 body.
+
+> **Why out-of-band (v1.20.2).** Skill 3 copies each section-2 subsection verbatim into the wire `prompts` object, so anything in that body is prompt text the model reads at call time. Until v1.20.2 the templates opened with `[default — not user-authored]` and closed with a "regenerate this section through Skill 1 patch mode" sentence, and both shipped into the deployed prompt. Latent on inactive channels, live on any **active** channel whose instructions the user accepted as a default. Skill 1's self-validation Check 10 now strips the legacy inline form and migrates it to §7.7.
 
 ### Phase 2 / 3 boundary — Deep Research nudge
 
