@@ -6,6 +6,22 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.20.5 — banded ≠ advisory-failure; CHK-24's advisory scan is scoped
+
+Plugin `voicenter-bot-builder` 1.20.5 under marketplace 1.20.5. No emitted-output change; no check added (still 26). Both fixes come straight out of **V-C4, which passed** — the equivalence test did its job and surfaced two places where the two execution paths render the same input differently.
+
+**V-C4 result.** Leg 1: the force-inline F1 assembly is an exact match to `expected-output-shipping.json`, key order included. Leg 2: every blocking verdict on F2 is identical to the delegated run — CHK-03 and CHK-07 blocking, CHK-05 pass, CHK-02 six relations, CHK-22 advisory on the seeded edge, no JSON emitted. **No blocking-verdict difference; the single-source equivalence proof holds.** The two divergences below are advisory-layer, and in both the inline path was right and matched the frozen F2 baseline.
+
+**Banded is a measurement, not a failure.** The output contract had a rule for model-gated skips but none for a `banded` check sitting inside its advisory band, and the routing rule's phrase "advisory failures" invited conflation. The delegated path reported CHK-08 as `FAIL` at ~1,860–2,000 tok on three consecutive runs; the inline path reported `pass` at 1,961 tok with a banner line. CHK-08's own threshold table prescribes a banner line from 1,500–4,999 and a *Violation* only at ≥ 5,000, and the frozen baseline says the advisory band "is a banner line, not a failure". The contract now states it: a banded check inside its advisory band reports `pass` with the measurement in the detail column, and `FAIL` only on crossing into a blocking band — explicitly distinguished from advisory-*severity* checks (CHK-09/14/22/23/25), where a `FAIL` is a real defect.
+
+**CHK-24's advisory scan runs on the `Asks next: [none]` subset only.** "Advisory scan on the same intents" had an ambiguous antecedent: the preceding sentence walks all RT=2/RT=3 intents, so the literal reading is broad, while the check's Verifies line scopes to "an intent that asks nothing". The delegated path read it broadly and fired on `capture_caller_details` and `fetch_available_slots` — both of which ask a question, where waiting is correct authoring. That is not merely noisy: this check's routing line prescribes replacing the wait rule with an immediate-forward instruction, which would make a question-asking intent talk over the caller. Scope is now stated explicitly, with the reason.
+
+**Cost note.** The 1.20.3/1.20.4 derive-the-wire-structure requirement made delegated verification measurably more expensive — `spec-verifier`'s on-invoke projection rose ~990 → ~1.5k tok, and measured subagent usage went ~98k tokens / 5 tool calls to ~143k / 12 across the V-C3 runs. Always-on is unchanged (~140 for the agent, ~551 for the plugin), so the V-A5 gate is unaffected, but anyone verifying a large spec pays this per run.
+
+Files: `references/verification-procedure.md`, `docs/reference/validation-checklist.md`.
+
+---
+
 ### 1.20.4 — CHK-22 states its own derivation rule
 
 Plugin `voicenter-bot-builder` 1.20.4 under marketplace 1.20.4. No emitted-output change; no check added (still 26).
