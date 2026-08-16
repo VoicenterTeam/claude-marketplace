@@ -176,6 +176,59 @@ def main(root):
     except Exception as e:  # noqa: BLE001
         record("MS4-4.1", "plugin.json complete", False, str(e))
 
+    # ---- V-S9: every stated check count agrees with the procedure file ----
+    #
+    # The bug this exists for: MS7 appended CHK-25 to the procedure file and updated
+    # the check bodies, but four places in the CONTRACT/DISPATCH layer still said 24 —
+    # including the inline dispatch line ("run CHK-01…CHK-24"), the delegated-report
+    # validation rule, and the agent's own "emit all 24 rows". Net effect: CHK-25 ran
+    # on neither path, and a correct 25-row report would have been discarded as
+    # malformed. Every check body was right; only the arithmetic was wrong, which is
+    # exactly what V-S2 (phrase de-duplication) cannot see.
+    proc_text = read(proc)
+    n_checks = len(re.findall(r"^### CHK-\d+", proc_text, re.M))
+    PATTERNS = [
+        (r"CHK-01[…\.]{1,3}CHK-(\d+)", "CHK-01…CHK-NN range"),
+        (r"all (\d+) rows", "'all NN rows' contract rule"),
+        (r"(\d+)-check (?:cross-reference|verification)", "'NN-check pass' label"),
+        (r"the (\d+) checks \(CHK-", "'the NN checks (CHK-…)' label"),
+        (r"same (\d+) from the\s+same file", "inline-path equivalence claim"),
+        # The run-instruction docs state the count as an expected *runtime observation*
+        # ("Assembly proceeds; 26 checks reported") rather than as a label. CHK-26 shipped
+        # with vc-run-instructions.md still saying 25 because none of the patterns above
+        # match that phrasing — the one file that tells a tester what count to expect was
+        # the one file this check could not see.
+        (r"(\d+) checks? (?:reported|failed|passed)", "'NN checks reported' runtime claim"),
+    ]
+    # The frozen v1.17.0 banner legitimately records 24; Skill 1's self-validation is a
+    # different, coincidentally-24 list that never uses the CHK- prefix. The frozen F2
+    # detection baseline writes its totals as "Checks failed: 3 of 24", which no pattern
+    # above matches — deliberately, since that fixture is never regenerated.
+    EXCLUDE = ("expected-banner.txt",)
+    # `CHK-01…CHK-04` (ID resolution) and `CHK-01…CHK-07` (the blocking prefix) are
+    # legitimate sub-ranges that also start at 01. Only treat a range as a claimed
+    # TOTAL when its endpoint is near the real count — that is where drift shows up.
+    def is_total_claim(v):
+        return v >= n_checks - 5
+
+    mismatches = []
+    scan = sorted(glob.glob(os.path.join(root, "**/*.md"), recursive=True))
+    for f in scan:
+        if any(x in f for x in EXCLUDE):
+            continue
+        txt = read(f)
+        for pat, label in PATTERNS:
+            for m in re.finditer(pat, txt, re.S):
+                v = int(m.group(1))
+                if v != n_checks and is_total_claim(v):
+                    line = txt[:m.start()].count("\n") + 1
+                    mismatches.append(
+                        f"{os.path.relpath(f, root)}:{line} says {v} ({label})")
+    record("V-S9", f"stated check counts all agree with the procedure file ({n_checks})",
+           not mismatches,
+           "; ".join(mismatches[:6]) or
+           f"{len(scan)} files scanned, every stated count == {n_checks}")
+
     # ---- V-S8: manifest validation, if the CLI is on PATH ----
     cli = shutil.which("claude") or shutil.which("claude.cmd")
     if cli:

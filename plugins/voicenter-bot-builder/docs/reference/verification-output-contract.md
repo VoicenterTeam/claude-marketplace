@@ -24,7 +24,7 @@ Executed: <delegated | inline>
 |-----|----------|---------|--------|
 | CHK-01 | blocking | pass | — |
 | CHK-02 | blocking | FAIL | <one-line: what, where in the spec (section/intent id)> |
-| …all 24 rows, in order, no omissions… |
+| …all 26 rows, in order, no omissions… |
 
 ### Blocking failures
 <numbered list of every blocking FAIL: CHK id, spec location, one-line description.
@@ -42,7 +42,7 @@ Executed: <delegated | inline>
 
 ## 2. Rules
 
-- **All 24 rows, always, in CHK order.** A skipped check is itself a
+- **All 26 rows, always, in CHK order.** A skipped check is itself a
   malformed report.
 - Verdict vocabulary: `pass` | `FAIL` | `error` (check could not be executed —
   detail says why). `error` on a blocking check is treated as blocking.
@@ -72,7 +72,7 @@ user (it is in the main conversation) but must not guess.
 ## 4. Consumer-side validity check (Skill 3 §6.1)
 
 A delegated report is valid iff: the `## Verification Report` header is
-present, the Verdicts table contains exactly CHK-01…CHK-24 in order, and
+present, the Verdicts table contains exactly CHK-01…CHK-26 in order, and
 every verdict is in the allowed vocabulary. Anything else → discard, log one
 line to the user ("verifier report malformed — running checks inline"),
 fall back to §6.2.

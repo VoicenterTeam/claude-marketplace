@@ -66,6 +66,17 @@ If MCP is unavailable, Skill 1 follows a **3-tier fallback** — never silently 
 2. **Plugin installed but not authenticated** (OAuth not completed, token expired, or auth/connection error). Prompts via `AskUserQuestion`: *"Authenticate now (Recommended)"* or *"Continue with manual entry"*. If the user authenticates, Skill 1 retries.
 3. **User declined or the retry still failed.** Falls back to **text-only mode** — captures the value as free text and uses `<UNKNOWN: …>` if the user doesn't know it. Logs once to section 7.3 with the reason. Skill 1 does not re-prompt for the same MCP step in the rest of the session — once the user opts out, that decision is respected.
 
+**Layer IDs never fall back to `<UNKNOWN>` (v1.20.1).** Two layer IDs are portable across accounts, so an RT=1 terminal always has a usable value even with no MCP:
+
+| Layer | What it is | Offered as the default for |
+|---|---|---|
+| **`666`** | The built-in **hang-up** layer — present on every account, not user-created, not deletable | Every terminal whose outcome is "end the call": the dedicated silence-forwarding intent, the dedicated API-timeout forwarding intent, the off-topic global terminal, and ordinary end-of-flow terminals |
+| **`0`** | The first layer created on every account (exists unless someone deleted it) | Human-transfer terminals, as the last-resort placeholder |
+
+Preference order per terminal: the MCP-fetched layer the user picks (always preferred — an account's real transfer or hang-up layer may carry extra dialplan behaviour), then the outcome-matched portable default above. Which rung was used is logged to section 7.3.
+
+**Why this matters:** bots are routinely designed against one account and imported into another, where an account-specific layer number does not exist. The FK then dangles, and the platform UI renders the raw layer ID instead of the layer name — a symptom easily mistaken for a JSON type bug. Layer IDs are emitted as JSON integers throughout (`"layer": 666`, never `"layer": "666"`); see the [assembler's layer-typing rule](../voicenter-bot-json-assembler/README.md).
+
 The **model and voice catalogs** remain hardcoded in `model-catalog.md` — they are not fetched live.
 
 **B. Menu prompts via `AskUserQuestion`.** Every closed-set choice the user makes during the interview is presented through `AskUserQuestion` — never plain free-text. The iron rule: if the user can answer with one of a fixed set of strings, route through `AskUserQuestion`. Free-text is reserved for genuinely open-ended fields (names, descriptions, free-form text content, integer/numeric values). **Ask exactly one question per turn** — a single `AskUserQuestion` (or one free-text prompt) per message, waiting for the answer before the next; never batch multiple questions into one turn.
@@ -125,7 +136,9 @@ Iron rules enforced during this phase:
 - No persistent policy embedded in single intents (move to `persona`)
 - **Call-wide rules stated ONCE, in persona (v1.13.0, FP-6).** The persona must state, exactly once each: (a) the turn-taking rule — canonical wording: *"You should always act only after the customer answers and only by the instructions you got. You should never act without the customer's specific answer."*; (b) human-rep request handling (what to say via the FP-4 quote convention + where to route) whenever a human-rep `global` exists; (c) disapproval/decline handling (same shape) whenever a decline terminal exists. These rules are NEVER repeated in per-intent fields — enforced by Check 20. Rules (b)/(c) are finalized at the Phase 3→close-out boundary when the globals/terminals are known.
 
-For inactive channels, Skill 1 emits templated defaults from `templates/voice-default.md` or `templates/chat-default.md`, marked `[default — not user-authored]`.
+For inactive channels, Skill 1 emits templated defaults from `templates/voice-default.md` or `templates/chat-default.md`. The default is recorded **out-of-band in spec §7.7 Prompt provenance** — never as a marker inside the section-2 body.
+
+> **Why out-of-band (v1.20.2).** Skill 3 copies each section-2 subsection verbatim into the wire `prompts` object, so anything in that body is prompt text the model reads at call time. Until v1.20.2 the templates opened with `[default — not user-authored]` and closed with a "regenerate this section through Skill 1 patch mode" sentence, and both shipped into the deployed prompt. Latent on inactive channels, live on any **active** channel whose instructions the user accepted as a default. Skill 1's self-validation Check 10 now strips the legacy inline form and migrates it to §7.7.
 
 ### Phase 2 / 3 boundary — Deep Research nudge
 

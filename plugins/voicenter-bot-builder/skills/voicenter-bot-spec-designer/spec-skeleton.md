@@ -38,13 +38,13 @@
 
 [voiceInstructions text — pacing, pronunciation, interruption handling, audio cues.]
 
-[OR if defaulted: `[default — not user-authored]` followed by template content from `templates/voice-default.md` with [[PLACEHOLDERS]] substituted.]
+[OR if defaulted: template content from `templates/voice-default.md` with [[PLACEHOLDERS]] substituted — **body only, no provenance marker**; record the default in §7.7 instead. This body is copied verbatim into `prompts.voiceInstructions`, so anything written here is runtime prompt content.]
 
 ### 2.3 Chat Instructions
 
 [chatInstructions text — formatting, message length, emoji policy.]
 
-[OR if defaulted: `[default — not user-authored]` followed by template content from `templates/chat-default.md` with [[PLACEHOLDERS]] substituted.]
+[OR if defaulted: template content from `templates/chat-default.md` with [[PLACEHOLDERS]] substituted — **body only, no provenance marker**; record the default in §7.7 instead. This body is copied verbatim into `prompts.chatInstructions`, so anything written here is runtime prompt content.]
 
 ### 2.4 Bot-Level Intent Instructions (Opening Behavior)
 
@@ -105,7 +105,7 @@
     - silence_ending_sentence: [string]
     - silence_instructions: [string, often `""`]
     - fallback intent: [intent identifier from section 4. v1.14.0 default: the **dedicated API-timeout forwarding intent** Skill 1 always creates once per bot (outcome per the user: Hang up or Human rep, RT=1) — unless the user asked for an existing flow intent (e.g., main menu) or overrides per intent.]
-  - **Layer:** [int — the real layer number fetched from the MCP (§2.4.A); defaults to 0 (root layer) if omitted]   (RT=1 only)
+  - **Layer:** [**int** (a bare JSON number — never a quoted string); the real layer number fetched from the MCP (§2.4.A). With no MCP and no user preference, use the portable default for the outcome: **`666`** for hang-up/end-the-call terminals (built-in on every account) or **`0`** for human-transfer terminals. Defaults to `0` if omitted entirely.]   (RT=1 only)
   - **Dial source:** [`parameter` | `static`]   (RT=4 only — chooses whether the dialed number comes from a slot or is hard-coded)
   - **Parameter phone:** [slot identifier from this intent's slot list]   (RT=4 only, dial-source=parameter)
   - **Phone1 / Phone2 / Phone3:** [E.164 with leading `+`, attempted in order]   (RT=4 only, dial-source=static; any unused slot may be `""`)
@@ -257,3 +257,16 @@ A global/system catalog intent is a predefined platform intent the bot reference
 [Per verified RT=2 intent, one append-only entry:
  - [ISO-8601] [intent identifier] — HTTP [status]; paths confirmed: [comma-separated 4.5.4 dotted paths]; request (redacted): [method] [url], headers [names only], body [Mustache-slot values masked].
  An RT=2 intent with no entry here is unverified and CANNOT be marked `[detailed]` (Skill 2 hard block) — Skill 3 Gate C also refuses to assemble it. Never store raw secrets or PII here.]
+
+### 7.7 Prompt provenance
+
+[One line per section-2 prompt field that Skill 1 populated from a template rather than from the
+user, or `[none]` when every field is user-authored. This is the **only** record of that fact —
+v1.20.2 removed the inline `[default — not user-authored]` marker from the section-2 body,
+because section 2's body is copied verbatim into the wire `prompts` object and the marker was
+shipping into the deployed prompt. Skill 3 never reads section 7 for prompt content, so
+provenance recorded here cannot leak.
+
+Format:
+ - 2.2 Voice Instructions — templated default (`templates/voice-default.md`), not user-authored
+ - 2.3 Chat Instructions — templated default (`templates/chat-default.md`), not user-authored]

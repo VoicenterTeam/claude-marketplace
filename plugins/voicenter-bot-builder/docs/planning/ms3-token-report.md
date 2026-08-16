@@ -4,9 +4,12 @@ Measured against **v1.17.0** (repo commit `cdc9922`) after the three MS3 splits 
 description rewrites.
 
 **Method:** char-based estimate per `voice-prompt-doctrine.md` §2 (Latin/ASCII at ¼ token).
-Not `claude plugin details` — that CLI measurement still needs to be run on an installed
-build and recorded in the MS6 release notes. Treat these as ±15% estimates of file content,
-not of a live invocation's full context.
+Treat §1 and §2 as ±15% estimates of **file content** — the SKILL.md body an invocation reads —
+not of a live session's startup context.
+
+**The `claude plugin details` measurement has since been taken (2026-08-15, installed 1.20.0)
+and it measures a different thing — see §1b.** The two are not interchangeable, and conflating
+them is what produced the stale −75% figure this report carried into the V-A5 decision below.
 
 ---
 
@@ -22,6 +25,30 @@ not of a live invocation's full context.
 Descriptions (loaded at startup for *every* skill, whether invoked or not) dropped from
 823 / 1,096 / 1,206 characters to 187 / 188 / 198 — all now inside claude.ai's ~200-char
 truncation, which the old ones blew past by 4–6×.
+
+## 1b. Startup context — the `claude plugin details` measurement (2026-08-15)
+
+**This, not §1, is the V-A5 number.** §1 measures the SKILL.md body a skill loads *when
+invoked*; the CLI's "always-on" is what every session pays at startup before any skill fires —
+names, descriptions and frontmatter only. They differ by roughly 80×, so the −75% from §1 was
+never the always-on figure.
+
+| Scope | v1.17.0 | v1.20.0 | Reduction |
+|---|---|---|---|
+| Skills only (3 × ~100 tok) | ~930 tok | **~300 tok** | **−68%** |
+| Total plugin always-on | ~935 tok | **~551 tok** | **−41%** |
+
+The gap between the two rows is new surface this release added, all of it always-on: the
+`spec-verifier` agent (~140 tok) and three commands (~110 tok combined). Neither existed in
+v1.17.0, so the total-plugin row is not a like-for-like comparison — the skills-only row is.
+
+**On claude.ai, expect the full −68%:** agents and commands are inert there (constraint C8), so
+the plugin's startup cost is the skills row alone.
+
+Per-component on-invoke, for reference: json-assembler ~14k, intent-detail-author ~10.8k,
+spec-designer ~7.2k, spec-verifier ~990. Note the assembler's ~14k against §1's 8,768 char-based
+estimate — the char method under-reads by ~40% at this size, which is worth remembering before
+quoting §1/§2 anywhere a real number matters.
 
 ## 2. Per-scenario invocation cost — the number that actually matters
 
@@ -68,8 +95,8 @@ rules, and tightening the field tables. That is a rewrite, which MS3 explicitly 
 
 ### Options for MS6
 
-1. **Re-scope V-A5 to always-loaded context** (where the result is −75%, comfortably past the
-   bar) and measure happy-path cost separately as a non-gating metric. This matches what the
+1. **Re-scope V-A5 to always-loaded context** (where the real measured result is −68% on
+   skills, comfortably past the bar — see §1b) and measure happy-path cost separately as a non-gating metric. This matches what the
    objective O2 text actually describes — "measurable context reduction".
 2. **Keep V-A5 as an end-to-end target** and schedule a *content* compression pass as its own
    version after v1.20.0, with the golden fixture proving byte-comparability across it.
@@ -79,7 +106,9 @@ rules, and tightening the field tables. That is a rewrite, which MS3 explicitly 
 ### Decision
 
 **Option 1, decided 2026-08-10.** V-A5 is re-scoped to always-loaded context in
-`../reference/validation-checklist.md` (gate: ≥ 40% reduction; actual −75%), MS6 acceptance
+`../reference/validation-checklist.md` (gate: ≥ 40% reduction; **actual −68% skills-only /
+−41% total plugin**, measured 2026-08-15 per §1b — the −75% this file originally cited was the
+char-based file-body estimate from §1, not a startup measurement). MS6 acceptance
 criterion 6 is updated to match, and the content-compression pass is scheduled as its own
 version in `00-overview.md` §6.
 

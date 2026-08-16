@@ -1,7 +1,7 @@
 # Skill 1 stage — Self-validation checklist (24 checks)
 
 *Load at greenfield close-out and after every patch, before declaring the spec ready. These
-are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-25
+are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-26
 cross-reference pass, which validates the assembled JSON. The two numbering schemes are
 unrelated; do not cross-reference them by number.*
 
@@ -110,11 +110,11 @@ the exact failure message given.
 
 **Remediation:** revisit Phase 2.2 for the missing channel.
 
-### Check 10 — Inactive-channel `prompts` have templated defaults marked (decision D) — structural-correctness (auto-fix)
+### Check 10 — Inactive-channel `prompts` have templated defaults, recorded in §7.7 (decision D) — structural-correctness (auto-fix)
 
-**Trigger:** a channel marked inactive in section 1 has `prompts.[name]` empty (no template emitted) OR has template content not marked `[default — not user-authored]`.
+**Trigger:** a channel marked inactive in section 1 has `prompts.[name]` empty (no template emitted) OR has template content with no matching line in §7.7 Prompt provenance. **Also fires** when the section-2 body still carries a literal `[default — not user-authored]` marker — that is the pre-v1.20.2 inline form, and it ships into the deployed prompt.
 
-**Action:** auto-fix — emit the template if missing, add the marker if missing. Log to 7.3: "Auto-applied templated default for inactive channel `[name]`."
+**Action:** auto-fix — emit the template if missing, add the §7.7 line if missing, and strip any inline `[default — not user-authored]` marker (plus the legacy trailing "regenerate this section through Skill 1 patch mode" sentence) from the section-2 body. Log to 7.3: "Auto-applied templated default for inactive channel `[name]`." and, when a legacy marker was stripped, "Migrated inline prompt-provenance marker to §7.7 (v1.20.2)."
 
 No user prompt required.
 

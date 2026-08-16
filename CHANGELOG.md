@@ -2,9 +2,114 @@
 
 ## [Unreleased]
 
+Two increments are staged here, neither tagged. **1.20.0** is merged to `main` and installable; it is held untagged pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6. **1.20.1** builds on it.
+
+---
+
+### 1.20.5 — banded ≠ advisory-failure; CHK-24's advisory scan is scoped
+
+Plugin `voicenter-bot-builder` 1.20.5 under marketplace 1.20.5. No emitted-output change; no check added (still 26). Both fixes come straight out of **V-C4, which passed** — the equivalence test did its job and surfaced two places where the two execution paths render the same input differently.
+
+**V-C4 result.** Leg 1: the force-inline F1 assembly is an exact match to `expected-output-shipping.json`, key order included. Leg 2: every blocking verdict on F2 is identical to the delegated run — CHK-03 and CHK-07 blocking, CHK-05 pass, CHK-02 six relations, CHK-22 advisory on the seeded edge, no JSON emitted. **No blocking-verdict difference; the single-source equivalence proof holds.** The two divergences below are advisory-layer, and in both the inline path was right and matched the frozen F2 baseline.
+
+**Banded is a measurement, not a failure.** The output contract had a rule for model-gated skips but none for a `banded` check sitting inside its advisory band, and the routing rule's phrase "advisory failures" invited conflation. The delegated path reported CHK-08 as `FAIL` at ~1,860–2,000 tok on three consecutive runs; the inline path reported `pass` at 1,961 tok with a banner line. CHK-08's own threshold table prescribes a banner line from 1,500–4,999 and a *Violation* only at ≥ 5,000, and the frozen baseline says the advisory band "is a banner line, not a failure". The contract now states it: a banded check inside its advisory band reports `pass` with the measurement in the detail column, and `FAIL` only on crossing into a blocking band — explicitly distinguished from advisory-*severity* checks (CHK-09/14/22/23/25), where a `FAIL` is a real defect.
+
+**CHK-24's advisory scan runs on the `Asks next: [none]` subset only.** "Advisory scan on the same intents" had an ambiguous antecedent: the preceding sentence walks all RT=2/RT=3 intents, so the literal reading is broad, while the check's Verifies line scopes to "an intent that asks nothing". The delegated path read it broadly and fired on `capture_caller_details` and `fetch_available_slots` — both of which ask a question, where waiting is correct authoring. That is not merely noisy: this check's routing line prescribes replacing the wait rule with an immediate-forward instruction, which would make a question-asking intent talk over the caller. Scope is now stated explicitly, with the reason.
+
+**Cost note.** The 1.20.3/1.20.4 derive-the-wire-structure requirement made delegated verification measurably more expensive — `spec-verifier`'s on-invoke projection rose ~990 → ~1.5k tok, and measured subagent usage went ~98k tokens / 5 tool calls to ~143k / 12 across the V-C3 runs. Always-on is unchanged (~140 for the agent, ~551 for the plugin), so the V-A5 gate is unaffected, but anyone verifying a large spec pays this per run.
+
+Files: `references/verification-procedure.md`, `docs/reference/validation-checklist.md`.
+
+---
+
+### 1.20.4 — CHK-22 states its own derivation rule
+
+Plugin `voicenter-bot-builder` 1.20.4 under marketplace 1.20.4. No emitted-output change; no check added (still 26).
+
+1.20.3 fixed *where* the delegated verifier gets its wire structure. It did not fix CHK-22, which missed F2's seeded FP-9 edge a second time for a new reason: the verifier read section 4 correctly — its Drift note quoted the seeded `2. transfer_to_human (fallback)` line — then excluded that edge from `intentRelations[]`, reasoning "routing to globals is via reachability, not explicit edges (per §6.4)".
+
+Two mistakes in one step, both now addressed in CHK-22's own **Procedure** rather than in the agent preamble, because that is where the judgement is made:
+
+- **A parenthetical role label does not exempt a transition.** `(fallback)` / `(success path)` / `(escalation)` is documentation on an authored edge, not a different kind of line. `assembly-mapping.md` §4.3.4 already said so — *"an author may still list an explicit hand-off to a global; that authored edge is kept"* — but CHK-22 never pointed at it. An edge into a global is exactly what this check looks for, so discarding it during derivation makes CHK-22 structurally incapable of failing.
+- **Section 6 does not override section 4.** A spec's §6.4 typically reads "No explicit escalation edges are authored (v1.12.0)"; that is the *default*, not a rule that erases an edge the author wrote — and §6 is derivative regardless. Section 4 wins; the disagreement is a Drift note.
+
+The 1.20.3 preamble rule ("§6 is never a source") was correct but sat too far from the decision point to bind at CHK-22. Guidance a check depends on now lives in the check.
+
+Files: `references/verification-procedure.md`.
+
+---
+
+### 1.20.3 — the delegated verifier now derives the wire structure
+
+Plugin `voicenter-bot-builder` 1.20.3 under marketplace 1.20.3. Fixes a **missed detection** in the delegated verification path. No emitted-output change.
+
+**The bug.** V-C3's first real run (2026-08-16) missed seeded violation V3 — an FP-9 edge into a type-2 global, authored into section 4's `**Transitions out:**` but never mirrored into §6.2. `CHK-22` passed when it should have fired advisory, and `CHK-02` reported 5 transition edges where section 4 has 6.
+
+**Why.** The checks are written against the **assembled** wire structure. Skill 3's inline path assembles at §4 and verifies at §6, so the arrays exist when its checks run. The `spec-verifier` subagent is handed only a spec path and never assembles. `verification-procedure.md` already told it to "derive the wire structure per Skill 3 §4 first" — but `agents/spec-verifier.md` did not list `stages/assembly-mapping.md` among the files to read, and an iron rule asserted that the spec, the procedure file and the two doctrine files were *everything required*. Told to derive from a file it was told it didn't need, the agent substituted §6.2 — a derivative summary that sections 4–5 can outrun.
+
+This is the single-source design holding up: the procedure file was correct and is unchanged. The defect and its fix are both confined to the agent definition.
+
+**Fix.** `agents/spec-verifier.md` gains `assembly-mapping.md` in its reading list, an explicit derive-before-checking step naming the five arrays to build, a hard rule that **spec section 6 is never a source** (derivation wins; disagreement is a Drift note), and a corrected iron rule.
+
+**Also — CHK-05 disambiguated.** The same run failed `CHK-05` on F2's dangling failover identifier, which the frozen baseline records as a pass. Both readings fit the old wording. `CHK-05` now states that equality is the test, not resolvability: two matching `-999` sentinels satisfy it, and target existence is `CHK-03`'s job. Without this, one authoring error reports as two blocking defects and routes the user twice. This is the only change to `verification-procedure.md`, and it adds no check.
+
+Files: `agents/spec-verifier.md`, `references/verification-procedure.md`.
+
+---
+
+### 1.20.2 — prompt provenance moves out-of-band
+
+Plugin `voicenter-bot-builder` 1.20.2 under marketplace 1.20.2. **Skill 1 behavior change**; Skill 2 and Skill 3 untouched.
+
+**Spec-authoring change.** Skill 1 no longer writes `[default — not user-authored]` into the section-2 body when a channel's instructions are accepted as a template default. The fact is now recorded in a new spec section **§7.7 Prompt provenance**, which Skill 3 never copies into the wire JSON.
+
+**Why.** Skill 3 copies each section-2 subsection verbatim into the wire `prompts` object, so anything in that body is prompt text the model reads at call time. The templates opened with the marker *and* closed with a "regenerate this section through Skill 1 patch mode" sentence — both shipped into the deployed prompt. Latent on inactive channels (their prompts are unused), but live on any **active** channel whose instructions the user accepted as a default: `templates/voice-default.md` would put both strings into `prompts.voiceInstructions` on a voice bot. Found by the first real V-C2 run (2026-08-16), which diffed a hand assembly of F1 against the frozen golden and disagreed on exactly this field.
+
+**Migration.** Skill 1's self-validation Check 10 now strips the legacy inline marker and trailing maintenance sentence from a section-2 body and writes the §7.7 line instead, logging `Migrated inline prompt-provenance marker to §7.7 (v1.20.2)` to §7.3. Existing specs are fixed on their next Skill 1 run; no manual edit needed.
+
+**Fixtures not regenerated.** `sample-spec-detailed.md`, `sample-spec-seeded.md` and both goldens still carry the pre-1.20.2 inline form — they are frozen v1.17.0 baselines. V-C2 byte-comparability therefore has one known, documented divergence on `prompts.chatInstructions` until the baselines are re-frozen. That re-freeze is a separate decision; see `docs/reference/validation-checklist.md` §2a.
+
+Files: `skills/voicenter-bot-spec-designer/templates/{voice,chat}-default.md`, `spec-skeleton.md`, `stages/{phase-interview,self-validation,patch-mode}.md`, `docs/skills/voicenter-bot-spec-designer/README.md`.
+
+---
+
+### 1.20.1 — layer portability, CHK-26, and assembly-mapping corrections
+
+Plugin `voicenter-bot-builder` 1.20.1 under marketplace 1.20.1. No emitted output changes: both golden fixtures reproduce byte-identically, F2 still fires exactly checks 3/7 blocking + 22 advisory, and the V-S suite passes 12/12.
+
+#### Fixed
+
+- **Skill 3's assembly mapping corrected in three places where the documented contract disagreed with actual emission.** Found by hand-assembling `examples/sample-spec-detailed.md` from the mapping file alone (no reference to `assemble.py`) and diffing against `expected-output-shipping.json`. Each gap let a doc-following author emit a byte-different file that still passed every cross-reference check:
+
+  1. **`silenceRelations` position (Appendix A row 12 vs §4.3.6).** Row 12 said "Top of `intentList`"; §4.3's sub-section numbering and both goldens put it **fifth of six**, between `intentCategories` and `apiSilenceRelations`. Row 12 corrected, and §4.3 gained an explicit six-collection emission order plus a note that no CHK inspects key order — the array is always `[]`, so a misplacement produces zero leaf-path differences and is caught only by byte-comparison.
+  2. **RT=2 `Configuration.body` had no row in the §4.4 mapping table**, despite SKILL.md §3.1 requiring a `**Body:**` parse label and CHK-06 naming `body` in its deep-equality key list. Added in its emission position (immediately after `headers`), with the key-omitted-when-absent rule for `GET`.
+  3. **RT=4's four language fields were sourced from the wrong section.** The §4.4 RT=4 table named section 4 for `announcement`, `intentLoadingAnnouncement`, `intentInstructions` and `response_success`, but those are Skill 2 output and live in **section 5**, exactly as for RT=1/2/3 — the section-4 labels are optional structural overrides. Now documented as section 5 first, section-4 label as fallback.
+
+  **No emitted output changes.** The corrections describe what Skill 3 already emits; both golden fixtures still reproduce byte-identically and the V-S static suite still passes 12/12. `docs/skills/voicenter-bot-json-assembler/README.md` mirrored for the same three items, and its RT=1 row corrected — it still listed an optional `announcement` key, which v1.14.0 Appendix A row 24 forbids and blocking check 20 rejects.
+
+- **`docs/skills/voicenter-bot-json-assembler/README.md` brought up to v1.14.0.** The page's version-history sections ran v1.5.0 → v1.8.0 → v1.13.0 → v1.18.0, skipping v1.14.0 entirely, so four defaults documented there had been wrong since that release: `max_turns` (documented RT=2 `15` / others `5`; actual uniform `5` with `10` as Skill 1's autonomous upgrade), `max_turns_sentence` (documented RT=2 Hebrew / others `""`; actual uniform masculine fallback), `maxDurationLayerId` (documented `3`; actual `0`), and `max_duration_sentence` (documented English; actual Hebrew, trailing space significant). The live tables and the banner-template block are corrected, and a new **v1.14.0 changes** section records what that release superseded — including the RT=1 no-`announcement` rule and the removal of the "canonical system global 19" silence-forward substitution. The v1.5.0 and v1.13.0 history sections are left intact as history, with the new section declared authoritative where they disagree.
+
+  Confirmed against emission rather than against the stage file alone: a hand-assembly following the corrected values reproduces `expected-output-shipping.json` byte-for-byte, so the stage file was right and only the mirror was stale.
+
+#### Added
+
+- **Two portable layer IDs, so a bot survives being imported into a different account.** Bots are routinely designed against one account and imported into another, where an account-specific layer number does not exist; the FK dangles and the platform UI renders the raw layer ID instead of the layer name. Skill 1 now offers **`666`** — the built-in hang-up layer, present on every account and not user-created — as the no-preference default for **every RT=1 terminal whose outcome is "end the call"**: the dedicated silence-forwarding intent, the dedicated API-timeout forwarding intent, the off-topic global terminal, and ordinary end-of-flow terminals. **`0`** (the first layer created on every account) becomes the last-resort placeholder for **human-transfer** terminals specifically, rather than the universal fallback it was.
+
+  Preference order per terminal is unchanged at the top: the MCP-fetched layer the user picks always wins, since an account's real transfer or hang-up layer may carry extra dialplan behaviour. The portable defaults apply only when the MCP is unavailable or the user has no better answer, and which rung was used is logged to spec section 7.3. `666` was previously unknown to the pipeline — it appeared nowhere in any of the three skills.
+
+- **CHK-26 — layer fields are integers (blocking), bringing the pass to 26 checks.** Asserts every RT=1 `Configuration.layer`, every RT=4 `Configuration.NEXT_VO_ID`, and the version-level `dailyLimitLayerId` / `maxDurationLayerId` / `IVRLayerSelect_2` is a JSON number rather than a quoted string — and explicitly rejects booleans, since `bool` subclasses `int` in Python and several other languages, which would otherwise let `true` pass as an integer. Blocking, because the check is mechanical with no false-positive surface and the failure is silent at import: the bot loads, then the layer dropdown renders the raw ID and the transfer lands nowhere. Routes to *Skill 3 internal bug* — the spec parse rules already require integers, so a string in the wire structure means the emission path stringified it. The check explicitly does **not** verify a layer *exists* on the target account; it has no platform access, and cross-account existence is what the `666` / `0` portable defaults address.
+
+  Implemented in `examples/verify.py` and **proven to fire** — a negative fixture with a stringified `layer`, a stringified `NEXT_VO_ID` and a boolean `maxDurationLayerId` reports all three and exits 1. Count propagated to all fourteen consumer references (procedure file, Skill 3 SKILL.md, `spec-verifier` agent, `/bot-assemble` command, both plugin READMEs, the docs mirror, the output-contract doc, Skill 1's cross-references, and the planning docs); both goldens still reproduce byte-identically, F2 still fires exactly checks 3/7/22, and the CHK-19 regression still passes 4/4.
+
+- **Layer-adjacent fields explicitly pinned to JSON integer.** `Configuration.layer`, `dailyLimitLayerId`, `maxDurationLayerId`, `IVRLayerSelect_2` and `NEXT_VO_ID` are documented as bare numbers (`"layer": 666`, never `"layer": "666"`). Raised from a field report of the UI's layer dropdown showing IDs instead of names; **both goldens were checked and every one of these is already `int`, so this is preventive, not a fix.** The gap it closes is that `references/voicebot-json-contract.md` §2's numeric-fields list does not name any of them, so nothing pinned them — while `recordAgentCalls` and `realtimeInputConfig...disabled` are deliberately string-typed and sit in the same objects, making over-generalization easy when hand-authoring. A note records that a quoted layer and a cross-account dangling layer produce the same dropdown symptom, so the JSON type must be checked before diagnosing.
+
+---
+
+### 1.20.0 — structural release
+
 Structural release for `voicenter-bot-builder` (ships as plugin **1.20.0** under marketplace **1.20.0** — the two were deliberately aligned on one number; bot-builder skips 1.19.0). Progressive disclosure, a single-source verification procedure, a read-only verifier subagent, slash commands, and directory-submission readiness. Held unreleased pending the V-C / V-A / LICENSE gates — see `plugins/voicenter-bot-builder/docs/planning/post-release-watch.md` §6.
 
-### Fixed
+#### Fixed
 
 - **CHK-19 no longer blocks a bot authored exactly as Skill 1 documents (finding N1).** Skill 1's canonical opening-behaviour template restated the opening announcement as a *quoted* parenthetical (`(Opening announcement already played: "<line>")`). That matches FP-4's `: "<line>"` speak-obligation shape, so CHK-19 counted the opening line in two sites and **halted emission** — the documented happy path produced a spec Skill 3 refused to assemble. Fixed on both sides: Skill 1's template now paraphrases (with an inline warning about why quoting breaks it), and CHK-19 skips lines wholly wrapped in parentheses, since a parenthetical is context by convention rather than a line to speak.
 

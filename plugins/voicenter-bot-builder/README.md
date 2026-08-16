@@ -20,7 +20,7 @@ plugin splits that work into three stages, each with its own guardrails:
 |---|---|---|
 | 1 | **Agent Spec Designer** | The structural skeleton — identity, persona, flow graph, intents, slots — via interview. Writes an Agent Spec markdown file. |
 | 2 | **Intent Detail Author** | The language content per intent: what the bot says, how it captures answers, what it does next. Walks intents in batches with checkpoints. |
-| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 25-check verification pass. |
+| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 26-check verification pass. |
 
 The **Agent Spec markdown is the source of truth** at every stage. No skill invents a value:
 anything the interview didn't establish is emitted as a fail-loud sentinel and listed in the
@@ -43,9 +43,13 @@ Three commands give deterministic entry points into the pipeline:
 
 | Command | Runs |
 |---|---|
-| `/bot-spec` | Skill 1 — the skill's own mode detection picks greenfield or patch |
-| `/bot-detail` | Skill 2 — rebuilds its queue from the spec's section-5 markers |
-| `/bot-assemble` | Skill 3 — parse, assemble, verify, emit |
+| `/voicenter-bot-builder:bot-spec` | Skill 1 — the skill's own mode detection picks greenfield or patch |
+| `/voicenter-bot-builder:bot-detail` | Skill 2 — rebuilds its queue from the spec's section-5 markers |
+| `/voicenter-bot-builder:bot-assemble` | Skill 3 — parse, assemble, verify, emit |
+
+Plugin commands are **namespaced** — the bare form (`/bot-spec`) does not resolve on its own.
+Typing `/bot` and picking from autocomplete inserts the full name for you; typing the short
+form literally does nothing.
 
 The commands carry no logic of their own; they hand straight over. Plain-language requests
 ("design a bot", "assemble the JSON") still work everywhere, including claude.ai, where slash
@@ -88,7 +92,7 @@ shows you that cascade, and waits for confirmation before applying it.
 
 > @voicenter-bot-builder:spec-verifier verify agent-spec.md
 
-Runs the 25-check pass in an isolated read-only context and returns a pass/fail report with
+Runs the 26-check pass in an isolated read-only context and returns a pass/fail report with
 routing recommendations. Never modifies anything.
 
 ## Data handling
@@ -120,7 +124,7 @@ Two things to be aware of, because they involve *your* choices rather than the p
   output (JSON keys, identifiers, filenames, check IDs) is deliberately ASCII/LTR, so what is
   *generated* is correct even where the *display* is confusing. Read generated JSON from the
   file rather than the terminal if the direction looks scrambled.
-- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 25-check pass can
+- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 26-check pass can
   run in a fresh isolated context, which catches more than a verifier that watched the spec get
   written. In claude.ai consumer chat, subagents are inert, so the *identical* checks run
   inline from the same procedure file. No feature is lost — only the context isolation.

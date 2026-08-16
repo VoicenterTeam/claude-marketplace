@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical transcription of Skill 3 §6 — the 25-check cross-reference pass.
+"""Mechanical transcription of Skill 3 §6 — the 26-check cross-reference pass.
 
 Implements the detections in Skill 3 SKILL.md §6.2, run against the assembled
 wire structure (plus the spec, which checks 16-24 additionally consult).
@@ -8,8 +8,8 @@ Used twice in S0: to confirm F1 assembles clean, and to record which checks fire
 on the F2 seeded fixture (the v1.17.0 detection baseline that V-C3/V-C4/V-A2
 compare against).
 
-Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, then 8, 9, 10, 14, 25.
-Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half). 8 is banded.
+Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26, then 8, 9, 10, 14, 25.
+Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26. 8 is banded.
 9, 14, 22, 23, 25 advisory; 10 blocking on mismatch.
 
 CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.0
@@ -27,7 +27,7 @@ import unicodedata
 
 import assemble as A
 
-BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24}
+BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 26}
 NAMES = {
     1: "botIntents[].IntentID resolves", 2: "intentRelations[] resolves",
     3: "apiSilenceRelations[] resolves", 4: "intents[].IntentCategoryId resolves",
@@ -47,6 +47,7 @@ NAMES = {
     23: "Off-topic global present (FP-6)",
     24: "Turn-yield announcement gating (FP-3)",
     25: "Persona FK sanity (contract R7/R11)",
+    26: "Layer fields are integers (contract §2 Types)",
 }
 
 # Appendix D.12 — the only known shared Persona row (AccountId=0).
@@ -318,6 +319,25 @@ def run(spec, bot):
                          str(i["IntentResponces"]["Configuration"].get("intentInstructions", ""))):
                 fail(24, f"{i['IntentToolName']}: ADVISORY wait rule on auto-chaining intent")
 
+    # 26 layer fields are integers — bool is a subclass of int, so reject it first.
+    def _int(v):
+        return isinstance(v, int) and not isinstance(v, bool)
+
+    avm = bot["ActiveVersionInfo"]["AIModelConfig"]
+    for k in ("dailyLimitLayerId", "maxDurationLayerId", "IVRLayerSelect_2"):
+        if k in avm and not _int(avm[k]):
+            fail(26, f"ActiveVersionInfo.AIModelConfig.{k} = {avm[k]!r} "
+                     f"({type(avm[k]).__name__}) — must be a JSON integer")
+    for i in ints:
+        r = i["IntentResponces"]
+        cfg, rt, tn = r["Configuration"], r["ResponseTypeId"], i["IntentToolName"]
+        if rt == 1 and not _int(cfg.get("layer")):
+            fail(26, f"{tn}: Configuration.layer = {cfg.get('layer')!r} "
+                     f"({type(cfg.get('layer')).__name__}) — must be a JSON integer")
+        if rt == 4 and "NEXT_VO_ID" in cfg and not _int(cfg["NEXT_VO_ID"]):
+            fail(26, f"{tn}: Configuration.NEXT_VO_ID = {cfg['NEXT_VO_ID']!r} "
+                     f"({type(cfg['NEXT_VO_ID']).__name__}) — must be a JSON integer")
+
     # 8/9 token estimate (§6.2 check 8 specifics)
     gated = bot["AiModelConfig"]["AIModelConfig"]["created"]["model"] == "models/gemini-3.1-flash-live-preview"
     txt = pr["persona"] + pr["voiceInstructions"] + pr["intentInstructions"]
@@ -387,7 +407,7 @@ def main():
     fails, tok, gated, skipped = run(spec, bot)
     blocking = sorted(n for n in fails if n in BLOCKING
                       and not all("ADVISORY" in m for m in fails[n]))
-    ran = 25 - len(skipped)
+    ran = 26 - len(skipped)
     print(f"Token estimate: {tok} tok (checks 8/9/10 {'FIRE' if gated else 'skip'})")
     print(f"Checks run: {ran} | failed: {len(fails)} | blocking: {len(blocking)}\n")
     for n in sorted(fails):

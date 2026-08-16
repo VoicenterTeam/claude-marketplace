@@ -1,4 +1,4 @@
-# Verification Procedure (25-check cross-reference pass)
+# Verification Procedure (26-check cross-reference pass)
 
 **Single source of truth** for the Voicenter Bot cross-reference verification pass. Every
 consumer executes this file and nothing else: the `spec-verifier` subagent, Skill 3's
@@ -7,15 +7,25 @@ inline path, and any future CI harness. No check text lives anywhere else in the
 Origin: Doc 1 §15.4 (checks 1–8), Compass doctrine (9, 10, 14 via
 `voice-prompt-doctrine.md`), botIntents-role integrity (11–13), duplicate-global (15),
 field-placement doctrine (16–24 via `field-placement-doctrine.md`), and the
-`ImportBotFromJSON` stored-procedure contract (25 via `voicebot-json-contract.md`).
+`ImportBotFromJSON` stored-procedure contract (25–26 via `voicebot-json-contract.md`).
 
-Check IDs `CHK-01`…`CHK-25` map 1:1 to the legacy numbering. **Never renumber.**
+Check IDs `CHK-01`…`CHK-26` map 1:1 to the legacy numbering. **Never renumber.**
 Retire an ID if a check is removed; append new IDs at the end.
 
-> **CHK-25 was appended, not renumbered.** It arrived with the functional v1.18.0
-> (`ActiveVersionInfo.PersonaID` emission) after this file became canonical. Adding a check
-> means: one entry below, one TOC line, one severity-table cell, one run-order position —
-> and nothing else anywhere in the plugin. That is the property this file exists to provide.
+> **CHK-25 and CHK-26 were appended, not renumbered.** CHK-25 arrived with the functional
+> v1.18.0 (`ActiveVersionInfo.PersonaID` emission) after this file became canonical;
+> CHK-26 followed in v1.20.1. Adding a check means: one entry below, one TOC line, one
+> severity-table cell, one run-order position — and nothing else anywhere in the plugin.
+> That is the property this file exists to provide.
+>
+> **The count, however, is not confined here.** "26-check" and `CHK-01…CHK-26` appear in
+> the consumers too (Skill 3's SKILL.md, the `spec-verifier` agent, the `/bot-assemble`
+> command, both READMEs, the docs mirror, and `examples/verify.py`). CHK-25 shipped with
+> three of those stale — both the output contract below and the consumer-side validity
+> check still bounded the report at twenty-four rows, which would have
+> made a correct report be discarded as malformed. That drift is now caught by **V-S9** in
+> `examples/check-static.py`, which scans every `.md` in the plugin and asserts each stated
+> count equals the number of `### CHK-` entries here. Run it after appending a check.
 
 ---
 
@@ -48,6 +58,7 @@ Retire an ID if a check is removed; append new IDs at the end.
   - [CHK-23 — Off-topic global present](#chk-23--off-topic-global-present)
   - [CHK-24 — Turn-yield announcement gating](#chk-24--turn-yield-announcement-gating)
   - [CHK-25 — Persona FK sanity](#chk-25--persona-fk-sanity)
+  - [CHK-26 — Layer fields are integers](#chk-26--layer-fields-are-integers)
 - [Output contract](#output-contract)
 
 ---
@@ -73,7 +84,7 @@ derive the wire structure per Skill 3 §4 first, then run the checks against it.
 
 ```
 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20
-  → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25
+  → 21 → 22 → 23 → 24 → 26 → 8 → 9 → 10 → 14 → 25
 ```
 
 **All checks run unconditionally — no short-circuit on first failure.** The caller gets a
@@ -83,14 +94,14 @@ complete failure report rather than fixing one issue at a time.
 
 CHK-08, CHK-09 and CHK-10 fire only when `AiModelConfig.AIModelConfig.created.model` is
 `models/gemini-3.1-flash-live-preview`. On any other model they **skip silently**, with a
-one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24 and
-CHK-25 are model-agnostic.
+one-time per-spec log entry to spec section 7.3. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24,
+CHK-25 and CHK-26 are model-agnostic.
 
 ### Severity
 
 | Severity | Checks |
 |---|---|
-| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half) |
+| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half), CHK-26 |
 | **banded** | CHK-08 — advisory 1,500–4,999 tok; blocking ≥ 5,000; forced decomposition ≥ 6,000 |
 | **blocking on mismatch** | CHK-10 |
 | **advisory** | CHK-09, CHK-14, CHK-22, CHK-23, CHK-24 (wait-rule half), CHK-25 |
@@ -155,6 +166,8 @@ what is written here.
 - **Severity:** `blocking`
 - **On failure route to:** **Skill 1 patch mode** — RT=2 structural authoring incomplete.
 - **Procedure:** Every intent with `IntentResponces.ResponseTypeId = 2` has (a) a corresponding `apiSilenceRelations[]` entry where `OriginIntentID` matches the intent's `IntentId`, and (b) a `Configuration.api_silence_behaviour.intent` that is a present, non-null integer equal to that entry's `ApiSilenceIntentID`. Walk RT=2 intents; for each, verify the row exists AND the inline `intent` failover key is present and matches `ApiSilenceIntentID`. A missing/null/string `intent` is a blocking failure — the intent has no failover.
+
+  **Equality is the test, not resolvability.** Two matching `-999` sentinels satisfy CHK-05: the pairing is intact and the two copies agree, which is all this check owns. Whether the target intent actually exists is CHK-03's job. Do not fail CHK-05 for an unresolvable-but-paired failover — one authoring error would then report as two blocking defects and route the user twice for a single fix. (Added after a delegated run failed CHK-05 on F2's seeded dangling identifier, which the frozen baseline records as a CHK-05 pass; V-C3, 2026-08-16.)
 
 ### CHK-06 — Configuration deep equality
 
@@ -395,6 +408,10 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **On failure route to:** Informational — recommend **Skill 1 patch mode** to drop the redundant relation; the global is reachable from anywhere by construction.
 - **Procedure:** `intentRelations[]` rows whose `NextIntentID` is a type-2 global are legal but usually redundant — globals are reachable from anywhere by construction, and extra edges enlarge the tool-routing surface. List any relation targeting a botIntents type-2 IntentId; banner line recommending removal via Skill 1 patch mode.
 
+  **Deriving the list (standalone consumers).** Build `intentRelations[]` from **every item in every section-4 `**Transitions out:**` list**. A parenthetical role label — `(fallback)`, `(success path)`, `(escalation)` — never exempts an item; it is documentation on an authored edge, not a different kind of line. `assembly-mapping.md` §4.3.4 is explicit: *"an author may still list an explicit hand-off to a global; that authored edge is kept."* An edge into a global is precisely what this check exists to find, so discarding it during derivation makes CHK-22 unable to fail.
+
+  **Do not let section 6 talk you out of an edge.** A spec's §6.4 commonly reads "No explicit escalation edges are authored (v1.12.0)" — that states the **default**, not a rule overriding an edge the author did write, and §6 is derivative besides. Where §6.2/§6.4 and section 4 disagree, **section 4 wins** and the disagreement is a Drift note. (Added after two delegated runs passed CHK-22 on F2's seeded FP-9 edge: the first never read section 4, the second read it and then excluded the edge citing §6.4; V-C3, 2026-08-16.)
+
 ### CHK-23 — Off-topic global present
 
 - **Verifies:** the bot has an off-topic escape hatch and a persona rule that routes to it.
@@ -409,7 +426,9 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **Source:** FP-3 (v1.17.0 turn-yield)
 - **Severity:** `blocking` (announcement half) · `advisory` (wait-rule half)
 - **On failure route to:** **Skill 2 reactivation** — empty the flagged `announcement`; move any line the caller must still hear to an FP-4 quoted line in the intent's `intentInstructions` immediately before the forward instruction, and replace any wait rule with the immediate-forward instruction.
-- **Procedure:** A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose spec section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement` equal to the empty string — a non-empty value there stalls the call into the silence loop. RT=1 is covered by CHK-20 (no announcement key at all); RT=4 is exempt (pre-dial speech, platform dials immediately after). Walk RT=2/RT=3 intents; read section-4 `**Asks next:**`; when `[none]`, assert `announcement === ""` (blocking on failure, reporting intent + the offending text). **Advisory scan** on the same intents: regex `(?i)(stop and wait|wait for (the customer|their|a) (explicit )?(answer|response))` or Hebrew `המתן לתשוב` inside `Configuration.intentInstructions` → banner line routing to Skill 2 reactivation.
+- **Procedure:** A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose spec section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement` equal to the empty string — a non-empty value there stalls the call into the silence loop. RT=1 is covered by CHK-20 (no announcement key at all); RT=4 is exempt (pre-dial speech, platform dials immediately after). Walk RT=2/RT=3 intents; read section-4 `**Asks next:**`; when `[none]`, assert `announcement === ""` (blocking on failure, reporting intent + the offending text). **Advisory scan** — on the **`Asks next: [none]` subset only**, never on every RT=2/RT=3 intent: regex `(?i)(stop and wait|wait for (the customer|their|a) (explicit )?(answer|response))` or Hebrew `המתן לתשוב` inside `Configuration.intentInstructions` → banner line routing to Skill 2 reactivation.
+
+  **Scope is the auto-chaining subset, not all RT=2/RT=3 intents.** "The same intents" means the ones this check is about — those whose `**Asks next:**` is `[none]`. An intent that *does* ask a question is **supposed** to wait for the answer; a wait rule there is correct authoring, not an anti-pattern. Firing on it is both a false positive and actively dangerous, because this check's routing line prescribes replacing the wait rule with an immediate-forward instruction — which would break a question-asking intent by making it talk over the caller. (Added after V-C4: the delegated path read the scope broadly and fired on `capture_caller_details` and `fetch_available_slots`, both of which ask a question; the inline path scoped narrowly and passed, matching the frozen F2 baseline. 2026-08-16.)
 
 ### CHK-25 — Persona FK sanity
 
@@ -418,6 +437,20 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **Severity:** `advisory`
 - **On failure route to:** Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import (FK). **Not user-actionable during authoring in v1** (Skill 1 has no persona-selection field yet); relevant once that feature ships. Do not route to a skill.
 - **Procedure:** Assert `ActiveVersionInfo.PersonaID` is present and non-null, and that its value is in the known shared whitelist `{3}` (`TTSScriptReader`, `AccountId=0`). v1 always emits `3` by construction, so this check is **trivial today** — the same "trivial but explicit" rationale as CHK-04. It exists so that a later spec-level persona-selection feature cannot introduce an unverified FK silently. If the value is absent or null: report `FAIL` (advisory) — the stored procedure would fall back to the first `Persona` row with `AccountId=0`, and if that row is missing on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent. If the value is present but outside the whitelist: report `FAIL` (advisory) with a banner line asking the operator to confirm that row exists on the target account.
+
+### CHK-26 — Layer fields are integers
+
+- **Verifies:** every layer and layer-adjacent ID is emitted as a JSON number, not a quoted string.
+- **Source:** `voicebot-json-contract.md` §2 Types (which enumerates the numeric fields but names none of these) + the v1.20.1 layer-typing rule in `stages/assembly-mapping.md` §4.4
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — the spec's parse rules already require an integer for `**Layer:**` / `**NEXT_VO_ID:**` / the section-1 layer fields, so a string reaching the wire structure means the emission path stringified it. Report and halt; user files a skill-level issue. (If the spec itself carries a quoted value, §3.1 should have raised a parse error first — that is the bug to report.)
+- **Procedure:** For every RT=1 intent, assert `IntentResponces.Configuration.layer` is an `int` (JSON number with no fractional part). For every RT=4 intent, assert `Configuration.NEXT_VO_ID` is an `int`. At the version level, assert `ActiveVersionInfo.AIModelConfig.dailyLimitLayerId`, `.maxDurationLayerId` and `.IVRLayerSelect_2` are each an `int` when present. A value that is a string, a float, or a boolean fails, reporting the JSON path and the offending value with its type.
+
+**Implementation note — exclude booleans explicitly.** In several languages (Python included) `bool` is a subclass of `int`, so a naive `isinstance(v, int)` accepts `true`/`false`. Test for `bool` first and reject.
+
+**Why this is blocking rather than advisory.** The check is mechanical and has no false-positive surface — the field is either a number or it is not. A quoted layer is an FK the platform cannot resolve, and the failure is silent at import: the bot imports, then the layer dropdown renders the raw ID instead of the layer name and the transfer lands nowhere. That symptom is *identical* to the one produced by a layer that simply doesn't exist on the target account, so operators cannot distinguish the two by looking at the UI — which is precisely why it needs catching before emission.
+
+**Scope note.** This check does NOT verify that a layer *exists* on the target account; it cannot, since the pass has no platform access. Cross-account existence is handled by Skill 1's portable-layer defaults (`666` built-in hang-up, `0` first-layer) and by the banner's post-import verification note.
 
 ---
 
@@ -439,7 +472,7 @@ Executed: <delegated | inline>
 |-----|----------|---------|--------|
 | CHK-01 | blocking | pass | — |
 | CHK-02 | blocking | FAIL | <one-line: what, where in the spec (section/intent id)> |
-| …all 24 rows, in order, no omissions… |
+| …all 26 rows, in order, no omissions… |
 
 ### Blocking failures
 <numbered list of every blocking FAIL: CHK id, spec location, one-line description.
@@ -457,12 +490,15 @@ Executed: <delegated | inline>
 
 ### Rules
 
-- **All 24 rows, always, in CHK order.** A skipped check is itself a malformed report.
+- **All 26 rows, always, in CHK order.** A skipped check is itself a malformed report.
+  A model- or baseline-gated check that did not fire is still a row, with its verdict
+  recorded as `error` (unrunnable) or noted as skipped in the detail column.
 - Verdict vocabulary: `pass` | `FAIL` | `error` (check could not be executed — detail says why). `error` on a blocking check is treated as blocking.
 - Severity column restates this file's assignment — the consumer never re-decides severity.
 - Detail lines are one line each. The report is a verdict artifact, not an essay; explanation depth belongs in the routing recommendation.
 - No content outside the four blocks. No preamble, no summary paragraph, no advice beyond routing lines.
 - A model-gated check that skipped (CHK-08/09/10 on a non-Gemini-3.1 model) reports verdict `pass` with detail `skipped — model gating`.
+- **A `banded` check inside its advisory band reports verdict `pass`**, with the measured value and the band named in the detail column (e.g. `1,961 tok — advisory band (1,500–4,999); banner line emitted`). The advisory band prescribes a **banner line, not a failure** — CHK-08 only reports `FAIL` on crossing into a blocking band (≥ 5,000). Do not confuse this with an *advisory-severity* check (CHK-09, CHK-14, CHK-22, CHK-23, CHK-25), where a `FAIL` is a genuine finding that gets a routing line marked `(advisory)`. A band is a measurement; an advisory failure is a defect. Reporting a banded-in-band result as `FAIL` makes the two execution paths render the same input as different verdicts, which defeats the mechanical comparability this contract exists to provide. (Added after V-C4: the inline path reported `pass` at 1,961 tok and the delegated path reported `FAIL` at the same measurement; the frozen F2 baseline states the advisory band "is a banner line, not a failure". 2026-08-16.)
 
 ### Structured-error form (unrunnable verification)
 
@@ -483,6 +519,6 @@ the main conversation) but must not guess.
 ### Consumer-side validity check
 
 A delegated report is valid iff: the `## Verification Report` header is present, the
-Verdicts table contains exactly CHK-01…CHK-24 in order, and every verdict is in the
+Verdicts table contains exactly CHK-01…CHK-26 in order, and every verdict is in the
 allowed vocabulary. Anything else → discard, log one line to the user (`verifier report
 malformed — running checks inline`), and fall back to the inline path.

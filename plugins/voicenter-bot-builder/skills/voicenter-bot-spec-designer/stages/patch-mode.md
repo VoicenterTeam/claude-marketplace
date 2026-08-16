@@ -28,7 +28,7 @@ Skill 1 must extract the following. If any extraction fails (header missing, unr
 | Source | Extracts |
 |---|---|
 | `## 1. Bot Identity` | bot name, primary language, channel scope, account ID, model config (catalog name or raw IDs) |
-| `## 2. Persona Bundle` (subsections 2.1–2.5) | each `prompts` field, plus inactive-channel `[default — not user-authored]` markers |
+| `## 2. Persona Bundle` (subsections 2.1–2.5) | each `prompts` field — body text only. Channel-default provenance lives in §7.7, not in these bodies (v1.20.2) |
 | `## 3. Caller Silence Behavior` | the silence failover intent + 4 silence fields (always populated — section 3 is never `[not configured]` from v1.11.0 onward) |
 | `## 4. Intent List (Structural)` — per `### Intent N: <identifier>` | identifier, display name, description, tool name, RT, hard-intent flag, transitions out (ordered), escalation target, slots, RT-specific fields |
 | `## 4.5 Available Variables` (subsections 4.5.1–4.5.4) | each variable inventory |

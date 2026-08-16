@@ -2,18 +2,23 @@
 
 This template is emitted by Skill 1 in greenfield Phase 2 when the bot has chat channel active but voice channel inactive. It is also emitted in patch mode when channel scope expands from chat-only to voice+chat.
 
-The emitted text in spec section 2.2 is preceded by:
-`[default — not user-authored]`
+The emitted text carries **no provenance marker in the body**. Skill 1 records the default in
+spec **§7.7 Prompt provenance** instead (v1.20.2 — see the note below).
 
 Skill 1 substitutes `[[PLACEHOLDERS]]` at write time. Bracketed `[[...]]` is build-time substitution syntax — distinct from runtime Mustache `{{...}}` to avoid collision.
+
+> **Section 2.2's body is runtime prompt content.** Skill 3 copies it verbatim into
+> `prompts.voiceInstructions`, so every character written there is read by the model at call
+> time. Never put a provenance marker, a maintenance note, or a build-time instruction in it —
+> that is what §7.7 exists for. Until v1.20.2 this template opened with
+> `[default — not user-authored]` and closed with a "regenerate this section through Skill 1
+> patch mode" sentence; both shipped into the deployed prompt. Caught by V-C2, 2026-08-16.
 
 ---
 
 ## Template
 
 ```
-[default — not user-authored]
-
 You are speaking as [[PERSONA_IDENTITY]]. Maintain the same identity and tone as defined in the global persona.
 
 Voice-channel guidelines:
@@ -23,8 +28,6 @@ Voice-channel guidelines:
 3. If the caller interrupts, stop speaking immediately and listen.
 4. Avoid long pauses. If you need a moment to look something up, say so explicitly ("Give me a moment to check that...").
 5. Use [[PRIMARY_LANGUAGE]] only. Do not switch languages mid-call unless the caller does.
-
-This is a generated default. If the user later activates voice as a primary channel, regenerate this section through Skill 1 patch mode (channel scope expansion).
 ```
 
 ---
