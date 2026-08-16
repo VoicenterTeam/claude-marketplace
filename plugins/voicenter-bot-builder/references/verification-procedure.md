@@ -408,6 +408,10 @@ CHK-15: No duplicate global intents by tool name (C-e)
 - **On failure route to:** Informational — recommend **Skill 1 patch mode** to drop the redundant relation; the global is reachable from anywhere by construction.
 - **Procedure:** `intentRelations[]` rows whose `NextIntentID` is a type-2 global are legal but usually redundant — globals are reachable from anywhere by construction, and extra edges enlarge the tool-routing surface. List any relation targeting a botIntents type-2 IntentId; banner line recommending removal via Skill 1 patch mode.
 
+  **Deriving the list (standalone consumers).** Build `intentRelations[]` from **every item in every section-4 `**Transitions out:**` list**. A parenthetical role label — `(fallback)`, `(success path)`, `(escalation)` — never exempts an item; it is documentation on an authored edge, not a different kind of line. `assembly-mapping.md` §4.3.4 is explicit: *"an author may still list an explicit hand-off to a global; that authored edge is kept."* An edge into a global is precisely what this check exists to find, so discarding it during derivation makes CHK-22 unable to fail.
+
+  **Do not let section 6 talk you out of an edge.** A spec's §6.4 commonly reads "No explicit escalation edges are authored (v1.12.0)" — that states the **default**, not a rule overriding an edge the author did write, and §6 is derivative besides. Where §6.2/§6.4 and section 4 disagree, **section 4 wins** and the disagreement is a Drift note. (Added after two delegated runs passed CHK-22 on F2's seeded FP-9 edge: the first never read section 4, the second read it and then excluded the edge citing §6.4; V-C3, 2026-08-16.)
+
 ### CHK-23 — Off-topic global present
 
 - **Verifies:** the bot has an off-topic escape hatch and a persona rule that routes to it.

@@ -6,6 +6,23 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.20.4 — CHK-22 states its own derivation rule
+
+Plugin `voicenter-bot-builder` 1.20.4 under marketplace 1.20.4. No emitted-output change; no check added (still 26).
+
+1.20.3 fixed *where* the delegated verifier gets its wire structure. It did not fix CHK-22, which missed F2's seeded FP-9 edge a second time for a new reason: the verifier read section 4 correctly — its Drift note quoted the seeded `2. transfer_to_human (fallback)` line — then excluded that edge from `intentRelations[]`, reasoning "routing to globals is via reachability, not explicit edges (per §6.4)".
+
+Two mistakes in one step, both now addressed in CHK-22's own **Procedure** rather than in the agent preamble, because that is where the judgement is made:
+
+- **A parenthetical role label does not exempt a transition.** `(fallback)` / `(success path)` / `(escalation)` is documentation on an authored edge, not a different kind of line. `assembly-mapping.md` §4.3.4 already said so — *"an author may still list an explicit hand-off to a global; that authored edge is kept"* — but CHK-22 never pointed at it. An edge into a global is exactly what this check looks for, so discarding it during derivation makes CHK-22 structurally incapable of failing.
+- **Section 6 does not override section 4.** A spec's §6.4 typically reads "No explicit escalation edges are authored (v1.12.0)"; that is the *default*, not a rule that erases an edge the author wrote — and §6 is derivative regardless. Section 4 wins; the disagreement is a Drift note.
+
+The 1.20.3 preamble rule ("§6 is never a source") was correct but sat too far from the decision point to bind at CHK-22. Guidance a check depends on now lives in the check.
+
+Files: `references/verification-procedure.md`.
+
+---
+
 ### 1.20.3 — the delegated verifier now derives the wire structure
 
 Plugin `voicenter-bot-builder` 1.20.3 under marketplace 1.20.3. Fixes a **missed detection** in the delegated verification path. No emitted-output change.
