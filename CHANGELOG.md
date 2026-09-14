@@ -6,6 +6,18 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.20.6 — the caller's number is `{{caller_id}}`
+
+Plugin `voicenter-bot-builder` 1.20.6 under marketplace 1.20.6. No emitted-output change; no check added (still 26).
+
+§4.5.1's documented default for the caller's incoming phone number was `caller_phone` — a name the Voicenter platform does not supply. Everywhere else in this repo the platform spells that field `CALLER_ID` (External Layer `DATA.CALLER_ID`, VoiceBot `CALL_INFO.CALLER_ID`), so a spec that declared `caller_phone` and a bot that referenced `{{caller_phone}}` resolved cleanly through CHK-07 — the check only proves a token is declared, not that the platform sends it — and then rendered empty at runtime.
+
+**The variable is now `caller_id`, referenced as `{{caller_id}}`.** Skill 1's §3.4.5 interview step states the rule directly: when the user asks for the bot to use, read back, pass on, or look up "the caller's number" / "the number they're calling from", declare it in §4.5.1 as `caller_id` and reference `{{caller_id}}` downstream — no synonym (`caller_phone`, `phone_number`, `from_number`), and no slot that asks the caller for a number the platform already supplies. `caller_id` + `TimeNow` remain the two defaults emitted when the user cannot enumerate their account's call-context variables.
+
+Files: `skills/voicenter-bot-spec-designer/spec-skeleton.md` (§4.5.1 default), `skills/voicenter-bot-spec-designer/stages/phase-interview.md` (§3.4.5 rule), `skills/voicenter-bot-json-assembler/stages/sentinels-and-banner.md` (drift-note sample), `examples/sample-spec-seeded.md`, `examples/sample-spec-detailed.md`, `docs/skills/voicenter-bot-spec-designer/README.md`.
+
+---
+
 ### 1.20.5 — banded ≠ advisory-failure; CHK-24's advisory scan is scoped
 
 Plugin `voicenter-bot-builder` 1.20.5 under marketplace 1.20.5. No emitted-output change; no check added (still 26). Both fixes come straight out of **V-C4, which passed** — the equivalence test did its job and surfaced two places where the two execution paths render the same input differently.

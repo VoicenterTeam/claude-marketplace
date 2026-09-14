@@ -366,7 +366,7 @@ Thanks for calling Brightview Family Clinic. Who am I speaking with?
 
 ### 4.5.1 Call-context variables (platform-supplied)
 
-- `{{caller_phone}}` — caller's incoming number, always present
+- `{{caller_id}}` — caller's incoming number, always present
 - `{{TimeNow}}` — current timestamp at call start
 - `{{todayDate}}` — today's date, pre-rendered by the platform for callback anchoring
 - `{{currentTime}}` — current local time, pre-rendered by the platform for callback anchoring
