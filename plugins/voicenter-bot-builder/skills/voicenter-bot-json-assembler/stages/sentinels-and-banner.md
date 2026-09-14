@@ -164,7 +164,7 @@ Sample banner for a hypothetical bot with: 1 unknown webhook URL, no model confi
 #   - ActiveVersionInfo.AIModelConfigId: -999 (mirror of above)
 #
 # DRIFT NOTES (section 6 sanity check):
-#   - 6.1: regenerated had 1 reference the spec did not log — {{caller_phone}} used in confirm_appointment.intentInstructions
+#   - 6.1: regenerated had 1 reference the spec did not log — {{caller_id}} used in confirm_appointment.intentInstructions
 #   - 6.2: in agreement
 #   - 6.3: in agreement
 #   - 6.4: in agreement
