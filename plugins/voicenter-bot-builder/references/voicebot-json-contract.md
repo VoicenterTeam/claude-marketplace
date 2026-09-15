@@ -179,7 +179,7 @@ under strict mode even though the column has a default:**
 | `BotIntentTypeID` | 1 Normal, 2 Global |
 | `IntentSources[].SourceID` | 1 VOICE, 2 CHAT, 3 WEB |
 | shared `AIModelConfigID` (AccountId=0) | 1, 4, 7, 52, 91, 132, 136, 139, 142, 303, 312, 321 (snapshot — may grow) |
-| shared `PersonaID` (AccountId=0) | 3 (TTSScriptReader) |
+| shared `PersonaID` (AccountId=0) | **emitted by Skill 3:** 244 (Hebrew speaker), 249 (English speaker), 252 (Russian speaker), 255 (Arabic speaker) — selected by the spec's `Primary Language`, see Appendix D.12. Also valid but never emitted by v1: 3 (TTSScriptReader), 261 (Hebrew-only). |
 
 **R12. ConditionGroupList entry contract** (what `CreateConditionGroups`
 actually reads — anything else in the group object is ignored):

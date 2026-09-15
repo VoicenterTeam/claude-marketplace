@@ -31,8 +31,31 @@ import sys
 # Pinned assembly instant (§4.2.1 order 6 format "YYYY-MM-DD HH:MM:SS").
 ASSEMBLY_TS = "2026-08-08 09:15:00"
 
-# §4.2.2 row 11 / Appendix D.12 — the only known shared Persona row (AccountId=0).
-PERSONA_ID = 3
+# §4.2.2 row 11 / Appendix D.12 — shared Persona rows (AccountId=0), keyed by the
+# BCP-47 primary subtag of spec section 1 **Primary Language:**. The row selects the
+# TTS voice that renders the bot's speech, so it is language-bound. Rows 3
+# (TTSScriptReader) and 261 (Hebrew-only) are known but deliberately never emitted.
+PERSONA_BY_LANG = {'he': 244, 'en': 249, 'ru': 252, 'ar': 255}
+
+
+def persona_id(primary_language):
+    """Derive ActiveVersionInfo.PersonaID from the spec's Primary Language.
+
+    Matches on the primary subtag only, case-insensitively: 'he-IL', 'he' and
+    'HE-il' all resolve to 244. An unmapped language is a halt, not a default —
+    a wrong-but-valid FK imports cleanly and ships a bot speaking in the wrong
+    voice, which nothing downstream would catch.
+    """
+    subtag = (primary_language or '').split('-')[0].strip().lower()
+    if subtag not in PERSONA_BY_LANG:
+        raise SystemExit(
+            "ASSEMBLY HALTED - no TTS persona known for primary language "
+            "%r (subtag %r). Known shared personas (AccountId=0): %s. "
+            "Change the spec's Primary Language or add a verified Persona row "
+            "to assembly-mapping.md D.12."
+            % (primary_language, subtag,
+               ', '.join('%s->%d' % kv for kv in sorted(PERSONA_BY_LANG.items()))))
+    return PERSONA_BY_LANG[subtag]
 
 # Which wire-format baseline to emit. "current" = shipping output. "1.17.0" omits
 # ActiveVersionInfo.PersonaID so the frozen S0 golden stays byte-reproducible.
@@ -87,6 +110,7 @@ def parse_spec(text):
         'Description':         field(sec1, 'Description'),
         'Account ID':          field(sec1, 'Account ID'),
         'Channels Active':     field(sec1, 'Channels Active'),
+        'Primary Language':    field(sec1, 'Primary Language'),
         'Voice Name':          field(sec1, 'Voice Name'),
         'AI Model Config':     field(sec1, 'AI Model Config'),
         'Created by':          field(sec1, 'Created by', ''),
@@ -529,12 +553,12 @@ def assemble(spec):
     }
 
     # §4.2.2 row 11 — PersonaID, added by the functional v1.18.0 per
-    # voicebot-json-contract.md R7. Appended last (position unverified against a
-    # golden export). Omitted under --wire-baseline 1.17.0 so the frozen S0 golden
-    # stays byte-reproducible: that fixture's job is proving the *restructure* was
-    # inert, and it predates this field.
+    # voicebot-json-contract.md R7, derived from Primary Language since v1.22.0.
+    # Appended last (position unverified against a golden export). Omitted under
+    # --wire-baseline 1.17.0 so the frozen S0 golden stays byte-reproducible: that
+    # fixture's job is proving the *restructure* was inert, and it predates this field.
     if WIRE_BASELINE != "1.17.0":
-        out["ActiveVersionInfo"]["PersonaID"] = PERSONA_ID
+        out["ActiveVersionInfo"]["PersonaID"] = persona_id(ident['Primary Language'])
 
     return out
 

@@ -33,7 +33,7 @@ which is what bounds the blast radius of the upstream functional change.
 | `sample-spec-detailed.md` | **F1 clean** — complete Agent Spec, 10 intents, all `[detailed]`, assembles without failures |
 | `expected-output.json` | **F1-expected (frozen)** — F1's exact output under the v1.17.0 wire baseline |
 | `expected-output-shipping.json` | **F1-shipping** — F1's exact output under current emission rules |
-| `expected-banner.txt` | F1's generation banner (§7.2), v1.17.0 vintage — the shipping banner adds exactly one DEFAULTS APPLIED line (`ActiveVersionInfo.PersonaID = 3`) |
+| `expected-banner.txt` | F1's generation banner (§7.2), v1.17.0 vintage — the shipping banner adds exactly one DEFAULTS APPLIED line (`ActiveVersionInfo.PersonaID = 249`, derived from the sample spec's `**Primary Language:** en-US` since v1.22.0) |
 | `sample-spec-seeded.md` | **F2 seeded** — F1 plus exactly three deliberate violations |
 | `seeded-violations.md` | What each seeded violation is, where it lives, and why |
 | `expected-violations-report.md` | v1.17.0's detection baseline for F2 (V-C3/V-C4/V-A2 reference) |

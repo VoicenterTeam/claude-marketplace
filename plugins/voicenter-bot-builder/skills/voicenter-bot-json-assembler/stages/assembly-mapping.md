@@ -92,7 +92,7 @@ Emit fields in this order (matches production — v1.5.0):
 | 8 | `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
 | 9 | `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
 | 10 | `BotVersionStatusId` | `3` (per Doc 1 §5) |
-| 11 | `PersonaID` | **Added per the `ImportBotFromJSON` contract (`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it always emits the known shared value `3` (`TTSScriptReader`, `AccountId=0`) unless a future spec revision adds an explicit persona-catalog field. Banner DEFAULTS APPLIED note whenever this default is used (i.e. always, in v1). Verified by CHK-25. **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
+| 11 | `PersonaID` | **Added per the `ImportBotFromJSON` contract (`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it **derives** the value from the spec's `**Primary Language:**` per Appendix D.12 — `he` → `244`, `en` → `249`, `ru` → `252`, `ar` → `255`, all shared `AccountId=0` rows. Match on the BCP-47 **primary subtag only** (the text before the first `-`), case-insensitively, so `he-IL`, `he` and `HE-il` all resolve to `244`. **A primary language outside that table is a HALT, not a default** — emit the blocking banner in `sentinels-and-banner.md` and stop; never substitute a fallback row, because a silently-wrong FK is the exact failure this rule was rewritten (v1.22.0) to remove. Banner DEFAULTS APPLIED note on every emission, naming the language that produced the id. Verified by CHK-25, which recomputes the derivation. **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
 
 **v1.5.0 wire-format correction.** Field order revised to match production. Prior baseline had `BotVersionId` first; production has `IsActive` first.
 
@@ -583,7 +583,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 22 | Version-level limit/layer fields (v1.13.0) | `ActiveVersionInfo.AIModelConfig` | Emit `daily_limit`, `dailyLimitLayerId`, `maxDurationLayerId`, `daily_limit_sentence`, `max_duration_sentence`, `IVRLayerSelect_2` per §4.2.3 (siblings of `max_duration`, NOT inside `created`). |
 | 23 | RT=3 `Configuration.intentLoadingAnnouncement` (v1.13.0) | Per RT=3 intent | Always emitted, non-empty (Skill 2 check 12 upstream; CHK-17 backstop). |
 | 24 | RT=1 `Configuration` carries NO `announcement` key (v1.14.0) | Per RT=1 intent | Emit only `layer` + `intentLoadingAnnouncement`. The farewell lives in the predecessor's `intentInstructions` (FP-8; check 20). |
-| 25 | `ActiveVersionInfo.PersonaID: 3` | `ActiveVersionInfo` | Emit the shared `TTSScriptReader` persona id per §4.2.2 and Appendix D.12. Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). |
+| 25 | `ActiveVersionInfo.PersonaID` | `ActiveVersionInfo` | Emit the shared persona id **derived from the spec's `Primary Language`** per §4.2.2 row 11 and Appendix D.12 (`he`→244, `en`→249, `ru`→252, `ar`→255). Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). Never emit a hardcoded id either: an unmapped primary language HALTS. |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 18 numbered quirks.
 
@@ -736,10 +736,26 @@ Skill 3 emits one of the active rows per the catalog mapping; the matching `AIMo
 
 ### D.12 `PersonaID` (`ActiveVersionInfo.PersonaID`)
 
-Per `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7/R11. `Persona.PersonaID` is a `bigint NOT NULL` FK on `BotVersion` — no golden production export captured to date includes it (persona selection isn't yet a Skill 1 interview field), so Skill 3 emits the one known shared row unconditionally.
+Per `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7/R11. `Persona.PersonaID` is a `bigint NOT NULL` FK on `BotVersion`, and the row selects the **TTS voice** that renders the bot's speech. It is therefore language-bound: the correct row is a function of what language the bot speaks.
 
-| ID | Name | When |
+Skill 3 derives it from the spec's `**Primary Language:**` (section 1, already required — no separate interview question). All rows below are shared templates (`AccountId=0`) present on every server.
+
+| Primary subtag | ID | Row | Also renders |
+|---|---|---|---|
+| `he` | **244** | Hebrew speaker | English, Russian, Arabic |
+| `en` | **249** | English speaker | Hebrew, Russian, Arabic |
+| `ru` | **252** | Russian speaker | Hebrew, English, Arabic |
+| `ar` | **255** | Arabic speaker | Hebrew, English, Arabic |
+
+**Matching rule.** Compare the **primary subtag only** — the text before the first `-` in the BCP-47 code — case-insensitively. `he-IL`, `he` and `HE-il` all resolve to `244`; `en-US`, `en-GB` and `en-AU` all resolve to `249`. Do not attempt region-specific rows; none exist.
+
+**Unmapped language HALTS.** If the primary subtag is not in the table, stop assembly and emit the blocking banner (`sentinels-and-banner.md`). Do **not** substitute any other row. Prior to v1.22.0 this field was a flat constant `3`, which shipped every non-script-reader bot with the wrong TTS voice and no signal that anything was wrong — a silent default is what caused that, so the halt is deliberate.
+
+**Known shared rows that v1 never emits** — documented so the ids are not reused by accident, and so a later revision doesn't have to rediscover them:
+
+| ID | Row | Why not emitted |
 |---|---|---|
-| **3** | TTSScriptReader | **v1 default — always emitted** (`AccountId=0`) |
+| 3 | TTSScriptReader | Script-reader voice, not a conversational persona. The pre-v1.22.0 default; kept out of the mapping so it cannot be reintroduced as a silent fallback. |
+| 261 | Hebrew only | Monolingual Hebrew variant. Not used: v1 standardises on the multilingual family, which renders the same Hebrew output while degrading gracefully if the model code-switches (Gemini #1197). |
 
-If a future spec revision adds a persona-catalog field (mirroring how `model-catalog.md` resolves `AIModelConfigID`), extend this table with the additional named rows at that time — do not invent names for ids outside `{3}` today. CHK-25 asserts the emitted value stays inside this whitelist.
+The `Persona` table holds further rows in the gaps between these ids that have not been captured from a DB dump. Do not invent names or ids for them — extend this table only from verified rows. CHK-25 recomputes the derivation and fails on any mismatch.
