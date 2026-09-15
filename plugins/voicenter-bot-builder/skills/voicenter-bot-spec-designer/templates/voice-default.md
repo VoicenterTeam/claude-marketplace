@@ -5,6 +5,8 @@ This template is emitted by Skill 1 in greenfield Phase 2 when the bot has chat 
 The emitted text carries **no provenance marker in the body**. Skill 1 records the default in
 spec **§7.7 Prompt provenance** instead (v1.20.2 — see the note below).
 
+The body follows the Markdown shape in `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — `voiceInstructions` carries sections 1–4 and no Global directives block.
+
 Skill 1 substitutes `[[PLACEHOLDERS]]` at write time. Bracketed `[[...]]` is build-time substitution syntax — distinct from runtime Mustache `{{...}}` to avoid collision.
 
 > **Section 2.2's body is runtime prompt content.** Skill 3 copies it verbatim into
@@ -19,15 +21,26 @@ Skill 1 substitutes `[[PLACEHOLDERS]]` at write time. Bracketed `[[...]]` is bui
 ## Template
 
 ```
-You are speaking as [[PERSONA_IDENTITY]]. Maintain the same identity and tone as defined in the global persona.
+# 1. Pace and delivery
 
-Voice-channel guidelines:
+* **Identity:** you are speaking as [[PERSONA_IDENTITY]]. Maintain the same identity and tone as defined in the global persona.
+* **Pace:** speak clearly and at a measured pace. Never rush.
+* **Pauses:** avoid long silences. If you need a moment to look something up, say so explicitly before you go quiet.
 
-1. Speak clearly and at a measured pace. Avoid speaking too fast.
-2. Pronounce names, numbers, and addresses carefully. Confirm them back to the caller when collected.
-3. If the caller interrupts, stop speaking immediately and listen.
-4. Avoid long pauses. If you need a moment to look something up, say so explicitly ("Give me a moment to check that...").
-5. Use [[PRIMARY_LANGUAGE]] only. Do not switch languages mid-call unless the caller does.
+#### 2. Reading numbers
+
+* **Names and addresses:** pronounce them carefully, and confirm them back to the caller once collected.
+* **Digit strings:** read phone numbers, ID numbers and reference codes digit by digit, never as one quantity.
+
+#### 3. Interruptions
+
+* **Yield immediately:** if the caller interrupts, stop speaking at once and listen.
+* **You must never** talk over the caller to finish your own sentence.
+
+#### 4. Prohibited
+
+* **Language:** use [[PRIMARY_LANGUAGE]] only. Never switch languages mid-call unless the caller does.
+* **You must never** vocalise written formatting, symbols or URLs.
 ```
 
 ---
