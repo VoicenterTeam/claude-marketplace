@@ -10,7 +10,7 @@ compare against).
 
 Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26, then 8, 9, 10, 14, 25.
 Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26. 8 is banded.
-9, 14, 22, 23, 25 advisory; 10 blocking on mismatch.
+9, 14, 22, 23 advisory; 10 blocking on mismatch; 25 blocking since v1.22.0.
 
 CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.0
 reports it as `skipped` rather than failing it.
@@ -27,7 +27,7 @@ import unicodedata
 
 import assemble as A
 
-BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 26}
+BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26}
 NAMES = {
     1: "botIntents[].IntentID resolves", 2: "intentRelations[] resolves",
     3: "apiSilenceRelations[] resolves", 4: "intents[].IntentCategoryId resolves",
@@ -46,12 +46,14 @@ NAMES = {
     22: "No authored edges into type-2 globals (FP-9)",
     23: "Off-topic global present (FP-6)",
     24: "Turn-yield announcement gating (FP-3)",
-    25: "Persona FK sanity (contract R7/R11)",
+    25: "Persona derivation from Primary Language (contract R7/R11)",
     26: "Layer fields are integers (contract §2 Types)",
 }
 
 # Appendix D.12 — the only known shared Persona row (AccountId=0).
-PERSONA_WHITELIST = {3}
+# Known shared rows that v1 never emits — 3 (TTSScriptReader) was the flat default
+# through v1.21.0 and is the likeliest regression value; 261 is the Hebrew-only row.
+PERSONA_NEVER_EMITTED = {3: "TTSScriptReader", 261: "Hebrew-only"}
 
 # A line that is wholly wrapped in parentheses is context, not a speech obligation.
 PAREN_LINE = re.compile(r"^\(.*\)$", re.S)
@@ -362,19 +364,28 @@ def run(spec, bot):
             if k in bot["ActiveVersionInfo"]["AIModelConfig"]["created"]:
                 fail(10, f"created.{k} present — v1.5.0 lean payload omits")
 
-    # 25 persona FK sanity (advisory) — runs last, per the procedure file's run order.
+    # 25 persona derivation (blocking) — runs last, per the procedure file's run order.
     # Skipped against the frozen v1.17.0 baseline, which predates the field; a skipped
     # model/baseline-gated check is still reported as a row.
     if A.WIRE_BASELINE == "1.17.0":
         skipped.append((25, "pre-dates ActiveVersionInfo.PersonaID (frozen v1.17.0 baseline)"))
     else:
+        lang = spec["identity"].get("Primary Language") or ""
+        subtag = lang.split("-")[0].strip().lower()
+        expected = A.PERSONA_BY_LANG.get(subtag)
         pid = bot["ActiveVersionInfo"].get("PersonaID")
-        if pid is None:
+        if expected is None:
+            fail(25, f"primary language {lang!r} (subtag {subtag!r}) has no Persona row in "
+                     f"assembly-mapping.md D.12 — Skill 3 should have halted at assembly")
+        elif pid is None:
             fail(25, "ActiveVersionInfo.PersonaID absent or null — the proc would fall back "
                      "to the first AccountId=0 Persona row (contract R7)")
-        elif pid not in PERSONA_WHITELIST:
-            fail(25, f"PersonaID {pid} outside known shared whitelist "
-                     f"{sorted(PERSONA_WHITELIST)} — confirm the row exists on the target account")
+        elif pid != expected:
+            why = PERSONA_NEVER_EMITTED.get(pid)
+            note = f" — {why}, a known row v1 never emits" if why else ""
+            fail(25, f"PersonaID {pid} does not match the row derived from Primary Language "
+                     f"{lang!r}: expected {expected}{note}. A wrong-but-valid FK imports "
+                     f"cleanly and ships a bot speaking in the wrong voice.")
 
     return fails, tok, gated, skipped
 

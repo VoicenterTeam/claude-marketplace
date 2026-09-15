@@ -198,10 +198,10 @@ What stays in this SKILL.md is **decision logic**: which path executes the proce
 
 Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4,
 three from Compass doctrine, three botIntents-role integrity checks, one
-duplicate-global-intent check, nine field-placement doctrine checks, and one persona-FK
-sanity check. CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21 and CHK-24 are blocking;
-CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22,
-CHK-23, CHK-25 are advisory.
+duplicate-global-intent check, nine field-placement doctrine checks, and one persona
+derivation check. CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21, CHK-24, CHK-25 and
+CHK-26 are blocking; CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09,
+CHK-14, CHK-22, CHK-23 are advisory.
 
 ### 6.0 Execution mode
 

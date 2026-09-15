@@ -6,6 +6,58 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.22.0 — the TTS persona follows the bot's language
+
+Plugin `voicenter-bot-builder` 1.22.0 under marketplace 1.22.0. Emitted-output change
+(`ActiveVersionInfo.PersonaID`); no check added (still 26), but CHK-25 changes severity.
+
+**The bug.** Since 1.18.0, Skill 3 emitted a flat `ActiveVersionInfo.PersonaID: 3` on every bot.
+`3` is `TTSScriptReader` — a script-reader voice, not a conversational one. Because it is a
+perfectly valid `AccountId=0` FK, `ImportBotFromJSON` accepted it without complaint and the bot
+imported clean, so nothing anywhere in the pipeline surfaced it: every bot built since 1.18.0
+shipped with the wrong TTS voice, silently. The 1.18.0 note that this field was "unverified
+pending a golden export" understated it — the value was not merely unverified, it was wrong.
+
+**The fix.** `Persona` selects the TTS voice that renders the bot's speech, so the row is
+language-bound. Skill 3 now derives it from spec section 1 `**Primary Language:**`, matching the
+BCP-47 primary subtag case-insensitively against the shared (`AccountId=0`) rows:
+
+| Primary subtag | `PersonaID` | Row |
+|---|---|---|
+| `he` | 244 | Hebrew speaker (also renders English, Russian, Arabic) |
+| `en` | 249 | English speaker (also renders Hebrew, Russian, Arabic) |
+| `ru` | 252 | Russian speaker (also renders Hebrew, English, Arabic) |
+| `ar` | 255 | Arabic speaker (also renders Hebrew, English, Arabic) |
+
+`he-IL` → 244, `en-US`/`en-GB` → 249; there are no region-specific rows. No new interview
+question and no spec-schema change — `Primary Language` was already required in section 1.
+
+**An unmapped primary language halts assembly.** No JSON is emitted and no fallback row is
+substituted. A fallback is what caused this bug: a wrong-but-valid FK imports cleanly and yields
+a bot speaking in the wrong voice, which no post-import check would catch. The operator either
+changes the spec's primary language or supplies a verified `Persona` row for it.
+
+**CHK-25 promoted from advisory to blocking.** It no longer compares against a constant — it
+recomputes the expected id from the spec's `Primary Language` and fails on mismatch, so it has
+real discriminating power for the first time (it was described as "trivial today" at 1.18.0).
+It fails on absent/null, on a wrong row, and specifically on the two known-but-never-emitted
+shared rows: `3` (`TTSScriptReader`, the old default, and the likeliest regression value) and
+`261` (Hebrew-only). Both are documented in `assembly-mapping.md` D.12 so their ids are not
+reused by accident. `verify.py`'s `BLOCKING` set was missing `25`, so the check fired but was
+reported non-blocking; that is corrected here.
+
+**Fixture impact.** Both sample specs are `en-US`, so `expected-output-shipping.json` moves
+`PersonaID` `3` → `249` — the only leaf that changes. The frozen `expected-output.json`
+(v1.17.0 baseline, which predates the field) is untouched and CHK-25 still reports `skipped`
+against it. The harness reproduces the updated shipping golden exactly; 26/26 checks pass on
+both sample specs, 25/25 on the frozen baseline, 12/12 static checks pass.
+
+**Not included.** No per-spec persona override: persona selection remains derived rather than
+authored. Adding an explicit override would touch Skill 1's interview, the spec skeleton and
+Skill 3, and is deferred.
+
+---
+
 ### 1.21.0 — prompt fields are Markdown-structured
 
 Plugin `voicenter-bot-builder` 1.21.0 under marketplace 1.21.0. No emitted-output change to the

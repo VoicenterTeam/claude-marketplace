@@ -432,11 +432,22 @@ CHK-15: No duplicate global intents by tool name (C-e)
 
 ### CHK-25 — Persona FK sanity
 
-- **Verifies:** `ActiveVersionInfo.PersonaID` is present and names a `Persona` row that will exist on the target account.
-- **Source:** `voicebot-json-contract.md` R7/R11 (functional v1.18.0)
-- **Severity:** `advisory`
-- **On failure route to:** Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import (FK). **Not user-actionable during authoring in v1** (Skill 1 has no persona-selection field yet); relevant once that feature ships. Do not route to a skill.
-- **Procedure:** Assert `ActiveVersionInfo.PersonaID` is present and non-null, and that its value is in the known shared whitelist `{3}` (`TTSScriptReader`, `AccountId=0`). v1 always emits `3` by construction, so this check is **trivial today** — the same "trivial but explicit" rationale as CHK-04. It exists so that a later spec-level persona-selection feature cannot introduce an unverified FK silently. If the value is absent or null: report `FAIL` (advisory) — the stored procedure would fall back to the first `Persona` row with `AccountId=0`, and if that row is missing on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent. If the value is present but outside the whitelist: report `FAIL` (advisory) with a banner line asking the operator to confirm that row exists on the target account.
+- **Verifies:** `ActiveVersionInfo.PersonaID` is present and is the shared `Persona` row that matches the bot's primary language.
+- **Source:** `voicebot-json-contract.md` R7/R11 (functional v1.18.0; derivation added v1.22.0)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3** — the value is derived, not authored, so a mismatch is an emission bug, not a spec defect. The one exception is an unmapped primary language, which `assembly-mapping.md` D.12 requires Skill 3 to halt on before reaching verification at all; if such a spec reaches this check, route to the operator to either change the spec's `Primary Language` or supply a verified `Persona` row for it.
+- **Procedure:** Recompute the expected value from the spec rather than comparing against a constant:
+  1. Read spec section 1 `**Primary Language:**`. Take the **primary subtag** — the text before the first `-` — and lowercase it (`he-IL` → `he`, `en-US` → `en`).
+  2. Look the subtag up in `stages/assembly-mapping.md` D.12: `he`→`244`, `en`→`249`, `ru`→`252`, `ar`→`255`.
+  3. Assert `ActiveVersionInfo.PersonaID` is present, non-null, and **equal to the looked-up id**.
+
+  Report `FAIL` (blocking) in each of these cases, naming both the expected and emitted value:
+
+  - **Absent or null** — the stored procedure falls back to the first `Persona` row with `AccountId=0`; if that row is missing on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom the contract exists to prevent.
+  - **Present but not the derived id** — including any value in the known-but-unemitted set (`3` TTSScriptReader, `261` Hebrew-only). This is the case the check exists for: a wrong-but-valid FK imports cleanly and ships a bot that speaks in the wrong voice, so nothing downstream would catch it. `3` specifically was the flat pre-v1.22.0 default and is the most likely regression value.
+  - **Primary language has no D.12 row** — Skill 3 should have halted at assembly. Reaching verification means the halt was skipped.
+
+  Unlike the v1.18.0 form of this check, this is **not trivial**: the expected value now varies per spec, so the check has real discriminating power and is `blocking` rather than advisory.
 
 ### CHK-26 — Layer fields are integers
 

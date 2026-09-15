@@ -109,7 +109,7 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
-#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
+#   - ActiveVersionInfo.PersonaID = <id> (shared TTS persona for <primary language>, AccountId=0 — derived from spec section 1 **Primary Language** per assembly-mapping.md D.12; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - [...]
 #
 # MANDATORY POST-IMPORT STEP (v1.14.0 — emitted whenever silence_behaviour.intent is a placeholder):
@@ -124,6 +124,26 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 ```
 
 Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.
+
+**BLOCKING HALT — unmapped primary language (v1.22.0).** `ActiveVersionInfo.PersonaID` is derived from spec section 1 `**Primary Language:**` per `assembly-mapping.md` D.12 (`he`→244, `en`→249, `ru`→252, `ar`→255, matched on the BCP-47 primary subtag). If the subtag is not in that table, Skill 3 **does not emit JSON at all**. There is no fallback row and no sentinel: an invented `PersonaID` imports cleanly and produces a bot that speaks in the wrong voice, which no post-import check would catch. Emit this instead of the banner-plus-JSON, and stop:
+
+```
+# Voicenter Bot JSON — ASSEMBLY HALTED
+#
+# BLOCKING: no TTS persona is known for this bot's primary language.
+#   - Spec section 1 **Primary Language:** <value>  (primary subtag: <subtag>)
+#   - Known shared personas (AccountId=0): he→244, en→249, ru→252, ar→255
+#
+# ActiveVersionInfo.PersonaID is a bigint NOT NULL FK selecting the TTS voice that renders
+# this bot's speech (voicebot-json-contract.md R7). Emitting a persona from another language
+# would import successfully and ship a bot speaking in the wrong voice — so assembly stops here
+# rather than guessing.
+#
+# To proceed, either:
+#   1. Change the spec's Primary Language to one of the four supported above, or
+#   2. Look up the correct Persona row for <subtag> in the target DB and add it to
+#      assembly-mapping.md D.12 (verified rows only — never invent an id), then re-run.
+```
 
 The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not authored in the spec — generation params, the constants per Doc 1 §16 (e.g., `Priority: 1`, `MaxAttempts: 3`), and the catalog-derived `created` payload defaults. This makes Skill 3's contributions auditable: anything not in the banner came from the spec.
 
@@ -182,7 +202,7 @@ Sample banner for a hypothetical bot with: 1 unknown webhook URL, no model confi
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
-#   - ActiveVersionInfo.PersonaID = 3 (shared TTSScriptReader persona, AccountId=0 — verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
+#   - ActiveVersionInfo.PersonaID = 244 (shared TTS persona for Hebrew, AccountId=0 — derived from spec section 1 **Primary Language:** he-IL per assembly-mapping.md D.12; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
 #   - intentCategories: single default category, IntentCategoryId = -3
 #   - All §16 quirks emitted per Appendix A checklist
