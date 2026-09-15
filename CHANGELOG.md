@@ -6,6 +6,71 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.21.0 — prompt fields are Markdown-structured
+
+Plugin `voicenter-bot-builder` 1.21.0 under marketplace 1.21.0. No emitted-output change to the
+frozen fixtures; no check added (still 26).
+
+Every generated prompt field now uses one Markdown shape, defined in the new
+`references/prompt-structure.md`: the first section is `# 1. <Title>`, every later section is
+`#### N. <Title>`, a named rule is `* **<Label>:** <rule>`, a branch is a numbered step whose bold
+label states the condition with its actions as nested bullets, and a non-negotiable is written
+`CRITICAL:`. `persona` closes with a `**Global directives**` block; no other field carries one.
+Another intent is named as `**<tool_name>** — "<Description>"`.
+
+This **supersedes the Conversation Routines style** (bare ALL-CAPS headers, bare numbered steps,
+`IRON RULE:` blocks) for `persona`, `voiceInstructions`, `chatInstructions`, bot-level and
+per-intent `intentInstructions`, and `validationPrompt`. The FP-4 quote convention
+(`<instruction> : "<verbatim line>"`) is unchanged and carries over verbatim.
+
+**The spoken fields are exempt and stay plain prose** — `openingAnnouncement`, `announcement`,
+`intentLoadingAnnouncement`, `fail_output`, `function_output`. TTS reads Markdown scaffolding
+aloud (Compass rule 8, blocking), so none of it may appear there.
+
+Per-field sections: `persona` (Identity and role / Language / Behaviour rules / Additional context
+/ **Global directives**) · `voiceInstructions` (Pace and delivery / Reading numbers / Interruptions
+/ Prohibited) · `chatInstructions` (Identity / Message style / Confirmation / Language) · bot-level
+`intentInstructions` (Context / Conversation flow / Iron rules) · per-intent `intentInstructions`
+(Post-execution) · `validationPrompt` (Capture mapping).
+
+Files: `references/prompt-structure.md` (new), `skills/voicenter-bot-spec-designer/templates/voice-default.md`,
+`templates/chat-default.md`, `skills/voicenter-bot-spec-designer/spec-skeleton.md`,
+`skills/voicenter-bot-spec-designer/stages/phase-interview.md`,
+`skills/voicenter-bot-intent-detail-author/conversation-routines-style-guide.md`,
+`skills/voicenter-bot-intent-detail-author/stages/authoring-steps.md`.
+
+**Verification.** Both goldens reproduce byte-identical (`expected-output.json` frozen,
+`expected-output-shipping.json` shipping); `verify.py` reports 26/26 with 0 failures and 0 blocking;
+`check-static.py` 12/12 runnable. Note this proves the pipeline mechanics are unchanged, **not**
+that a new-shape spec assembles end-to-end — the fixtures still carry the old shape by design
+(see the deferred items below).
+
+#### Known follow-ups, deliberately not in this release
+
+Scope for 1.21.0 was the prompt shape only. Three items are left inconsistent on purpose and should
+be resolved before this is treated as complete:
+
+1. **FP-9 contradicts the new shape.** `references/field-placement-doctrine.md` FP-9 still reads
+   "…reference next intents by their section-4 Description text … never by tool name", while the
+   style guide and templates now write `**<tool_name>** — "<Description>"`. FP-9 is a blocking rule,
+   so Skill 2 is being told to emit something another doctrine file forbids.
+2. **Compass rule 8's markdown scan is ambiguously scoped.**
+   `skills/voicenter-bot-intent-detail-author/stages/authoring-steps.md` §123 scopes the scan to
+   "the FP-4 quoted lines inside post-execution `intentInstructions`", but §125 then states a
+   field-level regex (`(?m)^\s*[-*+]\s`, `(?m)^\s*#+\s`) without restating that scope. Under the
+   broad reading, Skill 2 blocks on the `# 1. Post-execution` heading and `*` bullets it is now
+   required to emit.
+3. **The `docs/skills/` mirrors are stale.** `docs/skills/voicenter-bot-spec-designer/README.md`
+   and `docs/skills/voicenter-bot-intent-detail-author/README.md` still describe Conversation
+   Routines style (ALL-CAPS headers, `IRON RULE` blocks) — 7 lines across the two files. This
+   breaks the SKILL.md ↔ docs pairing contract in `CLAUDE.md`.
+
+The frozen `examples/` fixtures are **not** a follow-up in the same sense: `examples/README.md`
+forbids regenerating them after S0, and both goldens still reproduce exactly. They carry the old
+prompt shape by design, as a baseline proving the pipeline is unchanged.
+
+---
+
 ### 1.20.6 — the caller's number is `{{caller_id}}`
 
 Plugin `voicenter-bot-builder` 1.20.6 under marketplace 1.20.6. No emitted-output change; no check added (still 26).

@@ -32,23 +32,23 @@
 
 ### 2.1 Persona (Global Identity)
 
-[persona text — identity, role, tone, language, hard constraints. Channel-agnostic. Often multiline. Often Hebrew.]
+[persona text — identity, role, tone, language, hard constraints. Channel-agnostic. Often multiline. Often Hebrew. Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md`, five sections: `# 1. Identity and role`, `#### 2. Language`, `#### 3. Behaviour rules`, `#### 4. Additional context`, `5. **Global directives**` — the only field that carries a Global directives closer.]
 
 ### 2.2 Voice Instructions
 
-[voiceInstructions text — pacing, pronunciation, interruption handling, audio cues.]
+[voiceInstructions text — pacing, pronunciation, interruption handling, audio cues. Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md`, four sections: `# 1. Pace and delivery`, `#### 2. Reading numbers`, `#### 3. Interruptions`, `#### 4. Prohibited`.]
 
 [OR if defaulted: template content from `templates/voice-default.md` with [[PLACEHOLDERS]] substituted — **body only, no provenance marker**; record the default in §7.7 instead. This body is copied verbatim into `prompts.voiceInstructions`, so anything written here is runtime prompt content.]
 
 ### 2.3 Chat Instructions
 
-[chatInstructions text — formatting, message length, emoji policy.]
+[chatInstructions text — formatting, message length, emoji policy. Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md`, four sections: `# 1. Identity`, `#### 2. Message style`, `#### 3. Confirmation`, `#### 4. Language`.]
 
 [OR if defaulted: template content from `templates/chat-default.md` with [[PLACEHOLDERS]] substituted — **body only, no provenance marker**; record the default in §7.7 instead. This body is copied verbatim into `prompts.chatInstructions`, so anything written here is runtime prompt content.]
 
 ### 2.4 Bot-Level Intent Instructions (Opening Behavior)
 
-[intentInstructions text in Conversation Routines style. Pre-intent. Routing logic + iron rules. First numbered step handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it. v1.13.0 (FP-2/FP-4/FP-12): when the flow staggers off the opening, this section also carries the branch logic including any read-back and the next question the first flow intent will capture; any mandated spoken line uses the quote convention `<instruction text> : "<verbatim line>"`; whenever the flow collects a callback/scheduling time, include the FP-12 date/time interpretation block anchored on `{{todayHe}}`/`{{timeHe}}`.]
+[intentInstructions text, Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — three sections: `# 1. Context`, `#### 2. Conversation flow`, `#### 3. Iron rules`. Pre-intent. Routing logic + iron rules; every non-negotiable written `CRITICAL:` and every routing target named as `**<tool_name>** — "<Description>"`. First numbered step of §2 handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it. v1.13.0 (FP-2/FP-4/FP-12): when the flow staggers off the opening, this section also carries the branch logic including any read-back and the next question the first flow intent will capture; any mandated spoken line uses the quote convention `<instruction text> : "<verbatim line>"`; whenever the flow collects a callback/scheduling time, include the FP-12 date/time interpretation block anchored on `{{todayHe}}`/`{{timeHe}}`.]
 
 ### 2.5 Opening Announcement
 

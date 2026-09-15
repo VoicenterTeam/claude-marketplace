@@ -2,7 +2,7 @@
 
 *Load when you begin authoring an intent. Carries slot detailing, `validationPrompt` capture
 mapping, post-execution `intentInstructions`, the Mustache resolvability mechanics enforced at
-write-time, the 4.5.3 / 6.1 regeneration mechanics, and the Conversation Routines style brief.*
+write-time, the 4.5.3 / 6.1 regeneration mechanics, and the prompt-structure brief.*
 
 *Step 3 (RT-specific configuration) lives in `rt-configuration.md` — SKILL.md §4 dispatches
 to each in turn.*
@@ -14,7 +14,7 @@ to each in turn.*
 - [Step 4 — Post-execution intentInstructions](#44-step-4--post-execution-intentinstructions)
 - [Mustache resolvability mechanics](#5-mustache-resolvability-mechanics)
 - [4.5.3 and 6.1 regeneration mechanics](#73-453-regeneration-mechanic)
-- [Conversation Routines style quick reference](#appendix-b--conversation-routines-style-quick-reference)
+- [Prompt structure quick reference](#appendix-b--prompt-structure-quick-reference)
 - [Invocation-completion messages](#92-per-invocation-completion-user-pauses-or-queue-exhausted)
 
 ---
@@ -81,7 +81,7 @@ For an intent carrying a section-4 `**Terminal outcome:**`, write the form match
 - **captured**: save the customer's utterance — `Save the callback time (day and hour) the customer stated in the parameter callback_time.`
 - **dynamic**: an explicit per-call composition instruction for the slot.
 
-**FORBIDDEN in validationPrompt (blocking — check 3, mirrored by CHK-16):** scripts to speak, questions to ask, greetings, turn-taking guards, routing instructions, ALL-CAPS "GATE" recipes with `Say…`/`Ask…` steps. The asking happens where the voice model can see it — in the **previous** intent's `announcement` (FP-2 staggering) or this intent's post-execution `intentInstructions` (step 4). See `conversation-routines-style-guide.md` §3 for the capture-mapping patterns (C1–C5).
+**FORBIDDEN in validationPrompt (blocking — check 3, mirrored by CHK-16):** scripts to speak, questions to ask, greetings, turn-taking guards, routing instructions, ALL-CAPS "GATE" recipes with `Say…`/`Ask…` steps. The asking happens where the voice model can see it — in the **previous** intent's `announcement` (FP-2 staggering) or this intent's post-execution `intentInstructions` (step 4). See `conversation-routines-style-guide.md` §3 for the capture-mapping patterns (C1–C5); the field opens with `# 1. Capture mapping` per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md`.
 
 **Authoring procedure:**
 
@@ -182,7 +182,7 @@ Log per-intent on resolution: `Compass rule 11 blocking fired on [intent].[field
 
 ### 4.4 Step 4 — Post-execution `intentInstructions`
 
-This is the second Conversation Routines block per intent. It defines what the bot does **after** this intent has fired and slots have been collected.
+This is the second Markdown-structured block per intent. It defines what the bot does **after** this intent has fired and slots have been collected. It opens with `# 1. Post-execution` per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md`.
 
 **Critical distinction (per Doc 1 §14.3.10, §14.3.12):**
 
@@ -200,7 +200,7 @@ Skill 2 writes `intentInstructions` (v1.13.0) to cover:
 **Authoring procedure:**
 
 1. Surface any staged notes for this intent from section 2.4 (the section 7.3 scan).
-2. Draft an initial `intentInstructions` block in Conversation Routines style, routing by Description text, including the wait rule; add FP-4 quoted lines only where the announcement doesn't already carry the speech (FP-6 say-once).
+2. Draft an initial `intentInstructions` block in the Markdown structure (`# 1. Post-execution`), naming each routing target as `**<tool_name>** — "<Description>"`, including the wait rule; add FP-4 quoted lines only where the announcement doesn't already carry the speech (FP-6 say-once).
 3. Show the draft. User confirms or edits.
 4. Verify against the iron rules below.
 
@@ -208,7 +208,7 @@ Skill 2 writes `intentInstructions` (v1.13.0) to cover:
 
 | Rule | Source | Catch pattern |
 |---|---|---|
-| Must be Conversation Routines style | §14.3.2 | Free prose without ALL-CAPS headers, numbered steps, IF/ELSE, or IRON RULES → reformat |
+| Must follow the prompt structure | `prompt-structure.md` | Free prose without the `# 1. Post-execution` heading, bold-condition numbered steps, or `CRITICAL:` lines → reformat |
 | Must NOT contain pre-execution slot collection logic | §14.3.12 | Sentences like "after collecting X, ensure it's…" or validation rules → relocate to `validationPrompt` |
 | Must NOT contain persistent policy that applies call-wide | §14.3.13 | Sentences about privacy, GDPR, retention, broad escalation policy → relocate to `prompts.persona` (raise to user; this is a Skill 1 patch) |
 | Must NOT contain bot-level disambiguation that runs before any intent fires | §14.3.11 | Sentences like "first figure out if the user wants X or Y…" → relocate to `prompts.intentInstructions` (bot-level; raise to user; this is a Skill 1 patch) |
@@ -306,18 +306,18 @@ Skill 3 will regenerate section 6 entirely as a sanity check before §15.4. If S
 
 ---
 
-## Appendix B — Conversation Routines style quick reference
+## Appendix B — Prompt structure quick reference
 
 Full templates and worked examples in `conversation-routines-style-guide.md`. This appendix is the brief.
 
-**Scope (v1.13.0):** Conversation Routines style applies to `intentInstructions` (per-intent and bot-level). `validationPrompt` uses the FP-5 capture-mapping form instead — short `*` bullets in save/capture/set language (see the minimal example below and style guide §3).
+**Scope (v1.21.0):** the Markdown structure in `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` applies to `intentInstructions` (per-intent and bot-level) and to `validationPrompt`. It replaces the former Conversation Routines style. `validationPrompt` still carries FP-5 capture-mapping content — short `*` bullets in save/capture/set language under a `# 1. Capture mapping` heading (see the minimal example below and style guide §3). The spoken fields (`announcement`, `intentLoadingAnnouncement`, `fail_output`, `function_output`) stay plain prose with no Markdown.
 
 **Required elements (intentInstructions):**
 
-1. **ALL-CAPS section headers** anchor the structure. Examples: `POST-EXECUTION BEHAVIOR`, `OPENING BEHAVIOR`, `IRON RULES`.
-2. **Numbered steps** for post-execution actions. Use `1.`, `2.`, `3.`, not bullets.
-3. **IF / ELSE branches** for conditional behavior. Indented under the step they condition.
-4. **IRON RULE blocks** for non-negotiables. Always at least one, typically at the end of the prompt.
+1. **Section headings** anchor the structure. The first is `# 1. <Title>`; every later one is `#### N. <Title>`. Per-intent `intentInstructions` uses `# 1. Post-execution`; `validationPrompt` uses `# 1. Capture mapping`.
+2. **Numbered steps** for post-execution actions, each with a bold label stating the step or condition, and its actions as nested `*` bullets.
+3. **Branches** are numbered steps whose bold label states the condition — `2. **If the customer refuses:**`.
+4. **`CRITICAL:` lines** for non-negotiables, indented under the rule bullet they qualify. Replaces the former `IRON RULE:` token.
 
 **Forbidden:**
 
@@ -326,22 +326,31 @@ Full templates and worked examples in `conversation-routines-style-guide.md`. Th
 - Channel-specific behavior in `validationPrompt` or `intentInstructions` (belongs in voiceInstructions / chatInstructions, section 2)
 - Persistent policy ("We're GDPR-compliant. We never share data.") in `intentInstructions` (belongs in persona, section 2.1)
 
-**Minimal valid `validationPrompt` (v1.13.0, FP-5 — capture mapping only; the asking lives in the previous intent's announcement or this intent's instructions):**
+**Minimal valid `validationPrompt` (v1.21.0, FP-5 — capture mapping only; the asking lives in the previous intent's announcement or this intent's instructions):**
 
 ```
+# 1. Capture mapping
+
 * Save the customer's full address (street, house number, city) in the parameter address.
 * If any part is missing, leave the parameter unfilled.
 ```
 
-**Minimal valid post-execution `intentInstructions` (v1.13.0 — wait rule + routing by Description text):**
+**Minimal valid post-execution `intentInstructions` (v1.21.0 — wait rule + routing by tool name + Description):**
 
 ```
-POST-EXECUTION BEHAVIOR
-1. After asking, stop and wait for the customer's explicit answer. Do not proceed until the customer responds.
-2. If the address was captured, forward the call to Fetching available time slots.
-3. If the customer refuses or the address is unusable, forward the call to Transferring the call to a human representative.
+# 1. Post-execution
 
-IRON RULE: do not discuss pricing or technical issues. Transfer to human for those.
+1. **After asking:**
+   * Stop and wait for the customer's explicit answer. Do not proceed until the customer responds.
+
+2. **If the address was captured:**
+   * Then call the tool **fetch_available_slots** — "Fetching available time slots".
+
+3. **If the customer refuses or the address is unusable:**
+   * Then call the tool **transfer_to_human** — "Transferring the call to a human representative".
+
+* **Scope:** do not discuss pricing or technical issues.
+  CRITICAL: for those, call the tool **transfer_to_human** — "Transferring the call to a human representative".
 ```
 
 ---

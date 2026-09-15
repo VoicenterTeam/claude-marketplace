@@ -1,10 +1,14 @@
-# Conversation Routines Style Guide
+# Prompt Style Guide
+
+*(filename retained as `conversation-routines-style-guide.md`; the Conversation Routines style it was named for was replaced in v1.21.0 by the Markdown structure below.)*
 
 **Purpose:** concrete templates and worked examples for the fields Skill 2 authors — the capture-mapping `validationPrompt`, the spoken `announcement` / `intentLoadingAnnouncement`, and post-execution `intentInstructions`. Supports Skill 2 (Intent Detail Author) — Skill 2 references this file during steps 2–4.
 
-**Scope (v1.13.0):** Conversation Routines style (headers / numbered steps / IF-ELSE / IRON RULES) applies to `intentInstructions`. `validationPrompt` uses the FP-5 **capture-mapping form** — it is consumed only by the Intent Agent and is never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) is Conversation-Routines styled but is Skill 1's domain. See `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` for the full placement doctrine.
+**Scope (v1.21.0):** `intentInstructions` and `validationPrompt` are **Markdown-structured** per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — that file owns the shape (headings, bullet form, section names); this one owns the patterns that fill it. The former Conversation Routines style (bare ALL-CAPS headers, bare numbered steps, `IRON RULE:`) is superseded. `validationPrompt` still carries the FP-5 **capture-mapping** content — consumed only by the Intent Agent, never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) takes the same Markdown shape but is Skill 1's domain. See `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` for the full placement doctrine.
 
-**Source:** Doc 1 §14.3.2 defines the CR style; field-placement doctrine v1.13.0 defines what goes where. This file expands with concrete patterns.
+**The spoken fields are exempt.** `announcement`, `intentLoadingAnnouncement`, `fail_output` and `function_output` stay plain prose with no Markdown — TTS reads scaffolding aloud (Compass rule 8, blocking).
+
+**Source:** `prompt-structure.md` defines the shape; field-placement doctrine v1.13.0 defines what goes where. This file expands with concrete patterns.
 
 ---
 
@@ -12,11 +16,13 @@
 
 | Element | Form | Example |
 |---|---|---|
-| ALL-CAPS section headers | Bare line, no markdown | `POST-EXECUTION BEHAVIOR` |
-| Numbered steps | `1.`, `2.`, `3.` (not bullets) | `1. After asking, stop and wait for the customer's explicit answer.` |
-| IF / ELSE branches | Inline or indented under their step | `IF customer refuses: forward the call to Transferring the call to a human representative.` |
-| IRON RULE blocks | At least one per prompt | `IRON RULE: do NOT discuss pricing.` |
-| FP-4 quote convention for mandated speech (v1.13.0) | `<instruction text> : "<verbatim line>"` | `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}"` |
+| Opening section heading | `# 1. Post-execution` | `# 1. Post-execution` |
+| Later section headings | `#### N. <Title>` | `#### 2. Escalation` |
+| Named rule | `* **<Label>:** <rule>` | `* **Scope:** do not discuss pricing.` |
+| Branch | Numbered step, bold condition, nested action bullets | `2. **If the customer refuses:**` |
+| Non-negotiable | `CRITICAL: <rule>` (replaces `IRON RULE:`) | `CRITICAL: never reveal the layer transfer.` |
+| Naming another intent | `**<tool_name>** — "<Description>"` | `**transfer_to_human** — "Handing the call to a human representative"` |
+| FP-4 quote convention for mandated speech | `<instruction text> : "<verbatim line>"` | `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}"` |
 
 ## 2. Forbidden patterns
 
@@ -37,15 +43,18 @@
 
 ## 3. `validationPrompt` capture-mapping patterns (v1.13.0)
 
-The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. It is read ONLY by the Intent Agent — its sole job is mapping the caller's answer (to the question asked one step earlier, per FP-2 staggering) into this intent's parameters. Short `*` bullets, save/capture/set language, English operational prose, target-language text only as quoted saved VALUES.
+The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. It is read ONLY by the Intent Agent — its sole job is mapping the caller's answer (to the question asked one step earlier, per FP-2 staggering) into this intent's parameters. One section, `# 1. Capture mapping`, then short `*` bullets in save/capture/set language, English operational prose, target-language text only as quoted saved VALUES.
+
+Every pattern below is the **body** of that section — each example is written out under its `# 1. Capture mapping` heading.
 
 ### Pattern C1 — Boolean gate (yes/no confirmation)
 
 Use when: the intent captures a confirm/disapprove answer into a BOOLEAN slot. (Golden-reference verbatim style.)
 
 ```
-* If the customer confirms, save "true" in the parameter details_confirmed.
+# 1. Capture mapping
 
+* If the customer confirms, save "true" in the parameter details_confirmed.
 * If the customer disapproves, save "false" in the parameter details_confirmed.
 ```
 
@@ -54,10 +63,14 @@ Use when: the intent captures a confirm/disapprove answer into a BOOLEAN slot. (
 Use when: the intent captures the caller's stated value into a STRING slot. Interpretation machinery (relative dates, "עוד שעה") does NOT go here — it lives in the bot-level opening instructions per FP-12 (Skill 1's domain).
 
 ```
-Save the callback time (day and time - hour) in the parameter callback_time.
+# 1. Capture mapping
+
+* Save the callback time (day and time - hour) in the parameter callback_time.
 ```
 
 ```
+# 1. Capture mapping
+
 * Save the customer's full address (street, house number, city) in the parameter address.
 * If any part is missing, leave the parameter unfilled.
 ```
@@ -69,20 +82,27 @@ Use when: the intent is an RT=1 terminal carrying a section-4 `**Terminal outcom
 **C3a — fixed** (the spec quotes an exact string):
 
 ```
-1. Set shikuf_status to exactly this value; do not translate, paraphrase, or alter it: "הלקוח לא אישר משהו"
-2. Never ask the customer to choose or confirm this value — it is fixed for this outcome.
+# 1. Capture mapping
+
+* **Fixed value:** set shikuf_status to exactly this value; do not translate, paraphrase, or alter it: "הלקוח לא אישר משהו"
+  CRITICAL: never ask the customer to choose or confirm this value — it is fixed for this outcome.
 ```
 
 **C3b — captured** (save what the customer said):
 
 ```
-Save the customer's stated reason for declining, in the customer's own words, in the parameter decline_reason.
+# 1. Capture mapping
+
+* Save the customer's stated reason for declining, in the customer's own words, in the parameter decline_reason.
 ```
 
 **C3c — dynamic** (composed per call by instruction):
 
 ```
-Compose a one-sentence Hebrew summary of the call outcome (which stages were confirmed, where it stopped) and save it in the parameter call_summary. Do not ask the customer anything to produce it.
+# 1. Capture mapping
+
+* Compose a one-sentence Hebrew summary of the call outcome (which stages were confirmed, where it stopped) and save it in the parameter call_summary.
+  CRITICAL: do not ask the customer anything to produce it.
 ```
 
 ### Pattern C4 — ENUM multi-choice capture
@@ -90,6 +110,8 @@ Compose a one-sentence Hebrew summary of the call outcome (which stages were con
 Use when: slot is `ParameterTypeId 19` (ENUM) with an `OptionList` — the slot selects among MULTIPLE fixed values (FP-13). The presenting of options happens in the previous announcement; here only the mapping.
 
 ```
+# 1. Capture mapping
+
 * Map the customer's answer to one of the OptionList values: installation / repair / cancellation.
 * Save the matched Value in the parameter service_type.
 * If the answer clearly matches none of the options, leave the parameter unfilled.
@@ -100,6 +122,8 @@ Use when: slot is `ParameterTypeId 19` (ENUM) with an `OptionList` — the slot 
 Use when: the intent owns ≥2 collectable slots. One capture line per slot — and note the box below.
 
 ```
+# 1. Capture mapping
+
 * Save the customer's full name in the parameter full_name.
 * Save the customer's phone number (digits only, exactly 10 digits; strip dashes and spaces) in the parameter phone_number. If fewer than 10 digits, leave unfilled.
 ```
@@ -129,9 +153,15 @@ Rules: real `{{CustomData}}`/slot vars from sections 4.5.5/4.5.3 only (FP-11); e
 **The RT=1 terminal itself has NO `announcement`.** The outcome-specific farewell, in full and exactly once (FP-6), is an FP-4 quoted line in the **predecessor's** `intentInstructions` — the last spoken line before the forward, with the no-wait / no-reveal instruction (pattern I3 is the canonical shape):
 
 ```
-POST-EXECUTION BEHAVIOR
-1. Say to the customer : "מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב."
-2. Immediately forward the call to Ending the call by transferring to a human representative — do not wait for an answer, and do not tell the customer the call is being transferred to a layer.
+# 1. Post-execution
+
+1. **Speak the farewell:**
+   * Say to the customer : "מתנצלת, אבל בגלל שלא אישרת את אחד מהפרטים, עליי להעביר את זה לנציג אנושי. נציג יחזור אליך בהקדם. יום טוב."
+
+2. **Then route immediately:**
+   * Then call the tool **end_call_transfer_human** — "Ending the call by transferring to a human representative".
+   * **Do not wait** for an answer.
+     CRITICAL: never tell the customer the call is being transferred to a layer.
 ```
 
 The terminal keeps only its short loading goodbye ("יום טוב!"). If the predecessor splits to several intents, the farewell gets its own dedicated pre-IVR intent (FP-3 corollary — structural, Skill 1).
@@ -142,11 +172,16 @@ The terminal keeps only its short loading goodbye ("יום טוב!"). If the pre
 
 ```
 announcement: ""
+
 intentInstructions:
-  POST-EXECUTION BEHAVIOR
-  1. Read each option in {{available_slots}} to the customer, one at a time, pausing between items.
-  2. Ask the customer : "איזה מהמועדים מתאים לך ?"
-  3. After asking, stop and wait for the customer's explicit answer.
+# 1. Post-execution
+
+1. **Read the options:**
+   * Read each option in {{available_slots}} to the customer, one at a time, pausing between items.
+
+2. **Then ask:**
+   * Ask the customer : "איזה מהמועדים מתאים לך ?"
+   * After asking, stop and wait for the customer's explicit answer.
 ```
 
 **(b) Pre-terminal farewell-in-instructions:** the intent immediately before the final RT=1 terminal, with **no splits to other intents** — its farewell lives in its own `intentInstructions` per the pattern above.
@@ -175,18 +210,27 @@ Never put full content sentences here, and never duplicate a sentence that exist
 
 `intentInstructions` lives in `IntentResponces.Configuration.intentInstructions`. Post-execution: delivered to the voice model after the tool completes — routing, the wait rule, and (when needed) FP-4 quoted spoken lines.
 
-**FP-4 quote convention callout (v1.13.0):** every spoken line mandated in these instructions uses `<instruction text> : "<verbatim line>"` — e.g., `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב"`. The quoting doubles as Compass rule 11 RTL isolation. Route to other intents by their section-4 **Description text**, never by tool name (FP-9).
+The field carries one section, `# 1. Post-execution`. Add further `#### N. <Title>` sections only when the intent genuinely has more than one post-execution concern.
+
+**FP-4 quote convention callout:** every spoken line mandated in these instructions uses `<instruction text> : "<verbatim line>"` — e.g., `Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב"`. The quoting doubles as Compass rule 11 RTL isolation.
+
+**Naming another intent (v1.21.0):** write `**<tool_name>** — "<Description>"`, giving both the tool name and its section-4 Description text verbatim. This replaces the former Description-only form (FP-9).
 
 ### Pattern I1 — Minimal single-path
 
 Use when: the intent has one outcome and one next step.
 
 ```
-POST-EXECUTION BEHAVIOR
-1. After asking, stop and wait for the customer's explicit answer. Do not save a value or proceed until the customer responds.
-2. If the customer answered, forward the call to Fetching available time slots.
+# 1. Post-execution
 
-IRON RULE: do NOT discuss pricing or technical issues. Forward to Transferring the call to a human representative for those.
+1. **After asking:**
+   * Stop and wait for the customer's explicit answer. Do not save a value or proceed until the customer responds.
+
+2. **If the customer answered:**
+   * Then call the tool **fetch_available_slots** — "Fetching available time slots".
+
+* **Scope:** do not discuss pricing or technical issues.
+  CRITICAL: for those, call the tool **transfer_to_human** — "Transferring the call to a human representative".
 ```
 
 ### Pattern I2 — Branching on the captured answer (the FP-2 gate pattern; golden-reference shape)
@@ -194,13 +238,16 @@ IRON RULE: do NOT discuss pricing or technical issues. Forward to Transferring t
 Use when: the announcement asked a yes/no question and the routing branches on the answer.
 
 ```
-* Act according to the following instructions based on the caller's response :
+# 1. Post-execution
 
-* After reading the details and asking the question, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
+1. **After reading the details and asking the question:**
+   * Stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
 
-  * If the customer approves, forward the call to confirming health declaration.
+2. **If the customer approves:**
+   * Then call the tool **confirm_health_declaration** — "confirming health declaration".
 
-  * If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.
+3. **If the customer disapproves:**
+   * Then call the tool **end_call_hangup** — "Ending the call by forwarding the call to a hangup layer".
 ```
 
 ### Pattern I3 — Mandated spoken line + immediate route (FP-4)
@@ -208,7 +255,12 @@ Use when: the announcement asked a yes/no question and the routing branches on t
 Use when: a short closing/confirmation line must be spoken and then the call routes on — typical when the announcement is empty or the line depends on a just-captured slot.
 
 ```
-**Important -** Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב" And immediately forward the call to Ending the call by forwarding the call to a hangup layer.
+# 1. Post-execution
+
+1. **Speak the closing line, then route without waiting:**
+   * Say to the customer : "מצויין, אז קבענו ל {{callback_time}}, נחזור אלייך, שיהיה המשך יום טוב"
+   * Then call the tool **end_call_hangup** — "Ending the call by forwarding the call to a hangup layer".
+     CRITICAL: do not wait for an answer before routing.
 ```
 
 ### Pattern I4 — RT=2 with conditional API silence escalation
@@ -216,15 +268,18 @@ Use when: a short closing/confirmation line must be spoken and then the call rou
 Use when: an RT=2 intent has a non-trivial API silence fallback path that should be reflected in post-execution instructions (e.g., the API silence escalates to a different intent than the success path).
 
 ```
-POST-EXECUTION BEHAVIOR
-1. IF the API responded successfully within the silence window:
-   - Read the response details from {{response.summary}}.
-   - Forward the call to Confirming the appointment details.
-2. IF the API silence_ending_sentence fired (the API took too long):
-   - The silence handler already announced the delay.
-   - Forward the call to Transferring the call to a human representative.
+# 1. Post-execution
 
-IRON RULE: do NOT retry the API in this intent. The silence behavior owns retries; this intent is post-call.
+1. **If the API responded successfully within the silence window:**
+   * Read the response details from {{response.summary}}.
+   * Then call the tool **confirm_appointment_details** — "Confirming the appointment details".
+
+2. **If the API silence_ending_sentence fired (the API took too long):**
+   * The silence handler already announced the delay.
+   * Then call the tool **transfer_to_human** — "Transferring the call to a human representative".
+
+* **Retries:** the silence behaviour owns retries; this intent is post-call.
+  CRITICAL: do not retry the API in this intent.
 ```
 
 ---
@@ -248,8 +303,9 @@ Note the deliberate offset: the slot captures the IDENTITY question (asked one s
 ### `validationPrompt` (from step 2 — capture mapping only, pattern C1)
 
 ```
-* If the customer confirms, save "true" in the parameter details_confirmed.
+# 1. Capture mapping
 
+* If the customer confirms, save "true" in the parameter details_confirmed.
 * If the customer disapproves, save "false" in the parameter details_confirmed.
 ```
 
@@ -268,13 +324,16 @@ Note the deliberate offset: the slot captures the IDENTITY question (asked one s
 ### Post-execution `intentInstructions` (from step 4 — pattern I2)
 
 ```
-* Act according to the following instructions based on the caller's response :
+# 1. Post-execution
 
-* After reading the plan and premium details and asking the question, stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
+1. **After reading the plan and premium details and asking the question:**
+   * Stop and wait for the customer's explicit answer. Do not save a value or proceed to the next intent until the customer responds.
 
-  * If the customer approves, forward the call to confirming health declaration.
+2. **If the customer approves:**
+   * Then call the tool **confirm_health_declaration** — "confirming health declaration".
 
-  * If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.
+3. **If the customer disapproves:**
+   * Then call the tool **end_call_hangup** — "Ending the call by forwarding the call to a hangup layer".
 ```
 
 ---
@@ -286,9 +345,10 @@ Note the deliberate offset: the slot captures the IDENTITY question (asked one s
 Bad — in `intentInstructions`:
 
 ```
-POST-EXECUTION BEHAVIOR
-1. Be helpful and patient if the customer needs to think.
-2. Move on when ready.
+# 1. Post-execution
+
+1. **Be helpful and patient if the customer needs to think.**
+2. **Move on when ready.**
 ```
 
 Why bad: step 1 is unverifiable prose. The LLM doesn't know what "helpful and patient" means concretely.
@@ -296,9 +356,14 @@ Why bad: step 1 is unverifiable prose. The LLM doesn't know what "helpful and pa
 Fix: replace with a concrete behavior or remove.
 
 ```
-POST-EXECUTION BEHAVIOR
-1. After asking, stop and wait for the customer's explicit answer. IF the customer pauses or asks to think: wait without repeating the question.
-2. If the customer answered, forward the call to Fetching available time slots.
+# 1. Post-execution
+
+1. **After asking:**
+   * Stop and wait for the customer's explicit answer.
+   * If the customer pauses or asks to think, wait without repeating the question.
+
+2. **If the customer answered:**
+   * Then call the tool **fetch_available_slots** — "Fetching available time slots".
 ```
 
 ### Pitfall 2 — Validation logic ends up post-execution
@@ -306,10 +371,11 @@ POST-EXECUTION BEHAVIOR
 Bad — in `intentInstructions`:
 
 ```
-POST-EXECUTION BEHAVIOR
-1. After collecting the phone, ensure it's exactly 10 digits.
-2. Strip dashes silently.
-3. Confirm.
+# 1. Post-execution
+
+1. **After collecting the phone, ensure it's exactly 10 digits.**
+2. **Strip dashes silently.**
+3. **Confirm.**
 ```
 
 Why bad: by the time `intentInstructions` runs, the phone is already collected. The validation rules never fire.
@@ -318,15 +384,21 @@ Fix: the constraints become capture-constraint lines in `validationPrompt` (patt
 
 `validationPrompt`:
 ```
+# 1. Capture mapping
+
 * Save the customer's phone number (digits only, exactly 10 digits; strip dashes and spaces silently) in the parameter phone_number.
 * If fewer than 10 digits or it contains letters, leave the parameter unfilled.
 ```
 
 `intentInstructions`:
 ```
-POST-EXECUTION BEHAVIOR
-1. After asking, stop and wait for the customer's explicit answer.
-2. If the phone number was captured, forward the call to the next step by its Description text.
+# 1. Post-execution
+
+1. **After asking:**
+   * Stop and wait for the customer's explicit answer.
+
+2. **If the phone number was captured:**
+   * Then call the tool for the next step, naming it as **<tool_name>** — "<its Description text>".
 ```
 
 ### Pitfall 3 — Bot-level routing logic in per-intent fields
@@ -334,10 +406,13 @@ POST-EXECUTION BEHAVIOR
 Bad — in `validate_customer_address.intentInstructions`:
 
 ```
-POST-EXECUTION BEHAVIOR
-1. When the caller first reaches us, figure out if they want to schedule or reschedule.
-2. If schedule, validate the address.
-3. If reschedule, transfer to reschedule_existing.
+# 1. Post-execution
+
+1. **When the caller first reaches us, figure out if they want to schedule or reschedule.**
+2. **If schedule:**
+   * Validate the address.
+3. **If reschedule:**
+   * Then call the tool **reschedule_existing** — "Rescheduling an existing appointment".
 ```
 
 Why bad: by the time `validate_customer_address` is firing, disambiguation has already happened — that's why this intent fired. This text is dead code.
@@ -346,9 +421,11 @@ Fix: this content belongs in `prompts.intentInstructions` (bot-level, section 2.
 
 `validate_customer_address.intentInstructions` (corrected):
 ```
-POST-EXECUTION BEHAVIOR
-1. Confirm the address back.
-2. Proceed to get_available_slots.
+# 1. Post-execution
+
+1. **Confirm the address back.**
+2. **Then route:**
+   * Then call the tool **get_available_slots** — "Fetching available appointment times".
 ```
 
 ### Pitfall 4 — Persistent policy embedded in one intent
@@ -356,11 +433,13 @@ POST-EXECUTION BEHAVIOR
 Bad — in `validate_customer_address.intentInstructions`:
 
 ```
-POST-EXECUTION BEHAVIOR
-1. Confirm the address.
-2. Note: we never share customer data with third parties.
-3. Note: we are GDPR-compliant; recordings are kept 30 days max.
-4. Proceed to get_available_slots.
+# 1. Post-execution
+
+1. **Confirm the address.**
+2. **Note:** we never share customer data with third parties.
+3. **Note:** we are GDPR-compliant; recordings are kept 30 days max.
+4. **Then route:**
+   * Then call the tool **get_available_slots** — "Fetching available appointment times".
 ```
 
 Why bad: the privacy policy applies to *every* intent. Putting it here means the LLM only "knows" the policy when this intent is active. In every other intent, the policy isn't in context.
@@ -393,7 +472,7 @@ Bad — in a gate's `intentInstructions`:
 
 Why bad: `status_shikuf` belongs to a different intent. An intent can only set its own `IntentParameters` — this line is un-executable; at best ignored, at worst vocalized or hallucinated around.
 
-Fix: the status lives on the terminal that represents this outcome, with its value written by that terminal's own `validationPrompt` (pattern C3). The gate just routes: `* If the customer disapproves, forward the call to Ending the call by forwarding the call to a hangup layer.` Caught by Skill 2 check 13 and CHK-18.
+Fix: the status lives on the terminal that represents this outcome, with its value written by that terminal's own `validationPrompt` (pattern C3). The gate just routes: `* If the customer disapproves, call the tool **end_call_hangup** — "Ending the call by forwarding the call to a hangup layer".` Caught by Skill 2 check 13 and CHK-18.
 
 ### Pitfall 7 — Duplicated farewell obligations (v1.13.0, FP-6)
 
@@ -428,7 +507,7 @@ Fix: acknowledgment belongs in `intentLoadingAnnouncement` ("מצויין, אנ�
 Run through this before flipping an intent to `[detailed]`.
 
 **validationPrompt (capture mapping, FP-5):**
-- [ ] Short `*` bullets in save/capture/set language — one line per collectable slot / outcome
+- [ ] Opens with `# 1. Capture mapping`, then short `*` bullets in save/capture/set language — one line per collectable slot / outcome
 - [ ] NO speech: no ask/say/tell/greet/read-back imperatives, no question to the caller, no turn-taking guards, no routing
 - [ ] Quoted strings appear only as VALUES being saved
 - [ ] `**Terminal outcome:**` intents: the declared value mode is implemented (fixed ⇒ exact pinned string + never-ask line)
@@ -442,14 +521,15 @@ Run through this before flipping an intent to `[detailed]`.
 - [ ] `max_turns_sentence` written once per bot, persona/gender-matched (v1.14.0)
 - [ ] No sentence appears in two fields (FP-6 say-once)
 
-**intentInstructions (CR style + FP-4/FP-9):**
-- [ ] Has at least one ALL-CAPS section header (or the golden bullet-routing shape of pattern I2)
+**intentInstructions (Markdown structure + FP-4/FP-9):**
+- [ ] Opens with `# 1. Post-execution`; any further section is `#### N. <Title>`
 - [ ] Contains the explicit wait rule ("stop and wait for the customer's explicit answer")
-- [ ] All branching uses explicit IF / ELSE branches on the captured answer
-- [ ] Routes by section-4 Description text, never by tool name
+- [ ] All branching uses numbered steps whose bold label states the condition, with actions as nested bullets
+- [ ] Names every other intent as `**<tool_name>** — "<Description>"`, Description text verbatim from section 4
 - [ ] Every mandated spoken line uses the FP-4 form `<instruction> : "<line>"`
 - [ ] References only THIS intent's parameters (FP-8)
 - [ ] If the intent asks ≥2 questions: one question per turn, in `CollectionOrder`
+- [ ] Every non-negotiable is written `CRITICAL:`, never `IRON RULE:`
 - [ ] No paragraphs of free prose
 - [ ] No channel-specific behavior (pacing, formatting, emoji policy) — these belong in section 2.2 / 2.3
 - [ ] No persistent policy (privacy, GDPR, retention) — these belong in section 2.1
@@ -505,19 +585,19 @@ Per Compass §4 "Sanity rule": Unicode bidirectional marks tokenize to garbage w
 **Don't:**
 
 ```
-IRON: say שלום to the caller when they arrive.
+CRITICAL: say שלום to the caller when they arrive.
 ```
 
 **Do (FP-4 quote convention — instruction, colon, quoted verbatim line):**
 
 ```
-IRON: greet the caller when they arrive. Say to the customer : "שלום".
+CRITICAL: greet the caller when they arrive. Say to the customer : "שלום".
 ```
 
 Or:
 
 ```
-IRON: greet the caller when they arrive. Say:
+CRITICAL: greet the caller when they arrive. Say:
 שלום
 ```
 

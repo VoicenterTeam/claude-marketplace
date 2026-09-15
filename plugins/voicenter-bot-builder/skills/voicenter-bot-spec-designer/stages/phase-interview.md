@@ -179,7 +179,7 @@ This is **pre-intent** — what the bot does at the very start of the call, befo
 
 Ask: "The opening announcement just asked '[the §3.2.3 closing question]'. What should the bot do with the caller's answer, and how does it route to intents from there? What if the caller says something unclear?"
 
-Draft in **Conversation Routines style** (ALL-CAPS headers, numbered steps, IF/ELSE, IRON RULES). Example shape:
+Draft in the **Markdown structure** defined by `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — bot-level `intentInstructions` carries three sections: `# 1. Context`, `#### 2. Conversation flow`, `#### 3. Iron rules`. Example shape:
 
 > **Paraphrase the opening context — never quote it.** The parenthetical states what the
 > caller has *already heard*; it is not a line to speak. Writing it as a quoted line
@@ -187,23 +187,34 @@ Draft in **Conversation Routines style** (ALL-CAPS headers, numbered steps, IF/E
 > counts the opening announcement in two sites and **blocks assembly**. Describe it instead.
 
 ```
-OPENING BEHAVIOR
-(The opening announcement has already greeted the caller and asked who is speaking. Do not repeat it.)
-1. Capture the caller's answer to the opening question (the caller's name).
-2. Route based on what the caller needs:
-   - Scheduling → trigger validate_customer_address.
-   - Rescheduling → trigger reschedule_existing.
-   - General questions → trigger general_inquiry.
+# 1. Context
 
-IF caller ignores the opening question and states a request directly:
-  - Proceed with routing; collect the skipped detail later if still needed.
+* **Already heard:** the opening announcement has already greeted the caller and asked who is speaking. Do not repeat it.
+* Current time: {{timeHe}}
+* Current date and day: {{todayHe}}
 
-IF caller's intent is unclear:
-  - Ask once for clarification.
-  - If still unclear, route to transfer_to_human.
+#### 2. Conversation flow
 
-IRON RULE: Never greet again or repeat the opening question.
-IRON RULE: Stay in scope. For pricing/billing/technical, route to transfer_to_human.
+1. **Capture the caller's answer to the opening question:**
+   * Save the caller's name.
+
+2. **Route based on what the caller needs:**
+   * Scheduling — call the tool **validate_customer_address** — "Validating the caller's address".
+   * Rescheduling — call the tool **reschedule_existing** — "Rescheduling an existing appointment".
+   * General questions — call the tool **general_inquiry** — "Answering a general question".
+
+3. **If the caller ignores the opening question and states a request directly:**
+   * Proceed with routing; collect the skipped detail later if still needed.
+
+4. **If the caller's intent is unclear:**
+   * Ask once for clarification.
+   * If still unclear, call the tool **transfer_to_human** — "Handing the call to a human representative".
+
+#### 3. Iron rules
+
+* **No re-greeting:** the caller has already been greeted.
+  CRITICAL: never greet again or repeat the opening question.
+* **Stay in scope:** for pricing, billing or technical questions, call the tool **transfer_to_human** — "Handing the call to a human representative".
 ```
 
 Show the draft, then prompt via `AskUserQuestion` per Section 2.4.B (header: "Opening behavior", 2 options: "Accept draft" / "Edit"). If "Edit", capture revisions as free text and re-prompt until accepted.
