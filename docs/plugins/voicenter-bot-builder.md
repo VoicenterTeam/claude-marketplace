@@ -71,9 +71,11 @@ The three skills hand off through one shared file: **`agent-spec.md`**. Each ski
 
 The plugin includes a shared doctrine reference at `plugins/voicenter-bot-builder/references/voice-prompt-doctrine.md`, distilled from the Gemini Live 3.1 voice agent engineering guideline. Each of the three skills enforces a subset of the 13 doctrine rules at the right authoring phase:
 
-- **Skill 1** (rules 3, 4, 5, 6, 7, 11-mirror) — bot-level prompt content: language posture, intent description language, recency-slot guardrail, contradictory tone/length, generic-policy boilerplate.
+- **Skill 1** (rules 5, 6, 7) — bot-level prompt content: recency-slot language-lock guardrail, contradictory tone/length, generic-policy boilerplate. Rules 3 and 4 (English operational prose / English intent Descriptions) were **retired in v1.23.0**: prompts are now written in the bot's primary language, and Skill 1 checks 11–12 flag English prose on a Hebrew bot instead.
 - **Skill 2** (rules 8, 9, 10, 11) — per-intent text: TTS-safe formatting, date math in prompt, few-shot example cap, Hebrew-utterance isolation.
 - **Skill 3** (rules 1, 2, 12, 13) — final assembly: token budget, session-resumption ceiling, model-config doctrine, doctrine banner sentinels.
+
+**v1.23.0:** the default model is **Voicenter Voicebot - ElevenLabs** (`390`), which uses its own `elevenlabs` wire shape (voice at `tts.speak.voice`, no `created` payload). `387` (Voicenter Voicebot - Gemini / Gemini 3.8) and `321` are catalogued UNVERIFIED and halt Skill 3. Hebrew bots get the gendered TTS persona `261` / `296`; hang-up terminals are always layer `666`; the bot-level `intentInstructions` has no Iron rules section.
 
 Gating on `AiModelConfigID=139` or `142` (Gemini 3.1 — voice driven or LLM driven, same underlying runtime) — rules tied to model-specific behavior skip silently on other models. Universal voice principles (language posture, TTS safety) apply broadly.
 

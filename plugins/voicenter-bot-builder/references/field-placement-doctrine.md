@@ -179,7 +179,7 @@ An unconfigured `intentLoadingAnnouncement` produces the default `.` SAY directi
 
 ### FP-10 — Description doctrine (blocking, Skill 1)
 
-`Description` = a **short semantic English label naming the business step** — the LLM's intent-recognition anchor and the name other intents' instructions use for routing:
+`Description` = a **short semantic label naming the business step, in the bot's primary language** (v1.23.0 — was English) — the LLM's intent-recognition anchor and the name other intents' instructions use for routing:
 
 | Bad (v1.12 output) | Good (golden bot) |
 |---|---|

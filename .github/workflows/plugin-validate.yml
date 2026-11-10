@@ -197,6 +197,12 @@ jobs:
         working-directory: plugins/voicenter-bot-builder/examples
         run: python test-chk19-regression.py
 
+      # v1.23.0 — the ElevenLabs wire shape (production export BotID 37437), the
+      # gendered Hebrew persona (261 / 296), and the unverified-model halt (387, 321).
+      - name: ElevenLabs + persona + unverified-model regression
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python test-elevenlabs-regression.py
+
       - name: F2 fires exactly the three seeded violations
         working-directory: plugins/voicenter-bot-builder/examples
         run: |

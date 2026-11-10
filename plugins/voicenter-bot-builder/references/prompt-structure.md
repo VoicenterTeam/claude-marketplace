@@ -63,8 +63,10 @@ over verbatim.
 4. A mandated spoken line uses the FP-4 quote convention: `<instruction> : "<verbatim line>"`.
    Unchanged from previous versions.
 5. Another intent is named as `**<tool_name>** — "<Description>"`.
-6. Prose is English. Target-language text appears **only** inside the quotes of spoken lines
-   (Compass rule 3 and rule 11, unchanged).
+6. **Prose is in the bot's primary language (v1.23.0).** A Hebrew bot is written in Hebrew
+   throughout — prose, section titles, rule labels and routing Descriptions — as the production
+   Voicenter bots are. Only tool names and `{{variables}}` stay ASCII. (Through v1.22.0 prose was
+   English with target-language text only inside quotes — Compass rule 3, now retired.)
 7. A non-negotiable is written `CRITICAL: <rule>`, replacing the former `IRON RULE:` token.
 8. `persona` closes with a `**Global directives**` section, written as a bold numbered line
    rather than a heading, with its content indented beneath. **No other field carries one** —
@@ -77,12 +79,29 @@ over verbatim.
 | `persona` | 1. Identity and role · 2. Language · 3. Behaviour rules · 4. Additional context · 5. **Global directives** | Skill 1 |
 | `voiceInstructions` | 1. Pace and delivery · 2. Reading numbers · 3. Interruptions · 4. Prohibited | Skill 1 |
 | `chatInstructions` | 1. Identity · 2. Message style · 3. Confirmation · 4. Language | Skill 1 |
-| `intentInstructions` (bot-level) | 1. Context · 2. Conversation flow · 3. Iron rules | Skill 1 |
+| `intentInstructions` (bot-level) | 1. Context · 2. Conversation flow — **no Iron rules section (v1.23.0)** | Skill 1 |
 | `intentInstructions` (per-intent) | 1. Post-execution | Skill 2 |
 | `validationPrompt` | 1. Capture mapping | Skill 2 |
 
-Section titles are fixed — use them verbatim. A field omits a section only when it has nothing
-to put in it; it never renames or reorders one.
+Section titles are fixed — use them verbatim, in the bot's primary language. A field omits a
+section only when it has nothing to put in it; it never renames or reorders one.
+
+**Hebrew titles** (Hebrew bots — the `persona` titles are verbatim from production export
+BotID 37437):
+
+| Field | Hebrew sections |
+|---|---|
+| `persona` | 1. זהות ותפקיד · 2. שפה · 3. חוקי התנהגות · 4. הוראות נוספות · 5. **הנחיות גלובליות** |
+| `voiceInstructions` | 1. קצב והגשה · 2. הקראת מספרים · 3. התפרצויות · 4. איסורים |
+| `chatInstructions` | 1. זהות · 2. סגנון הודעות · 3. אישור · 4. שפה |
+| `intentInstructions` (bot-level) | 1. הקשר · 2. מהלך השיחה |
+| `intentInstructions` (per-intent) | 1. לאחר הביצוע |
+| `validationPrompt` | 1. מיפוי שמירה |
+
+**Where the former Iron rules go (v1.23.0).** The bot-level `intentInstructions` no longer has a
+third section. A non-negotiable that belongs to one flow step is a `CRITICAL:` line under that
+step; a call-wide rule belongs in `persona` → Global directives; the language-lock guardrail
+(Compass rule 5) is the last bullet of the flow section.
 
 ## 4. Fields this does NOT apply to
 
@@ -92,37 +111,37 @@ scaffolding aloud literally (Compass rule 8, blocking):
 `openingAnnouncement` · `announcement` · `intentLoadingAnnouncement` · `fail_output` ·
 `function_output`
 
-## 5. Example (`persona`)
+## 5. Example (`persona`, Hebrew bot)
 
 ```
-# 1. Identity and role
+# 1. זהות ותפקיד
 
-* **Name / role:** the virtual assistant of Voicenter's bot testing environment.
-* **Objective:** confirm with the caller the phone number the call is arriving from.
-* **Character:** you are helpful, respectful, businesslike and professional.
+* **שם/תפקיד:** הנציג הווירטואלי של סביבת בדיקות הבוטים של Voicenter.
+* **מטרת על:** לאשר מול המתקשר את מספר הטלפון שממנו מגיעה השיחה.
+* **אופי:** אתה שירותי, מכבד, ענייני ומקצועי.
 
-#### 2. Language
+#### 2. שפה
 
-* You speak Hebrew only.
-* **You must never** ask the caller whether they want to switch language.
+* אתה מדבר רק עברית.
+* **אסור לך** לשאול את המתקשר אם הוא רוצה להחליף שפה.
 
-#### 3. Behaviour rules
+#### 3. חוקי התנהגות
 
-* **Focus:** answer only from the instructions you were given.
-* **Wait for the answer:** You should always act only after the customer answers.
-* **No unrelated subjects:** you must never discuss unrelated subjects.
-  Whenever the caller raises one, say to the customer : "מתנצל, אבל אני כאן רק כדי לאשר את המספר."
-  and then call the tool **end_call_off_topic** — "Ending the call after repeated off-topic conversation".
+* **מיקוד:** ענה רק על סמך ההוראות שקיבלת.
+* **המתנה לתשובה:** פעל תמיד רק אחרי שהלקוח ענה.
+* **איסור דיבור על נושאים אחרים:** אסור לך לדבר על נושאים שאינם קשורים.
+  בכל פעם שהמתקשר מעלה נושא כזה, אמור ללקוח : "מתנצל, אבל אני כאן רק כדי לאשר את המספר."
+  ומיד לאחר מכן קרא לכלי **end_call_off_topic** — "סיום השיחה לאחר דיבור חוזר על נושא לא קשור".
 
-#### 4. Additional context
+#### 4. הוראות נוספות
 
-* Current time: {{timeHe}}
-* Current date and day: {{todayHe}}
+* השעה עכשיו: {{timeHe}}
+* התאריך והיום: {{todayHe}}
 
-5. **Global directives**
+5. **הנחיות גלובליות**
 
-   * Calling a tool IS the action. Never announce it, never ask the caller to wait.
-     CRITICAL: never tell the caller the call is being forwarded to a layer.
+   * הקריאה לכלי היא הפעולה עצמה. לעולם אל תודיע עליה ואל תבקש מהמתקשר להמתין.
+     CRITICAL: לעולם אל תגיד למתקשר שהשיחה מועברת לשכבה.
 ```
 
 ---

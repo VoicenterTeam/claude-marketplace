@@ -33,16 +33,20 @@ ASSEMBLY_TS = "2026-08-08 09:15:00"
 
 # §4.2.2 row 11 / Appendix D.12 — shared Persona rows (AccountId=0), keyed by the
 # BCP-47 primary subtag of spec section 1 **Primary Language:**. The row selects the
-# TTS voice that renders the bot's speech, so it is language-bound. Rows 3
-# (TTSScriptReader) and 261 (Hebrew-only) are known but deliberately never emitted.
-PERSONA_BY_LANG = {'he': 244, 'en': 249, 'ru': 252, 'ar': 255}
+# TTS voice that renders the bot's speech, so it is language-bound. Since v1.23.0
+# Hebrew is also gender-bound: 261 "דובר עברית" (Male) / 296 "דוברת עברית" (Female),
+# keyed by spec section 1 **Agent Gender:** (Male when the field is absent, e.g. a
+# chat-only bot). Row 3 (TTSScriptReader) is known but deliberately never emitted.
+PERSONA_BY_LANG = {'he': 261, 'en': 249, 'ru': 252, 'ar': 255}
+PERSONA_HE_BY_GENDER = {'male': 261, 'female': 296}
 
 
-def persona_id(primary_language):
-    """Derive ActiveVersionInfo.PersonaID from the spec's Primary Language.
+def persona_id(primary_language, agent_gender=None):
+    """Derive ActiveVersionInfo.PersonaID from the spec's Primary Language
+    (and, for Hebrew, its Agent Gender).
 
     Matches on the primary subtag only, case-insensitively: 'he-IL', 'he' and
-    'HE-il' all resolve to 244. An unmapped language is a halt, not a default —
+    'HE-il' are all Hebrew. An unmapped language is a halt, not a default —
     a wrong-but-valid FK imports cleanly and ships a bot speaking in the wrong
     voice, which nothing downstream would catch.
     """
@@ -55,6 +59,8 @@ def persona_id(primary_language):
             "to assembly-mapping.md D.12."
             % (primary_language, subtag,
                ', '.join('%s->%d' % kv for kv in sorted(PERSONA_BY_LANG.items()))))
+    if subtag == 'he':
+        return PERSONA_HE_BY_GENDER.get((agent_gender or 'Male').strip().lower(), 261)
     return PERSONA_BY_LANG[subtag]
 
 # Which wire-format baseline to emit. "current" = shipping output. "1.17.0" omits
@@ -71,12 +77,18 @@ PARAM_TYPES = {
     20: {"Name": "JSON",    "Description": "json schema",                       "ValidationPattern": None,                        "IsCustomValidationAllowed": 0, "CreatedDate": "2025-04-10 09:50:42"},
 }
 
-# model-catalog.md entries (hardcoded per locked decision F).
+# model-catalog.md entries (hardcoded per locked decision F). `family` selects the
+# wire shape (§4.2.3/§4.2.4): "gemini" = `created` payloads + prebuiltVoiceConfig;
+# "elevenlabs" = empty top-level AIModelConfig + version-level `tts.speak.voice`.
+# `verified: False` entries are catalogued but HALT assembly (v1.23.0).
 MODEL_CATALOG = {
-    "Gemini 3.1 - LLM driven": {"AIModelConfigID": 142, "AIModelTypeId": 21, "model": "models/gemini-3.1-flash-live-preview"},
-    "Gemini Live":             {"AIModelConfigID": 139, "AIModelTypeId": 18, "model": "models/gemini-3.1-flash-live-preview"},
-    "Gemini Voice Driven":     {"AIModelConfigID": 136, "AIModelTypeId": 16, "model": "models/gemini-3.1-flash-live-preview"},
-    "Gemini 2.5":              {"AIModelConfigID": 52,  "AIModelTypeId": 10, "model": "models/gemini-2.5-flash-native-audio-preview-12-2025"},
+    "Voicenter Voicebot - ElevenLabs": {"AIModelConfigID": 390, "AIModelTypeId": 36,   "model": None, "family": "elevenlabs", "verified": True},
+    "Voicenter Voicebot - Gemini":     {"AIModelConfigID": 387, "AIModelTypeId": None, "model": None, "family": None,         "verified": False},
+    "Voicenter Voicebot":              {"AIModelConfigID": 321, "AIModelTypeId": None, "model": None, "family": None,         "verified": False},
+    "Gemini 3.1 - LLM driven": {"AIModelConfigID": 142, "AIModelTypeId": 21, "model": "models/gemini-3.1-flash-live-preview", "family": "gemini", "verified": True},
+    "Gemini Live":             {"AIModelConfigID": 139, "AIModelTypeId": 18, "model": "models/gemini-3.1-flash-live-preview", "family": "gemini", "verified": True},
+    "Gemini Voice Driven":     {"AIModelConfigID": 136, "AIModelTypeId": 16, "model": "models/gemini-3.1-flash-live-preview", "family": "gemini", "verified": True},
+    "Gemini 2.5":              {"AIModelConfigID": 52,  "AIModelTypeId": 10, "model": "models/gemini-2.5-flash-native-audio-preview-12-2025", "family": "gemini", "verified": True},
 }
 
 MASC_MAX_TURNS_SENTENCE = "מתנצל אבל נראה שיש לי בעיה מסויימת, אנא נסה שנית מאוחר יותר"
@@ -112,6 +124,7 @@ def parse_spec(text):
         'Channels Active':     field(sec1, 'Channels Active'),
         'Primary Language':    field(sec1, 'Primary Language'),
         'Voice Name':          field(sec1, 'Voice Name'),
+        'Agent Gender':        field(sec1, 'Agent Gender'),
         'AI Model Config':     field(sec1, 'AI Model Config'),
         'Created by':          field(sec1, 'Created by', ''),
         'Max call duration':   field(sec1, 'Max call duration', '1200'),
@@ -276,6 +289,17 @@ def assemble(spec):
         cond -= 1
 
     mc = MODEL_CATALOG[ident['AI Model Config']]
+    if not mc['verified']:
+        # v1.23.0 — catalogued but unverified model: blocking halt, no JSON
+        # (sentinels-and-banner.md "unverified model"). Its AIModelTypeId and wire
+        # shape are unknown, and a guessed shape imports as a broken bot.
+        raise SystemExit(
+            "ASSEMBLY HALTED - AI model %r (AIModelConfigID %d) is in the catalog but "
+            "UNVERIFIED: its AIModelTypeId and wire shape have not been captured from a "
+            "production export. Pick a verified model (default: Voicenter Voicebot - "
+            "ElevenLabs) or verify this entry in model-catalog.md first."
+            % (ident['AI Model Config'], mc['AIModelConfigID']))
+    elevenlabs = mc['family'] == 'elevenlabs'
 
     # ---- §4.4 Configuration per RT ----
     def configuration(it):
@@ -483,7 +507,7 @@ def assemble(spec):
         "silence_ending_sentence": spec['silence']['silence_ending_sentence'],
     }
 
-    # ---- §4.2.4 created payload (lean) ----
+    # ---- §4.2.4 created payload (lean) — Gemini family only ----
     created = {"realtimeInputConfig": {"automaticActivityDetection": {"disabled": "true"}}}
     if voice_active:
         created["generationConfig"] = {"speechConfig": {"voiceConfig": {
@@ -523,7 +547,9 @@ def assemble(spec):
             "ModifiedBy": None,
             "CreatedDate": ASSEMBLY_TS,
             "ModifiedDate": ASSEMBLY_TS,
-            "AIModelConfig": {"created": {"model": mc['model']}},
+            # §4.2.3 — ElevenLabs carries an EMPTY inner object (production export
+            # BotID 37437 v0.1.149); Gemini carries only the model string.
+            "AIModelConfig": {} if elevenlabs else {"created": {"model": mc['model']}},
             "AIModelConfigID": mc['AIModelConfigID'],
         },
         "ActiveVersionInfo": {                                   # §4.2.2
@@ -558,7 +584,24 @@ def assemble(spec):
     # --wire-baseline 1.17.0 so the frozen S0 golden stays byte-reproducible: that
     # fixture's job is proving the *restructure* was inert, and it predates this field.
     if WIRE_BASELINE != "1.17.0":
-        out["ActiveVersionInfo"]["PersonaID"] = persona_id(ident['Primary Language'])
+        out["ActiveVersionInfo"]["PersonaID"] = persona_id(ident['Primary Language'],
+                                                           ident['Agent Gender'])
+
+    # §4.2.4 ElevenLabs branch (v1.23.0, production export BotID 37437 v0.1.149):
+    # no `created` block; the voice is an ElevenLabs voice ID at `tts.speak.voice`,
+    # placed right after `prompts`; recordAgentCalls is a JSON boolean, not a string.
+    if elevenlabs:
+        vac = out["ActiveVersionInfo"]["AIModelConfig"]
+        rebuilt = {}
+        for k, v in vac.items():
+            if k == "created":
+                continue
+            if k == "recordAgentCalls":
+                v = str(v).strip().lower() == "true"
+            rebuilt[k] = v
+            if k == "prompts" and voice_active:
+                rebuilt["tts"] = {"speak": {"voice": ident['Voice Name']}}
+        out["ActiveVersionInfo"]["AIModelConfig"] = rebuilt
 
     return out
 

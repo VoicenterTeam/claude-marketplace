@@ -10,7 +10,56 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 
 ## AI model configs
 
-> **Canonical default:** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Gemini 3.1 - LLM driven** — `AIModelConfigID = 142`, `AIModelTypeId = 21`. The "Gemini 3.1 - LLM driven (default)" entry below is the source of truth for those numbers.
+> **Canonical default (v1.23.0):** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Voicenter Voicebot - ElevenLabs** — `AIModelConfigID = 390`, `AIModelTypeId = 36`. The "Voicenter Voicebot - ElevenLabs (default)" entry below is the source of truth for those numbers. (Through v1.22.0 the default was Gemini 3.1 - LLM driven, `142`.)
+
+### Wire family
+
+Every entry belongs to a **wire family**, which decides the JSON shape Skill 3 emits (`assembly-mapping.md` §4.2.3–§4.2.4):
+
+| Family | Top-level `AiModelConfig.AIModelConfig` | Voice location | Version-level `created` | `recordAgentCalls` |
+|---|---|---|---|---|
+| `gemini` | `{ "created": { "model": "<string>" } }` | `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | present | string `"true"`/`"false"` |
+| `elevenlabs` | `{}` (empty object) | `tts.speak.voice` (an ElevenLabs voice ID) | **absent** | JSON boolean |
+
+The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted before v1.23.0.
+
+### Voicenter Voicebot - ElevenLabs (default)
+
+| Field | Value |
+|---|---|
+| **Display name** | Voicenter Voicebot - ElevenLabs |
+| **`AIModelConfigID`** | `390` |
+| **`AIModelTypeId`** | `36` |
+| **Provider model string** | — (none; the top-level `AIModelConfig` is `{}`) |
+| **Wire family** | `elevenlabs` |
+| **Voice family** | ElevenLabs (see below) |
+| **Notes** | **Default since v1.23.0.** Verified from a production export: BotID 37437 "נתיב תכנון מסלול - עברית - Voicenter ElevenLabs", version 0.1.149 (`AIModel: 36`, `AccountId: 0`). |
+
+### Voicenter Voicebot - Gemini (Gemini 3.8) — UNVERIFIED
+
+| Field | Value |
+|---|---|
+| **Display name** | Voicenter Voicebot - Gemini |
+| **`AIModelConfigID`** | `387` |
+| **`AIModelTypeId`** | `<UNKNOWN>` |
+| **Provider model string** | `<UNKNOWN>` |
+| **Wire family** | `<UNKNOWN>` |
+| **Voice family** | `<UNKNOWN>` |
+| **Notes** | The Gemini 3.8 model. **Unverified:** only the config ID is known. **Skill 3 halts** if a spec selects it (`sentinels-and-banner.md` — unverified model). Verify from a production export of a bot on 387, then fill the four unknown fields and drop this marker. |
+
+### Voicenter Voicebot — UNVERIFIED
+
+| Field | Value |
+|---|---|
+| **Display name** | Voicenter Voicebot |
+| **`AIModelConfigID`** | `321` |
+| **`AIModelTypeId`** | `<UNKNOWN>` |
+| **Provider model string** | `<UNKNOWN>` |
+| **Wire family** | `<UNKNOWN>` |
+| **Voice family** | `<UNKNOWN>` |
+| **Notes** | **Unverified:** only the config ID is known. **Skill 3 halts** if a spec selects it. Same verification path as 387. |
+
+**Skill 1 may still offer the two unverified entries** when the user asks for them by name, but must warn that the build will stop at Skill 3 until the entry is verified. It never picks them as a default.
 
 ### Gemini Live (Voice driven 3.1)
 
@@ -20,6 +69,7 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 | **`AIModelConfigID`** | `139` |
 | **`AIModelTypeId`** | `18` |
 | **Provider model string** | `models/gemini-3.1-flash-live-preview` |
+| **Wire family** | `gemini` |
 | **Voice family** | Gemini (see below) |
 | **Notes** | Active default. Closest match to the historical "Gemini Live" name; uses Gemini 3.1 Voice driven model under the hood. |
 
@@ -31,6 +81,7 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 | **`AIModelConfigID`** | `52` |
 | **`AIModelTypeId`** | `10` |
 | **Provider model string** | `models/gemini-2.5-flash-native-audio-preview-12-2025` |
+| **Wire family** | `gemini` |
 | **Voice family** | Gemini |
 | **Notes** | Active default. The original Gemini 2.5 native-audio entry. |
 
@@ -42,10 +93,11 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 | **`AIModelConfigID`** | `136` |
 | **`AIModelTypeId`** | `16` |
 | **Provider model string** | `models/gemini-3.1-flash-live-preview` |
+| **Wire family** | `gemini` |
 | **Voice family** | Gemini |
 | **Notes** | Active default. VOICE-class model. |
 
-### Gemini 3.1 - LLM driven (default)
+### Gemini 3.1 - LLM driven
 
 | Field | Value |
 |---|---|
@@ -53,8 +105,9 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 | **`AIModelConfigID`** | `142` |
 | **`AIModelTypeId`** | `21` |
 | **Provider model string** | `models/gemini-3.1-flash-live-preview` |
+| **Wire family** | `gemini` |
 | **Voice family** | Gemini |
-| **Notes** | Active default. LLM-class model. |
+| **Notes** | Active default. LLM-class model. Was the canonical default through v1.22.0. |
 
 ### GPT-4 Realtime
 
@@ -96,6 +149,24 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 ## Voice catalog
 
 The `voiceName` field in `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig` is a provider-specific string. Skill 1 presents the appropriate list based on the model family chosen above; Skill 3 emits the value verbatim from the spec.
+
+### ElevenLabs voices
+
+Used with the ElevenLabs family (Voicenter Voicebot - ElevenLabs). The wire value is the **ElevenLabs voice ID**, emitted verbatim to `ActiveVersionInfo.AIModelConfig.tts.speak.voice`. These are the Hebrew voices of the shared ElevenLabs library.
+
+| Voice | Wire-format value | Gender |
+|---|---|---|
+| Danit | `s0T0DT6EAPeX57MQpn3I` | Female |
+| Zina | `Tbj9UQjXon5RB9MPEyc2` | Female |
+| Itay | `X5KkWC7LtHHN2wzb0Lao` | Male |
+| Itamar | `l7Q9rbdCC6j3J5dNlOOg` | Male |
+| Nimrod | `ZiofZHcEBTn5sRySe5h8` | Male |
+| Gad Tamir | `SSaO8heNHx6ee5ZRpZ1X` | Male |
+| Herzl Ben | `6Ijsl5024dyMrE00loVE` | Male |
+| Dorian | `PBHwEnXdzx0yfhIO2UCH` | Male |
+| Viktor M | `8sZ9Z3Jy28CGLLCmKEHn` | Male |
+
+**There is no default ElevenLabs voice.** Skill 1 always asks the agent's gender and then presents the voices of that gender — even when the user asked for defaults. Write the voice ID (not the display name) to spec section 1 `**Voice Name:**`.
 
 ### OpenAI voices
 
@@ -168,7 +239,7 @@ This catalog is part of Skill 1's package, version-controlled with the skill. To
 
 1. Verify the target row exists in `database/Tables/StaticData/AIModelConfig.Data.sql` with `AccountId = 0` and `IsActive = 1`.
 2. Append a new section under "AI model configs" with all five fields populated.
-3. Confirm the model's voice family belongs to OpenAI or Gemini (or document a new family with its voice list).
+3. Record the model's **wire family** (`gemini` or `elevenlabs`) and confirm its voice family is listed below (or document a new family with its voice list). A model whose wire shape has not been captured from a production export is catalogued **UNVERIFIED** — Skill 3 halts on it.
 4. Update the skill version (in SKILL.md frontmatter or sidecar — TBD).
 
 v3 will deprecate this file in favor of MCP querying the Voicenter platform's model registry directly.

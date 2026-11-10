@@ -100,9 +100,15 @@ full list as a reference table first, then prompt with the three most likely can
 **Other** cover the tail. When a recommended option exists, put it first and append
 *(Recommended)*.
 
-Three fields are **never** prompted: the identifier (auto-derived from the bot name), the AI
-model config (silently defaults to Gemini 3.1 - LLM driven), and per-intent `max_turns` (the
-skills decide autonomously).
+Four fields are **never** prompted: the identifier (auto-derived from the bot name), the AI
+model config (silently defaults to Voicenter Voicebot - ElevenLabs, `390` — v1.23.0), the layer
+of a hang-up terminal (always `666` — v1.23.0), and per-intent `max_turns` (the skills decide
+autonomously). Three are **always** prompted, even when the user asks for defaults: agent gender,
+voice (no default voice exists), and whether to record calls.
+
+**Prompt language (v1.23.0).** Every prompt field — prose, section headings, intent
+Descriptions — is written in the bot's primary language: a Hebrew bot is written in Hebrew.
+Tool names and `{{variables}}` stay ASCII.
 
 **Bidi safety in prompts.** Terminal surfaces (Claude Code CLI, VS Code, Desktop) do not render
 RTL reliably. Keep every `AskUserQuestion` option **label/value LTR-stable** — an ASCII or
@@ -280,8 +286,8 @@ The doctrine catalog lives in `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doc
 
 | Compass rule | Name | Skill 1 hook | Severity | Model gating |
 |---|---|---|---|---|
-| 3 | English operational, target-language utterances | §5 check 11 | advisory; opt-in rewrite | `[any voice]` |
-| 4 | Intent description in English | §5 check 12 | advisory; opt-in rewrite | `[any voice]` |
+| 3 | ~~English operational~~ → prose in the bot's primary language (v1.23.0) | §5 check 11 | advisory; opt-in rewrite | `[any voice]` |
+| 4 | ~~Intent description in English~~ → in the bot's primary language (v1.23.0) | §5 check 12 | advisory; opt-in rewrite | `[any voice]` |
 | 5 | Recency-slot language-lock guardrail | §5 check 13 | advisory; opt-in injection/move | `[any voice]` |
 | 6 | Contradictory pacing/length | §5 check 14 | advisory | `[any voice]` |
 | 7 | Generic-policy boilerplate | §5 check 15 | advisory | `[any]` |

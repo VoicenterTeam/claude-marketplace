@@ -64,7 +64,7 @@ Whenever an intent IS (or becomes) sensitive-flagged, ALWAYS deliver the disclos
 
 ### 4.2 Step 2 — `validationPrompt` authoring
 
-**Doctrine (v1.13.0, FP-5 — this section was inverted; see `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended (Compass rule 3 synergy); target-language text appears only as a quoted VALUE being saved.
+**Doctrine (v1.13.0, FP-5 — this section was inverted; see `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. Write it in the bot's primary language (v1.23.0 — Hebrew bot ⇒ Hebrew, as in production; the former English recommendation tied to Compass rule 3 is retired).
 
 Canonical form (golden reference, verbatim style):
 

@@ -4,6 +4,8 @@
 
 **Purpose:** concrete templates and worked examples for the fields Skill 2 authors — the capture-mapping `validationPrompt`, the spoken `announcement` / `intentLoadingAnnouncement`, and post-execution `intentInstructions`. Supports Skill 2 (Intent Detail Author) — Skill 2 references this file during steps 2–4.
 
+**Language (v1.23.0):** every field this guide covers is written in the bot's primary language — a Hebrew bot is Hebrew throughout, section titles included (`prompt-structure.md` rule 6 and its Hebrew title table). The English pattern examples below show the **shape**; on a Hebrew bot write the same shape in Hebrew (`אמור ללקוח : "..."`, `קרא לכלי **tool_name** — "<Description>"`).
+
 **Scope (v1.21.0):** `intentInstructions` and `validationPrompt` are **Markdown-structured** per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — that file owns the shape (headings, bullet form, section names); this one owns the patterns that fill it. The former Conversation Routines style (bare ALL-CAPS headers, bare numbered steps, `IRON RULE:`) is superseded. `validationPrompt` still carries the FP-5 **capture-mapping** content — consumed only by the Intent Agent, never spoken; scripts written there never reach the caller. Bot-level `prompts.intentInstructions` (Opening Behavior in section 2.4) takes the same Markdown shape but is Skill 1's domain. See `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` for the full placement doctrine.
 
 **The spoken fields are exempt.** `announcement`, `intentLoadingAnnouncement`, `fail_output` and `function_output` stay plain prose with no Markdown — TTS reads scaffolding aloud (Compass rule 8, blocking).
@@ -43,7 +45,7 @@
 
 ## 3. `validationPrompt` capture-mapping patterns (v1.13.0)
 
-The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. It is read ONLY by the Intent Agent — its sole job is mapping the caller's answer (to the question asked one step earlier, per FP-2 staggering) into this intent's parameters. One section, `# 1. Capture mapping`, then short `*` bullets in save/capture/set language, English operational prose, target-language text only as quoted saved VALUES.
+The `validationPrompt` lives in `IntentConfig.prompts.validationPrompt`. It is read ONLY by the Intent Agent — its sole job is mapping the caller's answer (to the question asked one step earlier, per FP-2 staggering) into this intent's parameters. One section, `# 1. Capture mapping` (`# 1. מיפוי שמירה` on a Hebrew bot), then short `*` bullets in save/capture/set language, written in the bot's primary language (v1.23.0 — a Hebrew bot gets Hebrew prose, e.g. `* תשמור את השם שהלקוח אמר בפרמטר caller_name.`).
 
 Every pattern below is the **body** of that section — each example is written out under its `# 1. Capture mapping` heading.
 
@@ -538,7 +540,7 @@ Run through this before flipping an intent to `[detailed]`.
 
 **Cross-field:**
 - [ ] All Mustache references resolve (per Skill 2 §5 mechanics; CustomData keys from 4.5.5 only)
-- [ ] Text language matches the bot's primary language for spoken content; capture mapping in English operational prose
+- [ ] Every field — spoken lines, instructions and capture mapping — is written in the bot's primary language (v1.23.0); only tool names and `{{variables}}` stay ASCII
 
 Pass on every line → safe to mark `[detailed]`.
 

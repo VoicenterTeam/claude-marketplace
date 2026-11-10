@@ -15,7 +15,7 @@ the exact failure message given.
 ## Table of contents
 
 - [Checks 1–10 — persona, naming, transitions, channels](#check-1--persona-articulates-identity-role-tone-language-1431--blocking)
-- [Checks 11–15 — Compass doctrine (advisory)](#check-11--english-operational-prose-for-non-english-bots-compass-rule-3--advisory)
+- [Checks 11–15 — Compass doctrine (advisory)](#check-11--prompt-prose-in-the-bots-primary-language-v1230-replaces-compass-rule-3--advisory)
 - [Checks 16–17 — opening announcement / behaviour house rules](#check-16--opening-announcement-ends-with-a-question-house-rule-v1121--blocking)
 - [Checks 18–24 — field-placement and v1.14.0 rules](#check-18--opening-gate-merge-v1130-fp-2--blocking)
 - [Severity-handling rules](#severity-handling-rules)
@@ -118,28 +118,26 @@ the exact failure message given.
 
 No user prompt required.
 
-### Check 11 — English operational prose for non-English bots (Compass rule 3) — advisory
+### Check 11 — Prompt prose in the bot's primary language (v1.23.0; replaces Compass rule 3) — advisory
 
-**Trigger:** Skill 1 inspects each of `prompts.persona`, `prompts.voiceInstructions` (if voice active), `prompts.intentInstructions`. For each field, count non-Latin script characters (Hebrew U+0590–U+05FF, Arabic U+0600–U+06FF, CJK ranges). If a field is ≥30% non-Latin AND section 1's `Primary Language` ≠ `en-US` / `en-GB` / `en-AU` / similar: fire.
+**Trigger:** Skill 1 inspects each of `prompts.persona`, `prompts.voiceInstructions` (if voice active), `prompts.chatInstructions` (if chat active), `prompts.intentInstructions`. When section 1's `Primary Language` is Hebrew (`he*`), fire if a field's prose — excluding tool names, Mustache variables and quoted lines — is ≥50% Latin letters, i.e. written in English.
 
 **Failure message:**
-> The `[field name]` is ≥30% Hebrew/Arabic/CJK characters. Per Compass rule 3, non-Latin scripts tokenize ~3× more densely than English — operational instructions written in English save substantial tokens (the assembled prompt is paid in full on every Gemini Live 3.1 session start; there is no context caching). The model handles English-instruction / target-language-utterance as a stable cross-lingual generation task. Would you like to:
->   (a) Rewrite the operational prose in English while preserving the target-language utterances on their own lines? *(Recommended)*
+> The `[field name]` is written mostly in English, but this is a Hebrew bot. Since v1.23.0 every prompt field is written in the bot's primary language — prose, section headings and intent Descriptions — the way the production Voicenter bots are written. Would you like to:
+>   (a) Rewrite the field in Hebrew, keeping tool names and `{{variables}}` as they are? *(Recommended)*
 >   (b) Keep as-is and continue.
 
-**Remediation:** if (a): draft an English rewrite, show to user, capture revisions, replace the field on confirmation. Then trigger check 11-mirror (rule 11) on the rewritten field. If (b): record the decision in section 7.3 — `Compass rule 3 (English operational) advisory fired on [field]; user kept original.`
+**Remediation:** if (a): draft the Hebrew rewrite, show it, replace on confirmation. If (b): log to 7.3 — `Prompt-language advisory fired on [field]; user kept English.`
 
-**Gating:** applies when section 1's `Channels Active` includes `voice`. Skips silently otherwise (with a one-time 7.3 log entry per spec — see §4.2 of the spec doc).
+**Retired (v1.23.0):** the former check 11 recommended the *opposite* — rewriting ≥30%-non-Latin prose into English (Compass rule 3) — and its rule-11 mirror. Neither fires any more.
 
-**Mirror — Hebrew-utterance isolation on rewritten fields (Compass rule 11):** when the user accepts an English rewrite per (a) above, Skill 1 immediately re-scans the rewritten text using the same regex Skill 2 applies for rule 11: `[֐-׿؀-ۿ一-鿿぀-ゟ゠-ヿ]+` inside a line whose remaining non-whitespace content is ≥50% ASCII alphanumerics. If a line contains inline RTL Hebrew/target-language characters next to ASCII English (rather than on its own line or inside quotes), block the rewrite and surface: *"The rewritten `[field]` has inline RTL content on line `[N]`. Per Compass rule 11, RTL must live on its own line or inside quotes — Unicode bidi marks tokenize to garbage when mixed inline with LTR. Adjust the line and confirm again."* User edits; Skill 1 re-checks. This mirror is **blocking** for the rewrite step only — if the user picks (b) and keeps the original (non-rewritten) content, the mirror does not fire.
+### Check 12 — Intent Description in the bot's primary language (v1.23.0; replaces Compass rule 4) — advisory
 
-### Check 12 — Intent description in English (Compass rule 4) — advisory
-
-**Trigger:** for each intent in section 4, inspect the `Description` field. If ≥30% of `Description` characters are non-Latin: fire.
+**Trigger:** for each intent in section 4 of a Hebrew bot, inspect the `Description`. Fire if it is ≥50% Latin letters.
 
 **Failure message:**
-> Intent `[identifier]`'s Description is ≥30% non-Latin characters. Per Compass rule 4, the Gemini function-calling layer is English-trained, and non-English tool descriptions degrade intent selection accuracy at runtime. The Display Name can stay in the target language (it's user-facing); the Description is consumed by the LLM. Would you like to:
->   (a) Rewrite the Description in English? *(Recommended)*
+> Intent `[identifier]`'s Description is in English, but this is a Hebrew bot. Since v1.23.0 Descriptions are written in the bot's primary language. Would you like to:
+>   (a) Rewrite the Description in Hebrew? *(Recommended)*
 >   (b) Keep as-is and continue.
 
 **Remediation:** if (a): draft and replace on confirmation. If (b): log to 7.3.
@@ -148,7 +146,7 @@ No user prompt required.
 
 ### Check 13 — Recency-slot language-lock guardrail (Compass rule 5) — advisory
 
-**Trigger:** apply only when section 1's `Primary Language` is not English. Inspect `prompts.intentInstructions` text. Apply the regex pattern `(?i)(infer|switch|change).*(language|לשון|לעבור)` OR `(?i)(name|accent|tone).*(language|לשון)`.
+**Trigger:** apply only when section 1's `Primary Language` is not English. Inspect `prompts.intentInstructions` text. Apply the regex pattern `(?i)(infer|switch|change).*(language|לשון|לעבור)` OR `(?i)(name|accent|tone).*(language|לשון)` OR (Hebrew, v1.23.0) `(תסיק|תחליף|להחליף|לשנות).*(שפה|השפה)` OR `(שם|מבטא|טון).*(שפה|השפה)` OR `(שפה|השפה).*(שם|מבטא|טון)`.
 
 - If a match exists and is located in the final third (≥66% of total character offset) of the text: pass; no warning.
 - If a match exists earlier in the text: warn — "the guardrail is present but not in the recency slot."
@@ -157,10 +155,10 @@ No user prompt required.
 **Failure message (no match case):**
 > The bot-level `prompts.intentInstructions` has no language-lock guardrail. Per Compass rule 5 and the cookbook #1197 production bug, Gemini Live can code-switch based on caller name/accent even with English-only instructions elsewhere in the prompt. The mitigation is a recency-slot constraint such as:
 >
->   `IRON: NEVER infer language from caller's name, accent, or tone. Speak only the bot's primary language.`
+>   `* לעולם אל תסיק את השפה מהשם, המבטא או הטון של המתקשר. דבר רק עברית.`
 >
-> (For a Hebrew bot, equivalent Hebrew text in its own line.) Would you like to:
->   (a) Append the standard guardrail at the end of `prompts.intentInstructions`? *(Recommended)*
+> (Written in the bot's primary language — the Hebrew line above for a Hebrew bot.) Would you like to:
+>   (a) Append the standard guardrail as the last bullet of the `#### 2.` flow section of `prompts.intentInstructions`? *(Recommended)*
 >   (b) Skip and continue.
 
 **Failure message (match-but-not-in-recency case):**

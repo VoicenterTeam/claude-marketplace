@@ -6,6 +6,62 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.23.0 — Voicenter models by default, Hebrew prompts, gendered persona
+
+Plugin `voicenter-bot-builder` 1.23.0 under marketplace 1.23.0. Emitted-output change (new
+default model and its wire shape; Hebrew `PersonaID`). Still 26 checks; CHK-10 and CHK-25
+extended. Both frozen goldens are byte-identical (the F1 fixture is an `en-US` Gemini bot).
+
+**Default model → Voicenter Voicebot - ElevenLabs** (`AIModelConfigID 390`, `AIModelTypeId 36`),
+replacing Gemini 3.1 - LLM driven (`142`). Verified from production export BotID 37437 v0.1.149,
+which showed the model uses a different wire shape, so Skill 3 now has two **wire families**:
+
+| | `gemini` (every pre-1.23 model) | `elevenlabs` |
+|---|---|---|
+| `AiModelConfig.AIModelConfig` | `{ "created": { "model": … } }` | `{}` |
+| Voice | `created…prebuiltVoiceConfig.voiceName` | `tts.speak.voice` (ElevenLabs voice ID) |
+| Version-level `created` | present | absent |
+| `recordAgentCalls` | string | boolean |
+
+Limit and layer fields stay on both. CHK-10 asserts the `elevenlabs` shape (not gated on 3.1).
+
+**Unverified models.** `387` Voicenter Voicebot - Gemini (Gemini 3.8) and `321` Voicenter
+Voicebot are catalogued with only their config ID. Selecting one halts Skill 3 with no JSON
+until a production export supplies the type ID and wire shape.
+
+**ElevenLabs voices.** Danit, Zina (female); Itay, Itamar, Nimrod, Gad Tamir, Herzl Ben,
+Dorian, Viktor M (male). No default voice — Skill 1 asks the gender and offers that gender's
+voices.
+
+**Gendered Hebrew persona.** `he` → `261` דובר עברית (Male, or no gender recorded) / `296`
+דוברת עברית (Female), from spec `**Agent Gender:**` — now asked on every bot, chat-only
+included. `244` (multilingual Hebrew speaker, the 1.22.0 row) is no longer emitted. CHK-25
+recomputes with the gender.
+
+**Always asked:** agent gender, voice, and call recording (recording lost its
+"No *(Recommended)*" default).
+
+**Hang-up terminals are always layer `666`** — set by Skill 1 without a prompt or an MCP
+lookup. Human-transfer terminals are unchanged.
+
+**Prompts in the bot's primary language.** A Hebrew bot is written in Hebrew — prose, section
+titles (new Hebrew title table in `prompt-structure.md`), and intent Descriptions — matching
+the production Voicenter bots. Compass rules 3 and 4 (English operational prose / English
+Descriptions) are retired; Skill 1 checks 11–12 now flag English on a Hebrew bot instead.
+Check 13's language-lock regex accepts Hebrew wording.
+
+**No Iron rules section.** The bot-level `intentInstructions` is now `# 1. <Context>` +
+`#### 2. <Conversation flow>`. Non-negotiables become `CRITICAL:` lines under their flow step;
+the language-lock line is the last flow bullet. (Skill-internal "Iron rule" authoring guards —
+rules Claude follows while building — are unchanged; this concerns the prompt text only.)
+
+**Harness.** `assemble.py` / `verify.py` implement both families and the gendered persona; new
+`examples/test-elevenlabs-regression.py` runs in CI.
+
+**Not in this release:** collecting several parameters in one intent (deferred).
+
+---
+
 ### 1.22.0 — the TTS persona follows the bot's language
 
 Plugin `voicenter-bot-builder` 1.22.0 under marketplace 1.22.0. Emitted-output change
