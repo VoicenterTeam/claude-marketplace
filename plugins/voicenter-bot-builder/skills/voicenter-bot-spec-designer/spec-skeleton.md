@@ -12,12 +12,12 @@
 **Account ID:** [int, or `<UNKNOWN: Account ID>`]
 **Primary Language:** [BCP-47 code, e.g., `he-IL`, `en-US`]
 **Channels Active:** [`voice` | `chat` | `voice+chat`]
-**Voice Name:** [voice name from catalog | raw string | omit if no voice channel]
-**Agent Gender:** [`Female` | `Male`; selection aid for the voice choice — omit if no voice channel. Spec metadata only; not emitted to the JSON.]
-**AI Model Config:** [name from catalog | `raw: ID=X, TypeID=Y` | `<UNKNOWN: AI Model Config>`]
+**Voice Name:** [wire value from the catalog for the model's voice family — an ElevenLabs **voice ID** (e.g. `s0T0DT6EAPeX57MQpn3I`) on the default model, a Gemini/OpenAI voice name otherwise | raw string | omit if no voice channel. No default — always chosen by the user.]
+**Agent Gender:** [`Female` | `Male`; asked on every bot (v1.23.0). Filters the voice list, sets grammatical gender, and for Hebrew bots selects the TTS persona Skill 3 emits (`Male` → `PersonaID 261`, `Female` → `296`). Not itself emitted to the JSON.]
+**AI Model Config:** [name from catalog — default `Voicenter Voicebot - ElevenLabs` (v1.23.0) | `raw: ID=X, TypeID=Y` | `<UNKNOWN: AI Model Config>`]
 **Created by:** [bot author/owner name | omit if not set; defaults to empty string at emission]
 **Max call duration:** [int seconds; default 1200]
-**Record agent calls:** [`true` | `false`; default false. Skill 3 emits the STRING form per production wire format.]
+**Record agent calls:** [`true` | `false`; always asked, no default (v1.23.0). Skill 3 emits a JSON boolean on the `elevenlabs` wire family and the STRING form on `gemini`, per production wire format.]
 **Daily limit:** [int; optional (v1.13.0), default 600 — emitted to `AIModelConfig.daily_limit`]
 **Daily limit layer:** [int layer ID; optional (v1.13.0), default 3 — emitted to `AIModelConfig.dailyLimitLayerId`]
 **Max duration layer:** [int layer ID; optional, default **0** (v1.14.0) — emitted to `AIModelConfig.maxDurationLayerId`. When the MCP is connected, Skill 1 asks the user which layer, offering the live layer list; with no MCP account, silently default 0.]
@@ -48,7 +48,7 @@
 
 ### 2.4 Bot-Level Intent Instructions (Opening Behavior)
 
-[intentInstructions text, Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — three sections: `# 1. Context`, `#### 2. Conversation flow`, `#### 3. Iron rules`. Pre-intent. Routing logic + iron rules; every non-negotiable written `CRITICAL:` and every routing target named as `**<tool_name>** — "<Description>"`. First numbered step of §2 handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it. v1.13.0 (FP-2/FP-4/FP-12): when the flow staggers off the opening, this section also carries the branch logic including any read-back and the next question the first flow intent will capture; any mandated spoken line uses the quote convention `<instruction text> : "<verbatim line>"`; whenever the flow collects a callback/scheduling time, include the FP-12 date/time interpretation block anchored on `{{todayHe}}`/`{{timeHe}}`.]
+[intentInstructions text, Markdown-structured per `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — two sections: `# 1. <Context>`, `#### 2. <Conversation flow>` — no Iron rules section (v1.23.0); headings and prose in the bot's primary language. Pre-intent. Routing logic; every non-negotiable written as a `CRITICAL:` line under its flow step, the language-lock line as the last flow bullet, and every routing target named as `**<tool_name>** — "<Description>"`. First numbered step of §2 handles the caller's answer to the §2.5 opening question; never re-greets or re-asks it. v1.13.0 (FP-2/FP-4/FP-12): when the flow staggers off the opening, this section also carries the branch logic including any read-back and the next question the first flow intent will capture; any mandated spoken line uses the quote convention `<instruction text> : "<verbatim line>"`; whenever the flow collects a callback/scheduling time, include the FP-12 date/time interpretation block anchored on `{{todayHe}}`/`{{timeHe}}`.]
 
 ### 2.5 Opening Announcement
 
@@ -73,7 +73,7 @@
 ### Intent 1: [snake_case_identifier]
 
 - **Display name:** [human-readable, often Hebrew]
-- **Description:** [short semantic English label naming the business step, e.g., "Verification of plan and premia" (v1.13.0, FP-10). This is the LLM's intent-recognition anchor AND the name other intents' instructions use for routing. NO stage/workflow markers ("Stage 2", "Gate C"), NO dialogue imperatives ("Ask…", "Read back…", "Explain…"), NO business logic — data points go to slot Descriptions, conversational content to announcement/instructions.]
+- **Description:** [short semantic label naming the business step, in the bot's primary language (v1.23.0), e.g., "אימות תוכנית ופרמיה" (v1.13.0, FP-10). This is the LLM's intent-recognition anchor AND the name other intents' instructions use for routing. NO stage/workflow markers ("Stage 2", "Gate C"), NO dialogue imperatives ("Ask…", "Read back…", "Explain…"), NO business logic — data points go to slot Descriptions, conversational content to announcement/instructions.]
 - **Tool name:** [same as identifier]
 - **Response Type:** [1 | 2 | 3 | 4]
 - **Purpose:** [one-line description for human review]

@@ -13,8 +13,8 @@
 - [1. Rule catalog](#1-rule-catalog)
   - [Rule 1 — Assembled-prompt token budget](#rule-1-assembled-prompt-token-budget)
   - [Rule 2 — Session-resumption ceiling](#rule-2-session-resumption-ceiling)
-  - [Rule 3 — English operational, target-language utterances](#rule-3-english-operational-target-language-utterances)
-  - [Rule 4 — Intent description in English](#rule-4-intent-description-in-english)
+  - [Rule 3 — English operational (retired v1.23.0)](#rule-3--english-operational-target-language-utterances--retired-v1230)
+  - [Rule 4 — Intent description in English (retired v1.23.0)](#rule-4--intent-description-in-english--retired-v1230)
   - [Rule 5 — Recency-slot language-lock guardrail](#rule-5-recency-slot-language-lock-guardrail)
   - [Rule 6 — Contradictory pacing/length](#rule-6-contradictory-pacinglength)
   - [Rule 7 — Generic-policy boilerplate](#rule-7-generic-policy-boilerplate)
@@ -58,7 +58,12 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 **Why:** above ~200 tok, `sessionResumption.handle` silently breaks on Gemini Live 3.1 native-audio sessions. The only mitigation is a stateless prompt + injected per-session summary.
 **Fix recipe:** drop the cross-session continuity requirement, OR use a stateless prompt design with per-session summary injection (out of scope for the bot-builder; warn only).
 
-### Rule 3 — English operational, target-language utterances
+### Rule 3 — English operational, target-language utterances — RETIRED (v1.23.0)
+
+> **Retired in v1.23.0.** Prompt prose is now written in the bot's primary language
+> (`prompt-structure.md` rule 6), matching the production Voicenter bots. Skill 1 check 11 now
+> fires the other way — on English prose in a Hebrew bot. The original rule is kept below for
+> history only; do not apply it.
 
 **Source:** Compass §4 (Hebrew tokenizes catastrophically, ~3× tax; "Token Tax" arXiv 2509.05486).
 **Applies to:** `prompts.persona`, `prompts.voiceInstructions`, `prompts.intentInstructions` (bot-level) text body.
@@ -68,7 +73,10 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 **Detection heuristic:** for each prompt field, count characters in non-Latin scripts (Hebrew U+0590-U+05FF, Arabic U+0600-U+06FF, CJK ranges). If ≥30% of the field's character count is non-Latin AND the bot's primary language is non-English: fire advisory.
 **Fix recipe:** offer to rewrite operational prose in English while preserving Hebrew/target-language quoted utterances in their own lines or inside quote marks. User opts in; rewrite is shown for confirmation before applied. After the user confirms the English rewrite, run the rule 11 (Hebrew-utterance isolation) check on the rewritten field as a mirror — the rewrite may have left inline RTL content mixed with new English prose.
 
-### Rule 4 — Intent description in English
+### Rule 4 — Intent description in English — RETIRED (v1.23.0)
+
+> **Retired in v1.23.0.** Intent Descriptions are written in the bot's primary language. Skill 1
+> check 12 now fires on an English Description in a Hebrew bot. Kept below for history only.
 
 **Source:** Compass §4 ("tool descriptions stay in English — function-calling layer is English-trained and Hebrew tool descriptions degrade selection accuracy").
 **Applies to:** every section 4 intent's `Description` field.
@@ -153,8 +161,8 @@ Gating legend: `[GL3.1]` = applies only when spec section 1 declares `AIModelCon
 ### Rule 11 — Hebrew-utterance isolation
 
 **Source:** Compass §4 "Sanity rule: never inject RTL Hebrew strings into the middle of an LTR English instruction line."
-**Applies to:** per-intent `validationPrompt`, per-intent `announcement`, per-intent post-execution `intentInstructions`. Mirror runs on Skill 1 bot-level fields when the user accepted a rule-3 English rewrite.
-**Owning skill:** Skill 2 (primary; new iron rule wired into §4.2/§4.3/§4.4). Skill 1 (mirror runs only on fields the user accepted an English rewrite for, in §5 check 11).
+**Applies to:** per-intent `validationPrompt`, per-intent `announcement`, per-intent post-execution `intentInstructions`. Since v1.23.0 prose is in the bot's language, so on a Hebrew bot the rule only bites a line that is mostly English (≥50% ASCII) with Hebrew inlined — typically a pasted English fragment. The Skill 1 mirror is retired with rule 3.
+**Owning skill:** Skill 2 (iron rule wired into §4.2/§4.3/§4.4).
 **Severity:** **blocking**.
 **Gating:** `[any; bites Hebrew especially]`.
 **Detection method:** regex `[֐-׿؀-ۿ一-鿿぀-ゟ゠-ヿ]+` inside a line whose remaining non-whitespace content is ≥50% ASCII alphanumerics. Detection per line; the line is the unit.

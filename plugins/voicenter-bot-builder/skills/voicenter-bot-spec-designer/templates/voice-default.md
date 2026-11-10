@@ -7,6 +7,8 @@ spec **§7.7 Prompt provenance** instead (v1.20.2 — see the note below).
 
 The body follows the Markdown shape in `${CLAUDE_PLUGIN_ROOT}/references/prompt-structure.md` — `voiceInstructions` carries sections 1–4 and no Global directives block.
 
+**Language (v1.23.0):** the template below is written in English as the canonical shape. For a bot whose primary language is not English, Skill 1 writes the body **in the bot's primary language** — same sections, same rules, section titles from the Hebrew title table in `prompt-structure.md` §3 for a Hebrew bot — and shows that translated body to the user for acceptance.
+
 Skill 1 substitutes `[[PLACEHOLDERS]]` at write time. Bracketed `[[...]]` is build-time substitution syntax — distinct from runtime Mustache `{{...}}` to avoid collision.
 
 > **Section 2.2's body is runtime prompt content.** Skill 3 copies it verbatim into

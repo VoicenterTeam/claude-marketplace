@@ -40,7 +40,7 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 
 **`AccountID` is user-supplied** (spec section 1) or `-999` sentinel if `<UNKNOWN: Account ID>`. Used at the bot top-level wrapper AND echoed into each `intents[].AccountId` and `intentCategories[].AccountId` (production pattern — v1.5.0).
 
-**`AIModelConfigID` and `AIModel` (= `AIModelTypeId`) come from the model catalog** (`model-catalog.md`) per the spec section 1 entry. Skill 3 looks both up at emission time. `-999` sentinels if catalog has TODO or spec marks unknown.
+**`AIModelConfigID` and `AIModel` (= `AIModelTypeId`) come from the model catalog** (`model-catalog.md`) per the spec section 1 entry. Skill 3 looks both up at emission time. `-999` sentinels if the spec marks the model unknown. **A catalog entry marked UNVERIFIED (v1.23.0 — `387` Voicenter Voicebot - Gemini, `321` Voicenter Voicebot) is a blocking HALT, not a sentinel:** its `AIModelTypeId` and wire shape are unknown, so no JSON is emitted (`sentinels-and-banner.md` — unverified model). The entry's **wire family** (`gemini` | `elevenlabs`) selects the shape of §4.2.3–§4.2.4.
 
 **Allocation procedure:**
 
@@ -92,7 +92,7 @@ Emit fields in this order (matches production — v1.5.0):
 | 8 | `VersionNumber` | `"0.0.1"` (per Doc 1 §5; v1 always emits this) |
 | 9 | `AIModelConfigId` | Same value as `<root>.AiModelConfig.AIModelConfigID` (mirror) |
 | 10 | `BotVersionStatusId` | `3` (per Doc 1 §5) |
-| 11 | `PersonaID` | **Added per the `ImportBotFromJSON` contract (`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it **derives** the value from the spec's `**Primary Language:**` per Appendix D.12 — `he` → `244`, `en` → `249`, `ru` → `252`, `ar` → `255`, all shared `AccountId=0` rows. Match on the BCP-47 **primary subtag only** (the text before the first `-`), case-insensitively, so `he-IL`, `he` and `HE-il` all resolve to `244`. **A primary language outside that table is a HALT, not a default** — emit the blocking banner in `sentinels-and-banner.md` and stop; never substitute a fallback row, because a silently-wrong FK is the exact failure this rule was rewritten (v1.22.0) to remove. Banner DEFAULTS APPLIED note on every emission, naming the language that produced the id. Verified by CHK-25, which recomputes the derivation. **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
+| 11 | `PersonaID` | **Added per the `ImportBotFromJSON` contract (`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7).** `Persona` is a `bigint NOT NULL` FK on `BotVersion`; a missing/null value makes the proc fall back to the first `Persona` row with `AccountId=0` — if that row doesn't exist on the target server, step 3 fails and produces exactly the "Bot with intents but no BotVersion" symptom this contract exists to prevent. Skill 3 does not rely on the implicit fallback: it **derives** the value from the spec's `**Primary Language:**` per Appendix D.12 — `he` → `261` (Male) / `296` (Female) from `**Agent Gender:**` (v1.23.0), `en` → `249`, `ru` → `252`, `ar` → `255`, all shared `AccountId=0` rows. Match on the BCP-47 **primary subtag only** (the text before the first `-`), case-insensitively, so `he-IL`, `he` and `HE-il` are all Hebrew. **A primary language outside that table is a HALT, not a default** — emit the blocking banner in `sentinels-and-banner.md` and stop; never substitute a fallback row, because a silently-wrong FK is the exact failure this rule was rewritten (v1.22.0) to remove. Banner DEFAULTS APPLIED note on every emission, naming the language (and, for Hebrew, the gender) that produced the id. Verified by CHK-25, which recomputes the derivation. **Position unverified against a golden production export** (no golden export captured to date includes this field) — Skill 3 appends it as the last key rather than asserting a production-observed slot; re-verify the position once a real export with `PersonaID` is available. |
 
 **v1.5.0 wire-format correction.** Field order revised to match production. Prior baseline had `BotVersionId` first; production has `IsActive` first.
 
@@ -114,7 +114,7 @@ Emit fields in this order:
 | 6 | `ModifiedBy` | `null` |
 | 7 | `CreatedDate` | ISO timestamp at assembly time |
 | 8 | `ModifiedDate` | ISO timestamp at assembly time |
-| 9 | `AIModelConfig` | **Nested object (capital I, distinct from the lowercase-i parent name)** containing only `{ "created": { "model": "<provider model string from model-catalog.md>" } }` |
+| 9 | `AIModelConfig` | **Nested object (capital I, distinct from the lowercase-i parent name).** `gemini` family: containing only `{ "created": { "model": "<provider model string from model-catalog.md>" } }`. **`elevenlabs` family (v1.23.0): the empty object `{}`** — production export BotID 37437 v0.1.149. |
 | 10 | `AIModelConfigID` | From `model-catalog.md` entry (e.g., `139`); `-999` sentinel if `<UNKNOWN>` |
 
 **v1.5.0 fields removed from the prior baseline:** `Description`, `BaseUrl`, `Type` object, `AIModelTypeId` (the integer was kept but renamed to `AIModel` per production), full `created` payload (lives in the version-level object now).
@@ -133,15 +133,19 @@ Emit fields in this order:
 | 6 | `max_duration_sentence` | Spec section 1 `**Max duration sentence:**`; default (production-derived, v1.14.0 — verbatim incl. trailing space): `"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "` |
 | 7 | `IVRLayerSelect_2` | Spec section 1 `**IVRLayerSelect_2:**` (integer; default `3`) — v1.13.0 |
 | 8 | `prompts` | §4.2.4 below |
-| 9 | `recordAgentCalls` | Spec section 1 `**Record agent calls:**` emitted as the **STRING** `"false"` / `"true"` (production format — not a JSON boolean) |
+| 9 | `recordAgentCalls` | Spec section 1 `**Record agent calls:**`. `gemini` family: the **STRING** `"false"` / `"true"`. **`elevenlabs` family: a JSON boolean** `false` / `true` (v1.23.0). Both are the production format for their family. |
 | 10 | `silence_behaviour` | §4.2.5 below; omitted entirely if spec section 3 is `[not configured]` |
-| 11 | `created` | §4.2.4 below (the lean payload — voice + realtime input only) |
+| 11 | `created` | §4.2.4 below (the lean payload — voice + realtime input only). **`gemini` family only — omitted on `elevenlabs`.** |
+
+**`elevenlabs` family (v1.23.0, production export BotID 37437 v0.1.149).** Same fields, with three differences: no `created` (row 11); a `tts` object inserted **immediately after `prompts`** (row 8), carrying the voice — `"tts": { "speak": { "voice": "<spec section 1 **Voice Name:** — an ElevenLabs voice ID>" } }`, emitted only when the voice channel is active; and `recordAgentCalls` as a boolean (row 9). The limit and layer fields (rows 1–7) are **still emitted** — the reference export happened to omit them, but they are kept so the version carries explicit limits.
 
 **v1.5.0 fields removed from the prior baseline:** `tools: []` and `instructions: ""` at this level (production does not carry them). Reorder to match production.
 
 **v1.13.0 fields added (golden export `בוט שיקוף – קבוצת קלי v0.0.17`):** `daily_limit`, `dailyLimitLayerId`, `maxDurationLayerId`, `daily_limit_sentence`, `max_duration_sentence`, `IVRLayerSelect_2` — all siblings of `max_duration` at this level (NOT inside `created`). When a default is applied (spec field absent), list it in the banner's DEFAULTS APPLIED section. Layer-target defaults are split since v1.14.0: `dailyLimitLayerId` and `IVRLayerSelect_2` stay at the golden-derived `3`; `maxDurationLayerId` defaults to `0` and is user-chosen via the MCP layer list when connected (Skill 1 step 13). All are account-specific — the banner note lets the operator re-check them post-import.
 
 #### 4.2.4 The `created` payload (lean) and `prompts` bundle
+
+**`gemini` family only.** On the `elevenlabs` family there is no `created` payload at either level — the voice goes to `tts.speak.voice` (§4.2.3).
 
 **`created` payload at the version level** (`ActiveVersionInfo.AIModelConfig.created`) — v1.5.0 lean shape:
 
@@ -574,7 +578,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 14 | `llmDescription: ""` | Per intent (`IntentConfig.prompts`) | Emit empty string. |
 | 15 | `IntentResponces.IsActive: 1` | Inside every `IntentResponces` | Emit `IsActive: 1` as the **first** key inside `IntentResponces`, before `ResponseTypeId` and `Configuration` (applies to RT=1, RT=2, RT=3, RT=4 uniformly). The platform's `ImportBotFromJSON` procedure reads `IntentResponces.IsActive` for the per-intent active flag. **v1.5.0 update:** intent-root `IsActive: 1` and intent-root `AccountId: <bot AccountID>` ARE emitted (restored from production observation; the prior v1.4.1 "anti-quirk" wording was incomplete). Intent-root `IsDeleted` remains NOT emitted (production doesn't have it). The platform reads `IntentResponces.IsActive` for the per-intent active flag (unchanged); the intent-root `IsActive` is for audit/UI display. |
 | 16 | Nested `AIModelConfig` (capital I) inside top-level `AiModelConfig` (lowercase i) | `<root>.AiModelConfig.AIModelConfig` | The top-level object is named `AiModelConfig` (lowercase `i`); it contains a nested object named `AIModelConfig` (capital `I`). These are two distinct fields at two levels — the outer wrapper and the inner config blob. Do not collapse them into one. See §4.2.3. |
-| 17 | `recordAgentCalls` emitted as **string** `"false"` / `"true"` | `ActiveVersionInfo.AIModelConfig.recordAgentCalls` | Not a JSON boolean — emitted as the string literal `"false"` or `"true"`. Source is spec section 1 `**Record agent calls:**`. Default is `"false"`. |
+| 17 | `recordAgentCalls` emitted as **string** `"false"` / `"true"` — `gemini` family | `ActiveVersionInfo.AIModelConfig.recordAgentCalls` | On the `gemini` family, not a JSON boolean — emitted as the string literal `"false"` or `"true"`. On the `elevenlabs` family (v1.23.0) it **is** a JSON boolean. Source is spec section 1 `**Record agent calls:**`, always asked by Skill 1. |
 | 18 | `realtimeInputConfig.automaticActivityDetection.disabled` emitted as **string** `"true"` | `ActiveVersionInfo.AIModelConfig.created.realtimeInputConfig.automaticActivityDetection.disabled` | Not a JSON boolean — emitted as the string literal `"true"`. Production constant for Gemini 3.1 Voice driven. |
 | 19 | `IntentParameters[].ModifiedBy: " "` (single space literal) | Per parameter, `ModifiedBy` field | Emit a single space character `" "` — not `null`, not `""`, not `"SYSTEM"`. Production constant for every parameter row. |
 | (extra) | `response_success` → object `{ "instructions": "<string>" }` | RT=1 + RT=2 + RT=3 `Configuration` | **CORRECTED in v1.5.0** — was documented as bare empty string `""`. Production shows object shape across all RTs; see §4.4 RT-specific tables. Empty inner string (`{ "instructions": "" }`) is the common production value. |
@@ -583,7 +587,7 @@ All quirks below (rows 2, 5, 6, 7 marked REMOVED/CORRECTED in v1.5.0; rows 20–
 | 22 | Version-level limit/layer fields (v1.13.0) | `ActiveVersionInfo.AIModelConfig` | Emit `daily_limit`, `dailyLimitLayerId`, `maxDurationLayerId`, `daily_limit_sentence`, `max_duration_sentence`, `IVRLayerSelect_2` per §4.2.3 (siblings of `max_duration`, NOT inside `created`). |
 | 23 | RT=3 `Configuration.intentLoadingAnnouncement` (v1.13.0) | Per RT=3 intent | Always emitted, non-empty (Skill 2 check 12 upstream; CHK-17 backstop). |
 | 24 | RT=1 `Configuration` carries NO `announcement` key (v1.14.0) | Per RT=1 intent | Emit only `layer` + `intentLoadingAnnouncement`. The farewell lives in the predecessor's `intentInstructions` (FP-8; check 20). |
-| 25 | `ActiveVersionInfo.PersonaID` | `ActiveVersionInfo` | Emit the shared persona id **derived from the spec's `Primary Language`** per §4.2.2 row 11 and Appendix D.12 (`he`→244, `en`→249, `ru`→252, `ar`→255). Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). Never emit a hardcoded id either: an unmapped primary language HALTS. |
+| 25 | `ActiveVersionInfo.PersonaID` | `ActiveVersionInfo` | Emit the shared persona id **derived from the spec's `Primary Language`** per §4.2.2 row 11 and Appendix D.12 (`he`→261 Male / 296 Female, `en`→249, `ru`→252, `ar`→255). Never omit and never emit `null` — the proc's implicit "first `AccountId=0` Persona" fallback is exactly the failure mode `voicebot-json-contract.md` R7 warns about (a Bot with intents but no BotVersion if that fallback row is ever removed). Never emit a hardcoded id either: an unmapped primary language HALTS. |
 
 The "extra" row is from Doc 1 §16's footnote (`response_success` observed but role unclear; preserve from baseline). Skill 3 treats it identically to the 18 numbered quirks.
 
@@ -727,35 +731,39 @@ The full set of catalog-eligible default models. See `model-catalog.md` for the 
 | 136 | 16 | Public Gemini voice driven | active |
 | 139 | 18 | Gemini 3.1 - Voice driven | active |
 | 142 | 21 | Gemini 3.1 - LLM driven | active |
+| 390 | 36 | Voicenter Voicebot - ElevenLabs | active — **default since v1.23.0** |
+| 387 | unknown | Voicenter Voicebot - Gemini (Gemini 3.8) | UNVERIFIED — Skill 3 halts |
+| 321 | unknown | Voicenter Voicebot | UNVERIFIED — Skill 3 halts |
 | 4 | 4 | Public GPT-3.5 Standard | inactive |
 | 7 | 7 | Public PaLM Standard | inactive |
 
 Skill 3 emits one of the active rows per the catalog mapping; the matching `AIModelTypeId` is the row's `AIModel` FK. When the user picks "Gemini Live" in Skill 1, the catalog resolves to row **139** (the active Gemini 3.1 Voice driven default).
 
-**Known gap.** `voicebot-json-contract.md` R11's live FK whitelist (2026-08-10 snapshot) additionally lists `AIModelConfigID` **303, 312, 321** as valid shared (`AccountId=0`) rows — three IDs not yet in the table above or in `model-catalog.md`. Their `Name`/`AIModelTypeId`/active status haven't been captured from a `Data.sql` dump, so Skill 3 does not fabricate rows for them: they're unusable as Skill 1 catalog choices until someone with DB access adds real entries to both this table and `model-catalog.md`. Not a defect in existing output — a coverage gap flagged for follow-up.
+**Known gap.** `voicebot-json-contract.md` R11's live FK whitelist (2026-08-10 snapshot) additionally lists `AIModelConfigID` **303, 312, 321** as valid shared (`AccountId=0`) rows — three IDs not yet in the table above or in `model-catalog.md` (v1.23.0: `321` is now catalogued as "Voicenter Voicebot", still UNVERIFIED). Their `Name`/`AIModelTypeId`/active status haven't been captured from a `Data.sql` dump, so Skill 3 does not fabricate rows for them: they're unusable as Skill 1 catalog choices until someone with DB access adds real entries to both this table and `model-catalog.md`. Not a defect in existing output — a coverage gap flagged for follow-up.
 
 ### D.12 `PersonaID` (`ActiveVersionInfo.PersonaID`)
 
 Per `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` R7/R11. `Persona.PersonaID` is a `bigint NOT NULL` FK on `BotVersion`, and the row selects the **TTS voice** that renders the bot's speech. It is therefore language-bound: the correct row is a function of what language the bot speaks.
 
-Skill 3 derives it from the spec's `**Primary Language:**` (section 1, already required — no separate interview question). All rows below are shared templates (`AccountId=0`) present on every server.
+Skill 3 derives it from the spec's `**Primary Language:**` (section 1, already required — no separate interview question) and, **for Hebrew, from `**Agent Gender:**`** (v1.23.0). All rows below are shared templates (`AccountId=0`) present on every server.
 
-| Primary subtag | ID | Row | Also renders |
+| Primary subtag | Agent Gender | ID | Row |
 |---|---|---|---|
-| `he` | **244** | Hebrew speaker | English, Russian, Arabic |
-| `en` | **249** | English speaker | Hebrew, Russian, Arabic |
-| `ru` | **252** | Russian speaker | Hebrew, English, Arabic |
-| `ar` | **255** | Arabic speaker | Hebrew, English, Arabic |
+| `he` | `Male` (or absent) | **261** | דובר עברית — Hebrew speaker, male |
+| `he` | `Female` | **296** | דוברת עברית — Hebrew speaker, female |
+| `en` | any | **249** | English speaker (also renders Hebrew, Russian, Arabic) |
+| `ru` | any | **252** | Russian speaker (also renders Hebrew, English, Arabic) |
+| `ar` | any | **255** | Arabic speaker (also renders Hebrew, English, Arabic) |
 
-**Matching rule.** Compare the **primary subtag only** — the text before the first `-` in the BCP-47 code — case-insensitively. `he-IL`, `he` and `HE-il` all resolve to `244`; `en-US`, `en-GB` and `en-AU` all resolve to `249`. Do not attempt region-specific rows; none exist.
+**Matching rule.** Compare the **primary subtag only** — the text before the first `-` in the BCP-47 code — case-insensitively. `he-IL`, `he` and `HE-il` are all Hebrew; `en-US`, `en-GB` and `en-AU` all resolve to `249`. Do not attempt region-specific rows; none exist. Gender is matched case-insensitively; a Hebrew spec without `**Agent Gender:**` (pre-v1.23.0 specs) resolves to `261` and the banner says so.
 
 **Unmapped language HALTS.** If the primary subtag is not in the table, stop assembly and emit the blocking banner (`sentinels-and-banner.md`). Do **not** substitute any other row. Prior to v1.22.0 this field was a flat constant `3`, which shipped every non-script-reader bot with the wrong TTS voice and no signal that anything was wrong — a silent default is what caused that, so the halt is deliberate.
 
-**Known shared rows that v1 never emits** — documented so the ids are not reused by accident, and so a later revision doesn't have to rediscover them:
+**Known shared rows that are never emitted** — documented so the ids are not reused by accident:
 
 | ID | Row | Why not emitted |
 |---|---|---|
 | 3 | TTSScriptReader | Script-reader voice, not a conversational persona. The pre-v1.22.0 default; kept out of the mapping so it cannot be reintroduced as a silent fallback. |
-| 261 | Hebrew only | Monolingual Hebrew variant. Not used: v1 standardises on the multilingual family, which renders the same Hebrew output while degrading gracefully if the model code-switches (Gemini #1197). |
+| 244 | Hebrew speaker (multilingual) | The Hebrew row in v1.22.0. Replaced in v1.23.0 by the gendered `261` / `296` pair, which production Hebrew bots use (BotID 37437 carries `261`). |
 
 The `Persona` table holds further rows in the gaps between these ids that have not been captured from a DB dump. Do not invent names or ids for them — extend this table only from verified rows. CHK-25 recomputes the derivation and fails on any mismatch.

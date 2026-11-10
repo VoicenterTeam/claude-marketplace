@@ -95,7 +95,7 @@ Iron rule: if section 4 declared a slot type that mismatches its purpose (e.g., 
 
 ### Step 2 — `validationPrompt` authoring
 
-**Doctrine (v1.13.0, FP-5 — this step was inverted; see `references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language. English operational prose is recommended; target-language text appears only as a quoted VALUE being saved.
+**Doctrine (v1.13.0, FP-5 — this step was inverted; see `references/field-placement-doctrine.md`):** the `validationPrompt` is consumed ONLY by the **Intent Agent** — the parameter-extraction/validation layer. It is never spoken and never forwarded to the live voice model. Anything written here that was meant to be spoken **will not be spoken** (verified production behavior). Its content is therefore a **capture mapping**: 1–3 short bullet lines, one per outcome or slot, in save/capture/set language, written in the bot's primary language (v1.23.0 — Hebrew bot ⇒ Hebrew; the former English recommendation is retired).
 
 Golden example (verbatim style):
 
@@ -387,3 +387,8 @@ See the reference docs for detection methods and fix recipes.
 
 - [voicenter-bot-spec-designer](../voicenter-bot-spec-designer/README.md) — Skill 1; provides the structural skeleton Skill 2 fills.
 - [voicenter-bot-json-assembler](../voicenter-bot-json-assembler/README.md) — Skill 3; runs after every intent is `[detailed]` to emit the wire-format JSON.
+
+## v1.23.0 changes
+
+- **Every field Skill 2 writes is in the bot's primary language** — spoken lines, post-execution `intentInstructions`, and the `validationPrompt` capture mapping (`# 1. מיפוי שמירה` on a Hebrew bot). Only tool names and `{{variables}}` stay ASCII. The style guide's English pattern examples now show the *shape*; on a Hebrew bot the same shape is written in Hebrew. Rule 11 (Hebrew-utterance isolation) still applies, but on a Hebrew bot it only bites a mostly-English line with Hebrew inlined.
+- Section titles follow the Hebrew title table in `references/prompt-structure.md` §3.

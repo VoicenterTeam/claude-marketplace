@@ -50,10 +50,11 @@ NAMES = {
     26: "Layer fields are integers (contract §2 Types)",
 }
 
-# Appendix D.12 — the only known shared Persona row (AccountId=0).
-# Known shared rows that v1 never emits — 3 (TTSScriptReader) was the flat default
-# through v1.21.0 and is the likeliest regression value; 261 is the Hebrew-only row.
-PERSONA_NEVER_EMITTED = {3: "TTSScriptReader", 261: "Hebrew-only"}
+# Appendix D.12 — known shared Persona rows (AccountId=0) that are never emitted.
+# 3 (TTSScriptReader) was the flat default through v1.21.0 and is the likeliest
+# regression value; 244 (multilingual Hebrew speaker) was the Hebrew row through
+# v1.22.0, replaced in v1.23.0 by the gendered 261 / 296 pair.
+PERSONA_NEVER_EMITTED = {3: "TTSScriptReader", 244: "multilingual Hebrew speaker (pre-v1.23.0)"}
 
 # A line that is wholly wrapped in parentheses is context, not a speech obligation.
 PAREN_LINE = re.compile(r"^\(.*\)$", re.S)
@@ -341,7 +342,9 @@ def run(spec, bot):
                      f"({type(cfg['NEXT_VO_ID']).__name__}) — must be a JSON integer")
 
     # 8/9 token estimate (§6.2 check 8 specifics)
-    gated = bot["AiModelConfig"]["AIModelConfig"]["created"]["model"] == "models/gemini-3.1-flash-live-preview"
+    top_created = bot["AiModelConfig"]["AIModelConfig"].get("created", {})
+    gated = top_created.get("model") == "models/gemini-3.1-flash-live-preview"
+    vac = bot["ActiveVersionInfo"]["AIModelConfig"]
     txt = pr["persona"] + pr["voiceInstructions"] + pr["intentInstructions"]
     for i in ints:
         txt += i["IntentConfig"]["prompts"]["validationPrompt"]
@@ -352,6 +355,24 @@ def run(spec, bot):
     tok = int(tok + 0.999)
     if gated and tok >= 5000:
         fail(8, f"token estimate {tok} >= 5000 enforcement ceiling")
+
+    # 10 model-config doctrine, ElevenLabs family (v1.23.0) — not [GL3.1]-gated.
+    # Shape from production export BotID 37437 v0.1.149.
+    mname = bot["AiModelConfig"].get("Name")
+    mc = A.MODEL_CATALOG.get(mname, {})
+    if mc.get("family") == "elevenlabs":
+        if bot["AiModelConfig"]["AIModelConfig"] != {}:
+            fail(10, "ElevenLabs: AiModelConfig.AIModelConfig must be an empty object")
+        if "created" in vac:
+            fail(10, "ElevenLabs: version-level `created` present — ElevenLabs carries `tts` instead")
+        if "voice" in spec["identity"].get("Channels Active", ""):
+            voice = vac.get("tts", {}).get("speak", {}).get("voice")
+            if not voice:
+                fail(10, "ElevenLabs: tts.speak.voice missing on a voice bot")
+            elif voice != spec["identity"].get("Voice Name"):
+                fail(10, f"ElevenLabs: tts.speak.voice {voice!r} != spec Voice Name")
+        if not isinstance(vac.get("recordAgentCalls"), bool):
+            fail(10, "ElevenLabs: recordAgentCalls must be a JSON boolean")
 
     # 10 model-config doctrine (inverted — dropped fields must be absent)
     if gated:
@@ -372,7 +393,8 @@ def run(spec, bot):
     else:
         lang = spec["identity"].get("Primary Language") or ""
         subtag = lang.split("-")[0].strip().lower()
-        expected = A.PERSONA_BY_LANG.get(subtag)
+        expected = (A.persona_id(lang, spec["identity"].get("Agent Gender"))
+                    if subtag in A.PERSONA_BY_LANG else None)
         pid = bot["ActiveVersionInfo"].get("PersonaID")
         if expected is None:
             fail(25, f"primary language {lang!r} (subtag {subtag!r}) has no Persona row in "

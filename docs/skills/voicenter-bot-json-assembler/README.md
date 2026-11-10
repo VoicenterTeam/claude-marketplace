@@ -129,12 +129,13 @@ The row selects the **TTS voice that renders the bot's speech**, so it is langua
 
 | Primary subtag | `PersonaID` | Row | Also renders |
 |---|---|---|---|
-| `he` | 244 | Hebrew speaker | English, Russian, Arabic |
+| `he` + `Agent Gender: Male` (or absent) | 261 | דובר עברית — Hebrew speaker, male (v1.23.0) | — |
+| `he` + `Agent Gender: Female` | 296 | דוברת עברית — Hebrew speaker, female (v1.23.0) | — |
 | `en` | 249 | English speaker | Hebrew, Russian, Arabic |
 | `ru` | 252 | Russian speaker | Hebrew, English, Arabic |
 | `ar` | 255 | Arabic speaker | Hebrew, English, Arabic |
 
-So `he-IL` → 244 and `en-US`/`en-GB` → 249; there are no region-specific rows. Every emission is banner-noted under DEFAULTS APPLIED, naming the language that produced the id.
+So `he-IL` → 261 (male) or 296 (female) and `en-US`/`en-GB` → 249; there are no region-specific rows. `244` (multilingual Hebrew speaker) was the Hebrew row through v1.22.0 and is no longer emitted. Every emission is banner-noted under DEFAULTS APPLIED, naming the language (and, for Hebrew, the gender) that produced the id.
 
 **A primary language outside that table halts assembly.** No JSON is emitted and no fallback row is substituted — see the blocking-halt banner in `stages/sentinels-and-banner.md`. The reason is that a wrong-but-valid `PersonaID` imports perfectly cleanly and yields a bot speaking in the wrong voice, which no post-import check would surface. The operator either changes the spec's primary language or supplies a verified `Persona` row for that language.
 
@@ -149,7 +150,7 @@ No golden production export has been captured with this field yet, so its positi
 - **Top-level `AiModelConfig.AIModelConfig.created`** — lean: `{ "model": "<provider model string>" }` only.
 - **Version-level `ActiveVersionInfo.AIModelConfig.created`** — lean: `realtimeInputConfig` + voice `generationConfig` only (no temperature, topP, topK, responseModalities, systemInstruction, tools — all dropped in v1.5.0).
 
-**Version-level `ActiveVersionInfo.AIModelConfig` fields (v1.5.0, extended v1.13.0):** `max_duration` (spec section 1 `**Max call duration:**`, default 1200), `daily_limit` (spec section 1 `**Daily limit:**`, integer, default 600 — v1.13.0 golden-export field), `dailyLimitLayerId` (spec section 1 `**Daily limit layer:**`, integer layer ID, default 3 — v1.13.0), `maxDurationLayerId` (spec section 1 `**Max duration layer:**`, integer layer ID, **default `0` — v1.14.0, was 3**; Skill 1 asks via the MCP layer list when connected), `daily_limit_sentence` (spec section 1 `**Daily limit sentence:**`; production-derived default `"Sorry, but reached daily limit of calls duration, please try again later or contact the copany's support"` — v1.13.0), `max_duration_sentence` (spec section 1 `**Max duration sentence:**`; production-derived default **`"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "`** — v1.14.0, verbatim including the trailing space; replaces the v1.13.0 English string), `IVRLayerSelect_2` (spec section 1 `**IVRLayerSelect_2:**`, integer, default 3 — v1.13.0), `prompts` (five-field bundle), `recordAgentCalls` (spec section 1 `**Record agent calls:**` emitted as STRING `"false"`/`"true"`), `silence_behaviour` (conditional on section 3; **v1.8.0:** carries a structural `intent` failover as its first key — the resolved `IntentId` to jump to on caller-silence exhaustion, defaulting to the transfer-to-human global; the bot-level analogue of `api_silence_behaviour.intent`), `created` (lean payload above). Fields `tools: []` and `instructions: ""` removed from this level.
+**Version-level `ActiveVersionInfo.AIModelConfig` fields (v1.5.0, extended v1.13.0):** `max_duration` (spec section 1 `**Max call duration:**`, default 1200), `daily_limit` (spec section 1 `**Daily limit:**`, integer, default 600 — v1.13.0 golden-export field), `dailyLimitLayerId` (spec section 1 `**Daily limit layer:**`, integer layer ID, default 3 — v1.13.0), `maxDurationLayerId` (spec section 1 `**Max duration layer:**`, integer layer ID, **default `0` — v1.14.0, was 3**; Skill 1 asks via the MCP layer list when connected), `daily_limit_sentence` (spec section 1 `**Daily limit sentence:**`; production-derived default `"Sorry, but reached daily limit of calls duration, please try again later or contact the copany's support"` — v1.13.0), `max_duration_sentence` (spec section 1 `**Max duration sentence:**`; production-derived default **`"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "`** — v1.14.0, verbatim including the trailing space; replaces the v1.13.0 English string), `IVRLayerSelect_2` (spec section 1 `**IVRLayerSelect_2:**`, integer, default 3 — v1.13.0), `prompts` (five-field bundle), `recordAgentCalls` (spec section 1 `**Record agent calls:**` emitted as STRING `"false"`/`"true"` on the `gemini` family, as a JSON boolean on `elevenlabs` — v1.23.0), `silence_behaviour` (conditional on section 3; **v1.8.0:** carries a structural `intent` failover as its first key — the resolved `IntentId` to jump to on caller-silence exhaustion, defaulting to the transfer-to-human global; the bot-level analogue of `api_silence_behaviour.intent`), `created` (lean payload above). Fields `tools: []` and `instructions: ""` removed from this level.
 
 **v1.13.0 fields added (golden export `בוט שיקוף – קבוצת קלי v0.0.17`):** the six limit/layer fields above are all **siblings of `max_duration`** at this level — NOT inside `created`. When a default is applied (spec field absent), it is listed in the banner's DEFAULTS APPLIED section. The layer-target defaults (`3`) are golden-derived and account-specific — Skill 1 may offer the MCP layer list when collecting them; the banner note lets the operator re-check them post-import.
 
@@ -212,7 +213,7 @@ Skill 3 emits the Configuration shape per Response Type, populating language fie
 
 `Configuration.layer`, `dailyLimitLayerId`, `maxDurationLayerId`, `IVRLayerSelect_2` and `NEXT_VO_ID` are emitted as **bare JSON numbers** — `"layer": 666`, never `"layer": "666"`. The `ImportBotFromJSON` contract's §2 Types list names the fields it requires as numbers and **does not include any of these**, so nothing upstream pins them; they are correct today only by construction. The hazard is proximity — `recordAgentCalls: "false"` and `realtimeInputConfig.automaticActivityDetection.disabled: "true"` are deliberately string-typed (Appendix A rows 17–18) and live in the same objects, which makes "these platform flags are strings" an easy over-generalization when hand-authoring.
 
-Two layer IDs are portable across accounts and are Skill 1's no-preference defaults: **`666`** (the built-in hang-up layer, present on every account) for terminals that end the call, and **`0`** (the first layer created on every account) for human-transfer terminals. Skill 3 emits whatever the spec carries and never substitutes either value; it banner-notes account-specific layers for post-import verification.
+Two layer IDs are portable across accounts: **`666`** (the built-in hang-up layer, present on every account) — since v1.23.0 Skill 1 sets it on **every** terminal that ends the call, without asking — and **`0`** (the first layer created on every account) for human-transfer terminals. Skill 3 emits whatever the spec carries and never substitutes either value; it banner-notes account-specific layers for post-import verification.
 
 **Diagnostic note.** A quoted layer and a layer that doesn't exist on the target account produce the *same* visible symptom — the UI's layer dropdown showing the raw ID instead of the layer name. Check the emitted JSON's type before concluding which one you have.
 
@@ -288,7 +289,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 →
 | 22 | No authored edges into type-2 globals (v1.13.0, FP-9) | **Advisory.** `intentRelations[]` rows whose `NextIntentID` is a type-2 global are legal but usually redundant — globals are reachable from anywhere by construction, and extra edges enlarge the tool-routing surface. Detection: list any relation targeting a botIntents type-2 IntentId; banner line recommending removal via Skill 1 patch mode. |
 | 23 | Off-topic global present (v1.14.0, FP-6) | **Advisory.** The mandatory off-topic pair exists: (a) an RT=1 intent registered type-2 in `botIntents[]` whose Description/Name marks it as the off-topic terminal, AND (b) a `prompts.persona` off-topic section (forbid + deflect + N-loop ending) referencing that intent's Description. On miss: banner line routing to Skill 1 patch mode. |
 | 24 | Turn-yield announcement gating (v1.17.0, FP-3) | **Blocking** (advisory half noted). A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement === ""` — a non-empty value there stalls the call into the silence loop. Advisory half: those intents' `intentInstructions` should carry no wait rule, only the immediate-forward instruction. RT=1 covered by check 20 (no announcement key); RT=4 exempt (pre-dial speech). Remediation: Skill 2 reactivation — empty the announcement; remaining speech → FP-4 quoted line in `intentInstructions` before the forward. |
-| 25 | Persona derivation (v1.18.0; rewritten v1.22.0) | **Blocking.** Recomputes the expected `ActiveVersionInfo.PersonaID` from spec section 1 `**Primary Language:**` (primary subtag → `he`/244, `en`/249, `ru`/252, `ar`/255) and asserts the emitted value equals it. Fails on absent/null, on a mismatch, and on any value from the known-but-unemitted set (`3`, `261`) — `3` being the likeliest regression, since it was the flat default through v1.21.0. Routes to Skill 3: the value is derived, not authored, so a mismatch is an emission bug. Was advisory and trivial while the field was a constant. |
+| 25 | Persona derivation (v1.18.0; rewritten v1.22.0) | **Blocking.** Recomputes the expected `ActiveVersionInfo.PersonaID` from spec section 1 `**Primary Language:**` (primary subtag → `he`/261 male or 296 female by `**Agent Gender:**` since v1.23.0, `en`/249, `ru`/252, `ar`/255) and asserts the emitted value equals it. Fails on absent/null, on a mismatch, and on any value from the known-but-unemitted set (`3`, `244`) — `3` being the likeliest regression, since it was the flat default through v1.21.0. Routes to Skill 3: the value is derived, not authored, so a mismatch is an emission bug. Was advisory and trivial while the field was a constant. |
 | 26 | Layer fields are integers (v1.20.1) | **Blocking.** Every RT=1 `Configuration.layer`, every RT=4 `Configuration.NEXT_VO_ID`, and the version-level `dailyLimitLayerId` / `maxDurationLayerId` / `IVRLayerSelect_2` are JSON numbers, not quoted strings (and not booleans — in many languages `bool` subclasses `int`, so reject it explicitly). A quoted layer is an FK the platform cannot resolve; the bot imports and then the layer dropdown renders the raw ID instead of the layer name. That symptom is identical to a layer that does not exist on the target account, so operators cannot tell the two apart from the UI. The check does NOT verify a layer *exists* — it has no platform access. Remediation: Skill 3 internal bug (the spec parse rules already require integers). |
 
 Failure routing:
@@ -582,3 +583,24 @@ One rule (R5's `IntentResponces.Configuration.IntentSelect_1`/`IntentSelect_4` c
 
 - [voicenter-bot-spec-designer](../voicenter-bot-spec-designer/README.md) — Skill 1; produces the structural skeleton Skill 3 reads.
 - [voicenter-bot-intent-detail-author](../voicenter-bot-intent-detail-author/README.md) — Skill 2; fills the language Skill 3 emits verbatim.
+
+## v1.23.0 changes
+
+**Two wire families.** The model catalog now tags every entry with a wire family that selects the emitted shape:
+
+| | `gemini` (all pre-v1.23.0 models) | `elevenlabs` (default: `390` Voicenter Voicebot - ElevenLabs, `AIModel 36`) |
+|---|---|---|
+| `AiModelConfig.AIModelConfig` | `{ "created": { "model": "<string>" } }` | `{}` |
+| Voice | `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | `tts.speak.voice` — an ElevenLabs voice ID, placed right after `prompts` |
+| Version-level `created` | present | absent |
+| `recordAgentCalls` | string `"true"` / `"false"` | JSON boolean |
+
+The limit and layer fields (`max_duration`, `daily_limit`, …, `IVRLayerSelect_2`) are emitted on both. Shape source: production export BotID 37437 v0.1.149.
+
+**Unverified-model halt.** `387` Voicenter Voicebot - Gemini (Gemini 3.8) and `321` Voicenter Voicebot are catalogued with only their config ID. Selecting either halts assembly with no JSON (`stages/sentinels-and-banner.md`).
+
+**Persona.** Hebrew is now gender-bound: `261` דובר עברית (Male, or no gender recorded) / `296` דוברת עברית (Female). CHK-25 recomputes it with the gender.
+
+**CHK-10** gains `elevenlabs` shape assertions (empty top-level config, no `created`, `tts.speak.voice` equals the spec voice, boolean `recordAgentCalls`). They are not gated on Gemini 3.1. Still 26 checks.
+
+**Harness.** `examples/assemble.py` and `verify.py` implement both families; `examples/test-elevenlabs-regression.py` (in CI) asserts the ElevenLabs shape, the gendered persona and the unverified halt. Both frozen goldens are unchanged.

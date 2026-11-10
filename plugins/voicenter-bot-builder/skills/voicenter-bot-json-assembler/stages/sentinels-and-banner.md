@@ -125,14 +125,14 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 
 Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.
 
-**BLOCKING HALT — unmapped primary language (v1.22.0).** `ActiveVersionInfo.PersonaID` is derived from spec section 1 `**Primary Language:**` per `assembly-mapping.md` D.12 (`he`→244, `en`→249, `ru`→252, `ar`→255, matched on the BCP-47 primary subtag). If the subtag is not in that table, Skill 3 **does not emit JSON at all**. There is no fallback row and no sentinel: an invented `PersonaID` imports cleanly and produces a bot that speaks in the wrong voice, which no post-import check would catch. Emit this instead of the banner-plus-JSON, and stop:
+**BLOCKING HALT — unmapped primary language (v1.22.0).** `ActiveVersionInfo.PersonaID` is derived from spec section 1 `**Primary Language:**` per `assembly-mapping.md` D.12 (`he`→261 Male / 296 Female by `**Agent Gender:**` since v1.23.0, `en`→249, `ru`→252, `ar`→255, matched on the BCP-47 primary subtag). If the subtag is not in that table, Skill 3 **does not emit JSON at all**. There is no fallback row and no sentinel: an invented `PersonaID` imports cleanly and produces a bot that speaks in the wrong voice, which no post-import check would catch. Emit this instead of the banner-plus-JSON, and stop:
 
 ```
 # Voicenter Bot JSON — ASSEMBLY HALTED
 #
 # BLOCKING: no TTS persona is known for this bot's primary language.
 #   - Spec section 1 **Primary Language:** <value>  (primary subtag: <subtag>)
-#   - Known shared personas (AccountId=0): he→244, en→249, ru→252, ar→255
+#   - Known shared personas (AccountId=0): he→261 (male) / 296 (female), en→249, ru→252, ar→255
 #
 # ActiveVersionInfo.PersonaID is a bigint NOT NULL FK selecting the TTS voice that renders
 # this bot's speech (voicebot-json-contract.md R7). Emitting a persona from another language
@@ -143,6 +143,21 @@ Each section is always emitted, even if its content is "(none)" or "(in agreemen
 #   1. Change the spec's Primary Language to one of the four supported above, or
 #   2. Look up the correct Persona row for <subtag> in the target DB and add it to
 #      assembly-mapping.md D.12 (verified rows only — never invent an id), then re-run.
+```
+
+**BLOCKING HALT — unverified AI model (v1.23.0).** `model-catalog.md` lists some models as **UNVERIFIED** — currently `387` Voicenter Voicebot - Gemini (Gemini 3.8) and `321` Voicenter Voicebot. Only their `AIModelConfigID` is known; their `AIModelTypeId` and wire shape (`gemini` vs `elevenlabs`) have not been captured from a production export. If spec section 1 `**AI Model Config:**` names one of them, Skill 3 **does not emit JSON at all** — a guessed shape imports as a bot whose model config the runtime cannot read. Emit this instead of the banner-plus-JSON, and stop:
+
+```
+# Voicenter Bot JSON — ASSEMBLY HALTED
+#
+# BLOCKING: the selected AI model is in the catalog but UNVERIFIED.
+#   - Spec section 1 **AI Model Config:** <name>  (AIModelConfigID <id>)
+#   - Unknown: AIModelTypeId, provider model string, wire family
+#
+# To proceed, either:
+#   1. Switch the spec to a verified model (default: Voicenter Voicebot - ElevenLabs, 390), or
+#   2. Export a production bot that runs on <id>, fill its entry in model-catalog.md
+#      (AIModelTypeId, model string, wire family, voices), drop the UNVERIFIED marker, re-run.
 ```
 
 The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not authored in the spec — generation params, the constants per Doc 1 §16 (e.g., `Priority: 1`, `MaxAttempts: 3`), and the catalog-derived `created` payload defaults. This makes Skill 3's contributions auditable: anything not in the banner came from the spec.
@@ -156,7 +171,7 @@ The "DEFAULTS APPLIED" section lists every value Skill 3 emitted that was not au
 Rule names are sourced from the reference catalog (`references/voice-prompt-doctrine.md` §1 headings). Example lines:
 
 ```
-# - Rule 3 (English operational, target-language utterances): prompts.persona is 87% Hebrew on a he-IL bot; user kept original — see references/voice-prompt-doctrine.md rule 3 for fix recipe
+# - Check 11 (prompt language): prompts.persona is written in English on a he-IL bot; user kept original — see Skill 1 self-validation check 11
 # - Rule 7 (Generic-policy boilerplate): "GDPR" appears in prompts.persona; user kept (declared domain-appropriate) — see references/voice-prompt-doctrine.md rule 7 for fix recipe
 # - Rule 10 (Few-shot example cap): collect_inquiry_details.validationPrompt has 3 transcript pairs (Hebrew bot — ~750 tok cost); user kept — see references/voice-prompt-doctrine.md rule 10 for fix recipe
 ```
@@ -202,7 +217,7 @@ Sample banner for a hypothetical bot with: 1 unknown webhook URL, no model confi
 #   - ActiveVersionInfo.AIModelConfig.daily_limit = 600, dailyLimitLayerId = 3, maxDurationLayerId = 0, IVRLayerSelect_2 = 3 (v1.14.0 defaults — layer targets are account-specific; verify after import)
 #   - IntentConfig.additional defaults applied (max_turns = 5 / sensitive = false / max_turns_sentence masculine fallback) on intents without spec overrides (v1.14.0)
 #   - ActiveVersionInfo.AIModelConfig.recordAgentCalls = "false" (v1.5.0 default — see spec section 1)
-#   - ActiveVersionInfo.PersonaID = 244 (shared TTS persona for Hebrew, AccountId=0 — derived from spec section 1 **Primary Language:** he-IL per assembly-mapping.md D.12; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
+#   - ActiveVersionInfo.PersonaID = 261 (shared TTS persona דובר עברית, AccountId=0 — derived from spec section 1 **Primary Language:** he-IL + **Agent Gender:** Male per assembly-mapping.md D.12; verify this Persona row exists on the target account before import, per voicebot-json-contract.md R7)
 #   - All intents: Priority = 1, MaxAttempts = 3, ValidationTimeout = 30 (per Doc 1 §9.0)
 #   - intentCategories: single default category, IntentCategoryId = -3
 #   - All §16 quirks emitted per Appendix A checklist
