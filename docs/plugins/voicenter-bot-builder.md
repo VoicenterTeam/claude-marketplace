@@ -75,7 +75,7 @@ The plugin includes a shared doctrine reference at `plugins/voicenter-bot-builde
 - **Skill 2** (rules 8, 9, 10, 11) — per-intent text: TTS-safe formatting, date math in prompt, few-shot example cap, Hebrew-utterance isolation.
 - **Skill 3** (rules 1, 2, 12, 13) — final assembly: token budget, session-resumption ceiling, model-config doctrine, doctrine banner sentinels.
 
-**v1.23.0:** the default model is **Voicenter Voicebot - ElevenLabs** (`390`), which uses its own `elevenlabs` wire shape (voice at `tts.speak.voice`, no `created` payload). `387` (Voicenter Voicebot - Gemini / Gemini 3.8) and `321` are catalogued UNVERIFIED and halt Skill 3. Hebrew bots get the gendered TTS persona `261` / `296`; hang-up terminals are always layer `666`; the bot-level `intentInstructions` has no Iron rules section.
+**v1.23.1:** the default model is **Voicenter Voicebot** (`321`); Voicenter Voicebot - ElevenLabs (`390`) stays selectable. Both use the `tts` wire shape (voice at `tts.speak.voice`, no `created` payload). `387` (Voicenter Voicebot - Gemini / Gemini 3.8) is catalogued UNVERIFIED and halts Skill 3. Hebrew bots get the gendered TTS persona `261` / `296`; hang-up terminals are always layer `666`; the bot-level `intentInstructions` has no Iron rules section.
 
 Gating on `AiModelConfigID=139` or `142` (Gemini 3.1 — voice driven or LLM driven, same underlying runtime) — rules tied to model-specific behavior skip silently on other models. Universal voice principles (language posture, TTS safety) apply broadly.
 

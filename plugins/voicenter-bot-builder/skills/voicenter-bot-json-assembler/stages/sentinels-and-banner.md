@@ -145,7 +145,7 @@ Each section is always emitted, even if its content is "(none)" or "(in agreemen
 #      assembly-mapping.md D.12 (verified rows only — never invent an id), then re-run.
 ```
 
-**BLOCKING HALT — unverified AI model (v1.23.0).** `model-catalog.md` lists some models as **UNVERIFIED** — currently `387` Voicenter Voicebot - Gemini (Gemini 3.8) and `321` Voicenter Voicebot. Only their `AIModelConfigID` is known; their `AIModelTypeId` and wire shape (`gemini` vs `elevenlabs`) have not been captured from a production export. If spec section 1 `**AI Model Config:**` names one of them, Skill 3 **does not emit JSON at all** — a guessed shape imports as a bot whose model config the runtime cannot read. Emit this instead of the banner-plus-JSON, and stop:
+**BLOCKING HALT — unverified AI model (v1.23.0).** `model-catalog.md` lists some models as **UNVERIFIED** — currently `387` Voicenter Voicebot - Gemini (Gemini 3.8) (`321` was verified in v1.23.1). Only its `AIModelConfigID` is known; its `AIModelTypeId` and wire shape (`gemini` vs `tts`) have not been captured from a production export. If spec section 1 `**AI Model Config:**` names it, Skill 3 **does not emit JSON at all** — a guessed shape imports as a bot whose model config the runtime cannot read. Emit this instead of the banner-plus-JSON, and stop:
 
 ```
 # Voicenter Bot JSON — ASSEMBLY HALTED
@@ -155,7 +155,7 @@ Each section is always emitted, even if its content is "(none)" or "(in agreemen
 #   - Unknown: AIModelTypeId, provider model string, wire family
 #
 # To proceed, either:
-#   1. Switch the spec to a verified model (default: Voicenter Voicebot - ElevenLabs, 390), or
+#   1. Switch the spec to a verified model (default: Voicenter Voicebot, 321), or
 #   2. Export a production bot that runs on <id>, fill its entry in model-catalog.md
 #      (AIModelTypeId, model string, wire family, voices), drop the UNVERIFIED marker, re-run.
 ```

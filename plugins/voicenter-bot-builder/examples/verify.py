@@ -360,7 +360,7 @@ def run(spec, bot):
     # Shape from production export BotID 37437 v0.1.149.
     mname = bot["AiModelConfig"].get("Name")
     mc = A.MODEL_CATALOG.get(mname, {})
-    if mc.get("family") == "elevenlabs":
+    if mc.get("family") == "tts":
         if bot["AiModelConfig"]["AIModelConfig"] != {}:
             fail(10, "ElevenLabs: AiModelConfig.AIModelConfig must be an empty object")
         if "created" in vac:

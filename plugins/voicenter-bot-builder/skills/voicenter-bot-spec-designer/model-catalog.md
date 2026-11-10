@@ -10,7 +10,7 @@ All catalog entries below are **default/public** `AIModelConfig` rows where `Acc
 
 ## AI model configs
 
-> **Canonical default (v1.23.0):** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Voicenter Voicebot - ElevenLabs** — `AIModelConfigID = 390`, `AIModelTypeId = 36`. The "Voicenter Voicebot - ElevenLabs (default)" entry below is the source of truth for those numbers. (Through v1.22.0 the default was Gemini 3.1 - LLM driven, `142`.)
+> **Canonical default (v1.23.1):** when Skill 1 needs to fall back (user requests defaults, can't decide, or skips the model-config step), use **Voicenter Voicebot** — `AIModelConfigID = 321`, `AIModelTypeId = 30`. The "Voicenter Voicebot (default)" entry below is the source of truth for those numbers. (v1.23.0 defaulted to Voicenter Voicebot - ElevenLabs, `390`, which stays selectable; through v1.22.0 the default was Gemini 3.1 - LLM driven, `142`.)
 
 ### Wire family
 
@@ -19,11 +19,23 @@ Every entry belongs to a **wire family**, which decides the JSON shape Skill 3 e
 | Family | Top-level `AiModelConfig.AIModelConfig` | Voice location | Version-level `created` | `recordAgentCalls` |
 |---|---|---|---|---|
 | `gemini` | `{ "created": { "model": "<string>" } }` | `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | present | string `"true"`/`"false"` |
-| `elevenlabs` | `{}` (empty object) | `tts.speak.voice` (an ElevenLabs voice ID) | **absent** | JSON boolean |
+| `tts` | `{}` (empty object) | `tts.speak.voice` (a Voicenter TTS voice name on `321`, an ElevenLabs voice ID on `390`) | **absent** | JSON boolean |
 
 The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted before v1.23.0.
 
-### Voicenter Voicebot - ElevenLabs (default)
+### Voicenter Voicebot (default)
+
+| Field | Value |
+|---|---|
+| **Display name** | Voicenter Voicebot |
+| **`AIModelConfigID`** | `321` |
+| **`AIModelTypeId`** | `30` |
+| **Provider model string** | — (none; the top-level `AIModelConfig` is `{}`) |
+| **Wire family** | `tts` |
+| **Voice family** | Voicenter TTS (see below) |
+| **Notes** | **Default since v1.23.1.** Verified from a production export: BotID 37390 "נתיב תכנון מסלול - עברית - PROD 4", version 0.1.150 (`AIModel: 30`, `AccountId: 0`, voice `eitan`). That export also carried a leftover Gemini `created` block; Skill 3 does not emit one for this family. |
+
+### Voicenter Voicebot - ElevenLabs
 
 | Field | Value |
 |---|---|
@@ -31,9 +43,9 @@ The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted 
 | **`AIModelConfigID`** | `390` |
 | **`AIModelTypeId`** | `36` |
 | **Provider model string** | — (none; the top-level `AIModelConfig` is `{}`) |
-| **Wire family** | `elevenlabs` |
+| **Wire family** | `tts` |
 | **Voice family** | ElevenLabs (see below) |
-| **Notes** | **Default since v1.23.0.** Verified from a production export: BotID 37437 "נתיב תכנון מסלול - עברית - Voicenter ElevenLabs", version 0.1.149 (`AIModel: 36`, `AccountId: 0`). |
+| **Notes** | The default in v1.23.0; selectable since v1.23.1. Verified from a production export: BotID 37437 "נתיב תכנון מסלול - עברית - Voicenter ElevenLabs", version 0.1.149 (`AIModel: 36`, `AccountId: 0`). |
 
 ### Voicenter Voicebot - Gemini (Gemini 3.8) — UNVERIFIED
 
@@ -47,19 +59,7 @@ The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted 
 | **Voice family** | `<UNKNOWN>` |
 | **Notes** | The Gemini 3.8 model. **Unverified:** only the config ID is known. **Skill 3 halts** if a spec selects it (`sentinels-and-banner.md` — unverified model). Verify from a production export of a bot on 387, then fill the four unknown fields and drop this marker. |
 
-### Voicenter Voicebot — UNVERIFIED
-
-| Field | Value |
-|---|---|
-| **Display name** | Voicenter Voicebot |
-| **`AIModelConfigID`** | `321` |
-| **`AIModelTypeId`** | `<UNKNOWN>` |
-| **Provider model string** | `<UNKNOWN>` |
-| **Wire family** | `<UNKNOWN>` |
-| **Voice family** | `<UNKNOWN>` |
-| **Notes** | **Unverified:** only the config ID is known. **Skill 3 halts** if a spec selects it. Same verification path as 387. |
-
-**Skill 1 may still offer the two unverified entries** when the user asks for them by name, but must warn that the build will stop at Skill 3 until the entry is verified. It never picks them as a default.
+**Skill 1 may still offer the unverified entry** when the user asks for it by name, but must warn that the build will stop at Skill 3 until the entry is verified. It never picks it as a default.
 
 ### Gemini Live (Voice driven 3.1)
 
@@ -150,9 +150,30 @@ The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted 
 
 The `voiceName` field in `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig` is a provider-specific string. Skill 1 presents the appropriate list based on the model family chosen above; Skill 3 emits the value verbatim from the spec.
 
+### Voicenter TTS voices
+
+Used with Voicenter Voicebot (`321`, the default). Voicenter's own Hebrew TTS (`qwen3-tts-he`; speaks Hebrew, English and Russian). The wire value is the voice name, emitted verbatim to `ActiveVersionInfo.AIModelConfig.tts.speak.voice`.
+
+| Voice | Wire-format value | Gender |
+|---|---|---|
+| Echo | `echo` | Male |
+| Ariel | `ariel` | Male |
+| Eitan | `eitan` | Male |
+| Nadav | `nadav` | Male |
+| Omer | `omer` | Male |
+| Yoni | `yoni` | Male |
+| Tel4n | `tel4n_h2` | Female |
+| Adi | `adi` | Female |
+| Hila | `hila` | Female |
+| Maya | `maya` | Female |
+| Noa | `noa` | Female |
+| Rina | `rina` | Female |
+
+**There is no default Voicenter TTS voice either** (the platform falls back to `echo` when none is sent, but Skill 1 never relies on that). Skill 1 asks the gender and presents that gender's six voices.
+
 ### ElevenLabs voices
 
-Used with the ElevenLabs family (Voicenter Voicebot - ElevenLabs). The wire value is the **ElevenLabs voice ID**, emitted verbatim to `ActiveVersionInfo.AIModelConfig.tts.speak.voice`. These are the Hebrew voices of the shared ElevenLabs library.
+Used with Voicenter Voicebot - ElevenLabs (`390`). The wire value is the **ElevenLabs voice ID**, emitted verbatim to `ActiveVersionInfo.AIModelConfig.tts.speak.voice`. These are the Hebrew voices of the shared ElevenLabs library.
 
 | Voice | Wire-format value | Gender |
 |---|---|---|
@@ -239,7 +260,7 @@ This catalog is part of Skill 1's package, version-controlled with the skill. To
 
 1. Verify the target row exists in `database/Tables/StaticData/AIModelConfig.Data.sql` with `AccountId = 0` and `IsActive = 1`.
 2. Append a new section under "AI model configs" with all five fields populated.
-3. Record the model's **wire family** (`gemini` or `elevenlabs`) and confirm its voice family is listed below (or document a new family with its voice list). A model whose wire shape has not been captured from a production export is catalogued **UNVERIFIED** — Skill 3 halts on it.
+3. Record the model's **wire family** (`gemini` or `tts`) and confirm its voice family is listed below (or document a new family with its voice list). A model whose wire shape has not been captured from a production export is catalogued **UNVERIFIED** — Skill 3 halts on it.
 4. Update the skill version (in SKILL.md frontmatter or sidecar — TBD).
 
 v3 will deprecate this file in favor of MCP querying the Voicenter platform's model registry directly.

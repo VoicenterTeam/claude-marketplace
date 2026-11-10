@@ -9,7 +9,8 @@ Derives variants of the F1 fixture in memory (no new golden files) and asserts:
    version-level `created`, voice at `tts.speak.voice`, `recordAgentCalls` boolean.
 2. Hebrew bots get PersonaID 261 (Male) / 296 (Female) from `**Agent Gender:**`,
    and 261 when the gender is absent.
-3. A catalogued-but-unverified model (387, 321) halts assembly instead of emitting.
+3. A catalogued-but-unverified model (387) halts assembly instead of emitting.
+5. (v1.23.1) Voicenter Voicebot (321 / type 30), the default, emits the same `tts` shape.
 4. The variant passes all 26 cross-reference checks.
 
 Usage:  python test-elevenlabs-regression.py      (exits 1 on any failure)
@@ -64,7 +65,26 @@ def main():
     check(A.persona_id('he', None) == 261, 'Hebrew without gender != 261')
     check(A.persona_id('en-US', 'Female') == 249, 'English persona changed')
 
-    for name in ('Voicenter Voicebot - Gemini', 'Voicenter Voicebot'):
+    # v1.23.1 — Voicenter Voicebot (321 / type 30) is the default and shares the `tts`
+    # shape (production export BotID 37390 v0.1.150); its voices are Voicenter's own TTS.
+    vv = setf(base, 'AI Model Config', 'Voicenter Voicebot')
+    vv = setf(vv, 'Voice Name', 'eitan')
+    vv = setf(vv, 'Agent Gender', 'Male')
+    vv = setf(vv, 'Primary Language', 'he-IL')
+    vv = setf(vv, 'Record agent calls', 'true')
+    vbot = A.assemble(A.parse_spec(vv))
+    vtop, vvac = vbot['AiModelConfig'], vbot['ActiveVersionInfo']['AIModelConfig']
+    check(vtop['Name'] == 'Voicenter Voicebot', '321: Name wrong')
+    check(vtop['AIModelConfigID'] == 321 and vtop['AIModel'] == 30, '321: ids wrong')
+    check(vtop['AIModelConfig'] == {}, '321: top-level AIModelConfig not empty')
+    check('created' not in vvac, '321: version-level created present')
+    check(vvac.get('tts') == {'speak': {'voice': 'eitan'}}, '321: tts.speak.voice wrong')
+    check(vvac.get('recordAgentCalls') is True, '321: recordAgentCalls not boolean')
+    check(vbot['ActiveVersionInfo']['PersonaID'] == 261, '321: Hebrew Male persona != 261')
+    vfails = V.run(V.build_spec_context(vv), vbot)[0]
+    check(not vfails, f'321: cross-reference checks failed: {vfails}')
+
+    for name in ('Voicenter Voicebot - Gemini',):
         try:
             A.assemble(A.parse_spec(setf(base, 'AI Model Config', name)))
             FAILS.append(f'{name}: unverified model assembled instead of halting')
