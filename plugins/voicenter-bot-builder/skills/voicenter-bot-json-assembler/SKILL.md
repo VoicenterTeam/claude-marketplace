@@ -76,7 +76,7 @@ State the detected runtime. The user can correct.
 
 ### 2.3 Pre-flight gates
 
-Three gates run before any assembly work. All are blocking. Refusal at any gate emits a clear message and halts; no JSON is produced. Two further **assembly-time halts** produce no JSON (`stages/sentinels-and-banner.md`): an unmapped primary language (no `PersonaID` row), and — v1.23.0 — an **UNVERIFIED** catalog model (`387` Voicenter Voicebot - Gemini, `321` Voicenter Voicebot). The default model, `390` Voicenter Voicebot - ElevenLabs, uses the `elevenlabs` wire shape: empty top-level `AIModelConfig`, voice at `tts.speak.voice`, no `created`, boolean `recordAgentCalls` (`stages/assembly-mapping.md` §4.2.3).
+Three gates run before any assembly work. All are blocking. Refusal at any gate emits a clear message and halts; no JSON is produced. Two further **assembly-time halts** produce no JSON (`stages/sentinels-and-banner.md`): an unmapped primary language (no `PersonaID` row), and — v1.23.0 — an **UNVERIFIED** catalog model (`387` Voicenter Voicebot - Gemini). The default model, `321` Voicenter Voicebot (v1.23.1), and `390` Voicenter Voicebot - ElevenLabs use the `tts` wire shape: empty top-level `AIModelConfig`, voice at `tts.speak.voice`, no `created`, boolean `recordAgentCalls` (`stages/assembly-mapping.md` §4.2.3).
 
 #### Gate A — Completeness
 

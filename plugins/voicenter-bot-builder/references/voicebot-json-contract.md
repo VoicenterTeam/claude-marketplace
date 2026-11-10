@@ -26,7 +26,7 @@
 
 **What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 in
 [`verification-procedure.md`](verification-procedure.md). The `AIModelConfigID` whitelist in R11
-lists three ids (303, 312, 321) not yet in the assembler's catalog — see the known-gap note in
+lists three ids (303, 312, 321) not yet in the assembler's catalog (v1.23.1: `321` is now catalogued — Voicenter Voicebot, the default) — see the known-gap note in
 `skills/voicenter-bot-json-assembler/stages/assembly-mapping.md` Appendix D.11.
 
 ## 0. Why this exists

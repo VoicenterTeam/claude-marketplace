@@ -6,6 +6,27 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.23.1 — hotfix: default model is Voicenter Voicebot (321)
+
+Plugin `voicenter-bot-builder` 1.23.1 under marketplace 1.23.1. Emitted-output change for new
+bots (the default model). Still 26 checks.
+
+- **Default model → Voicenter Voicebot** (`AIModelConfigID 321`, `AIModelTypeId 30`), replacing
+  Voicenter Voicebot - ElevenLabs (`390`), which stays in the catalog as a choice. Verified from
+  production export BotID 37390 v0.1.150.
+- `321` uses the same wire shape as `390` — empty top-level `AIModelConfig`, voice at
+  `tts.speak.voice`, no `created`, boolean `recordAgentCalls` — so the wire family formerly named
+  `elevenlabs` is renamed **`tts`**. The export also carried a leftover Gemini `created` block
+  (`voiceName: "Charon"`); Skill 3 does not emit it.
+- **Voicenter TTS voices** added to the catalog: echo, ariel, eitan, nadav, omer, yoni (male);
+  tel4n_h2, adi, hila, maya, noa, rina (female). Skill 1 asks the gender and offers that
+  gender's voices; no default voice.
+- `387` Voicenter Voicebot - Gemini (Gemini 3.8) is now the only UNVERIFIED model.
+- The 321 export shows the model row as `IsActive: 0`; confirm it is active on the target server.
+- `test-elevenlabs-regression.py` now also asserts the `321` shape.
+
+---
+
 ### 1.23.0 — Voicenter models by default, Hebrew prompts, gendered persona
 
 Plugin `voicenter-bot-builder` 1.23.0 under marketplace 1.23.0. Emitted-output change (new

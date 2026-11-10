@@ -95,9 +95,9 @@ complete failure report rather than fixing one issue at a time.
 CHK-08, CHK-09 and CHK-10 fire only when `AiModelConfig.AIModelConfig.created.model` is
 `models/gemini-3.1-flash-live-preview`. On any other model they **skip silently**, with a
 one-time per-spec log entry to spec section 7.3. **Exception (v1.23.0):** CHK-10's
-`elevenlabs`-family shape assertions run whenever the model's catalog wire family is
-`elevenlabs` (the default model, `390`) — they are not `[GL3.1]`-gated. Read
-`created.model` defensively: on `elevenlabs` there is no `created` object at all. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24,
+`tts`-family shape assertions run whenever the model's catalog wire family is
+`tts` (the default model `321`, and `390`) — they are not `[GL3.1]`-gated. Read
+`created.model` defensively: on `tts` there is no `created` object at all. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24,
 CHK-25 and CHK-26 are model-agnostic.
 
 ### Severity
@@ -256,7 +256,7 @@ see `voice-prompt-doctrine.md` rule 1 enforcement note and §4):
 - **Severity:** **blocking on mismatch**
 - **Model gating:** same as CHK-08
 - **On failure route to:** **Skill 1 patch mode** — model config is set in spec section 1. Skill 1 needs to update the AI Model Config selection or apply per-field corrections (the typical fix: drop `affectiveDialog`/`proactiveAudio` overrides; reset `thinkingLevel` to minimal).
-- **`elevenlabs` family (v1.23.0, not gated):** when `model-catalog.md` gives the model's wire family as `elevenlabs`, assert instead: `AiModelConfig.AIModelConfig` is exactly `{}`; the version-level `AIModelConfig` has **no** `created` key; when the voice channel is active, `tts.speak.voice` is present and equals spec section 1 `**Voice Name:**`; `recordAgentCalls` is a JSON boolean. Each mismatch is a CHK-10 sub-failure routed to Skill 3 (emission bug). Shape source: production export BotID 37437 v0.1.149.
+- **`tts` family (v1.23.0, not gated):** when `model-catalog.md` gives the model's wire family as `tts`, assert instead: `AiModelConfig.AIModelConfig` is exactly `{}`; the version-level `AIModelConfig` has **no** `created` key; when the voice channel is active, `tts.speak.voice` is present and equals spec section 1 `**Voice Name:**`; `recordAgentCalls` is a JSON boolean. Each mismatch is a CHK-10 sub-failure routed to Skill 3 (emission bug). Shape source: production export BotID 37437 v0.1.149.
 - **Procedure (`gemini` family):** Validate that the version-level `AIModelConfig.created` does **NOT** contain any of the dropped fields (`temperature`, `topP`, `topK`, `responseModalities`, `proactivity`, `thinkingConfig`, `systemInstruction`, `tools`, `affectiveDialog`, `proactiveAudio`, `thinkingConfig.thinkingLevel != "minimal"`). The lean payload from §4.2.4 has none of these by construction; this check catches future regressions. Inspect the assembled in-memory `ActiveVersionInfo.AIModelConfig.created`. The expected keys are exactly `realtimeInputConfig` and (when voice active) `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`. Any other key under `generationConfig` is a failure.
 
 | Failure | Expected | Failure message |

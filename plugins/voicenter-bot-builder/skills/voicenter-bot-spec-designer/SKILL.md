@@ -101,7 +101,7 @@ full list as a reference table first, then prompt with the three most likely can
 *(Recommended)*.
 
 Four fields are **never** prompted: the identifier (auto-derived from the bot name), the AI
-model config (silently defaults to Voicenter Voicebot - ElevenLabs, `390` — v1.23.0), the layer
+model config (silently defaults to Voicenter Voicebot, `321` — v1.23.1), the layer
 of a hang-up terminal (always `666` — v1.23.0), and per-intent `max_turns` (the skills decide
 autonomously). Three are **always** prompted, even when the user asks for defaults: agent gender,
 voice (no default voice exists), and whether to record calls.
