@@ -166,7 +166,9 @@ jobs:
           diff expected-output.json expected-output-shipping.json > /tmp/delta.txt || true
           cat /tmp/delta.txt
           test "$(grep -c '^>' /tmp/delta.txt)" -eq 2      # BotVersionStatusId re-emitted with comma, + PersonaID
-          grep -q '^> *"PersonaID": 3' /tmp/delta.txt
+          # F1 is en-US, so PersonaID derives to 249 (v1.22.0). This line still asserted the
+          # pre-v1.22.0 flat value 3, which failed this job on main from v1.22.0 onward.
+          grep -q '^> *"PersonaID": 249' /tmp/delta.txt
 
       - name: F1 passes the cross-reference checks on both baselines
         working-directory: plugins/voicenter-bot-builder/examples
@@ -184,9 +186,10 @@ jobs:
           io.open('/tmp/chk25-absent.json', 'w', encoding='utf-8', newline='\n').write(
               json.dumps(d, ensure_ascii=False, indent=2) + '\n')
           PY
-          python verify.py sample-spec-detailed.md /tmp/chk25-absent.json > /tmp/c25.txt
+          python verify.py sample-spec-detailed.md /tmp/chk25-absent.json > /tmp/c25.txt || true
           cat /tmp/c25.txt
-          grep -q 'Check 25 \[advisory\]' /tmp/c25.txt
+          # CHK-25 is blocking since v1.22.0 (was advisory), so verify.py exits 1 here.
+          grep -q 'Check 25 \[BLOCKING\]' /tmp/c25.txt
 
       # Finding N1: Skill 1's canonical opening-behaviour template tripped CHK-19 and
       # blocked assembly. Fixed by paraphrasing the template AND excluding
