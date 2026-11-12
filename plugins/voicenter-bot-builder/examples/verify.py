@@ -374,6 +374,27 @@ def run(spec, bot):
         if not isinstance(vac.get("recordAgentCalls"), bool):
             fail(10, "ElevenLabs: recordAgentCalls must be a JSON boolean")
 
+    # 10 model-config doctrine, Voicenter Voicebot - Gemini (387, v1.23.2) — not
+    # [GL3.1]-gated. Shape from production export BotID 37428 v0.1.151.
+    if mc.get("family") == "voicenter-gemini":
+        if bot["AiModelConfig"]["AIModelConfig"] != {}:
+            fail(10, "Voicenter Gemini: AiModelConfig.AIModelConfig must be an empty object")
+        if "tts" in vac:
+            fail(10, "Voicenter Gemini: `tts` present — the voice goes in created.generationConfig")
+        created = vac.get("created", {})
+        extra = sorted(set(created) - {"generationConfig"})
+        if extra:
+            fail(10, f"Voicenter Gemini: created carries {extra} — only generationConfig is allowed")
+        if "voice" in spec["identity"].get("Channels Active", ""):
+            voice = (created.get("generationConfig", {}).get("speechConfig", {})
+                     .get("voiceConfig", {}).get("prebuiltVoiceConfig", {}).get("voiceName"))
+            if not voice:
+                fail(10, "Voicenter Gemini: prebuiltVoiceConfig.voiceName missing on a voice bot")
+            elif voice != spec["identity"].get("Voice Name"):
+                fail(10, f"Voicenter Gemini: voiceName {voice!r} != spec Voice Name")
+        if not isinstance(vac.get("recordAgentCalls"), bool):
+            fail(10, "Voicenter Gemini: recordAgentCalls must be a JSON boolean")
+
     # 10 model-config doctrine (inverted — dropped fields must be absent)
     if gated:
         gc = bot["ActiveVersionInfo"]["AIModelConfig"]["created"].get("generationConfig", {})

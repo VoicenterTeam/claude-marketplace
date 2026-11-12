@@ -76,7 +76,7 @@ State the detected runtime. The user can correct.
 
 ### 2.3 Pre-flight gates
 
-Three gates run before any assembly work. All are blocking. Refusal at any gate emits a clear message and halts; no JSON is produced. Two further **assembly-time halts** produce no JSON (`stages/sentinels-and-banner.md`): an unmapped primary language (no `PersonaID` row), and — v1.23.0 — an **UNVERIFIED** catalog model (`387` Voicenter Voicebot - Gemini). The default model, `321` Voicenter Voicebot (v1.23.1), and `390` Voicenter Voicebot - ElevenLabs use the `tts` wire shape: empty top-level `AIModelConfig`, voice at `tts.speak.voice`, no `created`, boolean `recordAgentCalls` (`stages/assembly-mapping.md` §4.2.3).
+Three gates run before any assembly work. All are blocking. Refusal at any gate emits a clear message and halts; no JSON is produced. Two further **assembly-time halts** produce no JSON (`stages/sentinels-and-banner.md`): an unmapped primary language (no `PersonaID` row), and — v1.23.0 — an **UNVERIFIED** catalog model (none since v1.23.2). The default model, `321` Voicenter Voicebot (v1.23.1), and `390` Voicenter Voicebot - ElevenLabs use the `tts` wire shape: empty top-level `AIModelConfig`, voice at `tts.speak.voice`, no `created`, boolean `recordAgentCalls` (`stages/assembly-mapping.md` §4.2.3). `387` Voicenter Voicebot - Gemini (v1.23.2) uses the `voicenter-gemini` shape: the same empty top-level `AIModelConfig` and boolean `recordAgentCalls`, but no `tts` — its Gemini voice goes in a version-level `created` that holds nothing else.
 
 #### Gate A — Completeness
 

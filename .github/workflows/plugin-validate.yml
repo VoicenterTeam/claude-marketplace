@@ -201,7 +201,8 @@ jobs:
         run: python test-chk19-regression.py
 
       # v1.23.0 — the ElevenLabs wire shape (production export BotID 37437), the
-      # gendered Hebrew persona (261 / 296), and the unverified-model halt (387, 321).
+      # gendered Hebrew persona (261 / 296), the Voicenter Voicebot (321) and
+      # Voicenter Voicebot - Gemini (387, v1.23.2) shapes, and the unverified-model halt.
       - name: ElevenLabs + persona + unverified-model regression
         working-directory: plugins/voicenter-bot-builder/examples
         run: python test-elevenlabs-regression.py

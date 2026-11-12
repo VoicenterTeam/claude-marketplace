@@ -40,7 +40,7 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 
 **`AccountID` is user-supplied** (spec section 1) or `-999` sentinel if `<UNKNOWN: Account ID>`. Used at the bot top-level wrapper AND echoed into each `intents[].AccountId` and `intentCategories[].AccountId` (production pattern — v1.5.0).
 
-**`AIModelConfigID` and `AIModel` (= `AIModelTypeId`) come from the model catalog** (`model-catalog.md`) per the spec section 1 entry. Skill 3 looks both up at emission time. `-999` sentinels if the spec marks the model unknown. **A catalog entry marked UNVERIFIED (currently `387` Voicenter Voicebot - Gemini; `321` was verified in v1.23.1) is a blocking HALT, not a sentinel:** its `AIModelTypeId` and wire shape are unknown, so no JSON is emitted (`sentinels-and-banner.md` — unverified model). The entry's **wire family** (`gemini` | `tts`) selects the shape of §4.2.3–§4.2.4.
+**`AIModelConfigID` and `AIModel` (= `AIModelTypeId`) come from the model catalog** (`model-catalog.md`) per the spec section 1 entry. Skill 3 looks both up at emission time. `-999` sentinels if the spec marks the model unknown. **A catalog entry marked UNVERIFIED (none since v1.23.2, when `387` Voicenter Voicebot - Gemini was verified; `321` was verified in v1.23.1) is a blocking HALT, not a sentinel:** its `AIModelTypeId` and wire shape are unknown, so no JSON is emitted (`sentinels-and-banner.md` — unverified model). The entry's **wire family** (`gemini` | `tts` | `voicenter-gemini`) selects the shape of §4.2.3–§4.2.4.
 
 **Allocation procedure:**
 
@@ -114,7 +114,7 @@ Emit fields in this order:
 | 6 | `ModifiedBy` | `null` |
 | 7 | `CreatedDate` | ISO timestamp at assembly time |
 | 8 | `ModifiedDate` | ISO timestamp at assembly time |
-| 9 | `AIModelConfig` | **Nested object (capital I, distinct from the lowercase-i parent name).** `gemini` family: containing only `{ "created": { "model": "<provider model string from model-catalog.md>" } }`. **`tts` family (v1.23.0): the empty object `{}`** — production export BotID 37437 v0.1.149. |
+| 9 | `AIModelConfig` | **Nested object (capital I, distinct from the lowercase-i parent name).** `gemini` family: containing only `{ "created": { "model": "<provider model string from model-catalog.md>" } }`. **`tts` family (v1.23.0): the empty object `{}`** — production export BotID 37437 v0.1.149. **`voicenter-gemini` family (v1.23.2, `387`): also `{}`** — production export BotID 37428 v0.1.151. |
 | 10 | `AIModelConfigID` | From `model-catalog.md` entry (e.g., `139`); `-999` sentinel if `<UNKNOWN>` |
 
 **v1.5.0 fields removed from the prior baseline:** `Description`, `BaseUrl`, `Type` object, `AIModelTypeId` (the integer was kept but renamed to `AIModel` per production), full `created` payload (lives in the version-level object now).
@@ -133,11 +133,13 @@ Emit fields in this order:
 | 6 | `max_duration_sentence` | Spec section 1 `**Max duration sentence:**`; default (production-derived, v1.14.0 — verbatim incl. trailing space): `"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "` |
 | 7 | `IVRLayerSelect_2` | Spec section 1 `**IVRLayerSelect_2:**` (integer; default `3`) — v1.13.0 |
 | 8 | `prompts` | §4.2.4 below |
-| 9 | `recordAgentCalls` | Spec section 1 `**Record agent calls:**`. `gemini` family: the **STRING** `"false"` / `"true"`. **`tts` family: a JSON boolean** `false` / `true` (v1.23.0). Both are the production format for their family. |
+| 9 | `recordAgentCalls` | Spec section 1 `**Record agent calls:**`. `gemini` family: the **STRING** `"false"` / `"true"`. **`tts` and `voicenter-gemini` families: a JSON boolean** `false` / `true` (v1.23.0 / v1.23.2). Both are the production format for their family. |
 | 10 | `silence_behaviour` | §4.2.5 below; omitted entirely if spec section 3 is `[not configured]` |
-| 11 | `created` | §4.2.4 below (the lean payload — voice + realtime input only). **`gemini` family only — omitted on `tts`.** |
+| 11 | `created` | §4.2.4 below (the lean payload — voice + realtime input only). **Omitted on `tts`. On `voicenter-gemini` it carries only the voice** (below). |
 
 **`tts` family (v1.23.0; production exports BotID 37437 v0.1.149 on `390` and BotID 37390 v0.1.150 on `321`).** Same fields, with three differences: no `created` (row 11); a `tts` object inserted **immediately after `prompts`** (row 8), carrying the voice — `"tts": { "speak": { "voice": "<spec section 1 **Voice Name:** — a Voicenter TTS voice name on `321`, an ElevenLabs voice ID on `390`>" } }`, emitted only when the voice channel is active; and `recordAgentCalls` as a boolean (row 9). The limit and layer fields (rows 1–7) are **still emitted** — the reference exports happened to omit them, but they are kept so the version carries explicit limits. **No `created` either, even though the `321` export carried a leftover Gemini `created` block** (a Charon `prebuiltVoiceConfig` from the bot's Gemini past): the `tts` voice is the one the runtime speaks.
+
+**`voicenter-gemini` family (v1.23.2; production export BotID 37428 v0.1.151 on `387` Voicenter Voicebot - Gemini, `AIModel 33`).** The outer shell of `tts` with a Gemini voice: top-level `AIModelConfig` is `{}` (row 9 above); `recordAgentCalls` is a JSON boolean; **no `tts` object**; and `created` (row 11, still last) holds **only** `{ "generationConfig": { "speechConfig": { "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "<spec **Voice Name:**>" } } } } }` — no `realtimeInputConfig`, because the production export carries none. On a text-only bot `created` is omitted. The limit and layer fields (rows 1–7) are still emitted, as on `tts`.
 
 **v1.5.0 fields removed from the prior baseline:** `tools: []` and `instructions: ""` at this level (production does not carry them). Reorder to match production.
 
@@ -145,7 +147,7 @@ Emit fields in this order:
 
 #### 4.2.4 The `created` payload (lean) and `prompts` bundle
 
-**`gemini` family only.** On the `tts` family there is no `created` payload at either level — the voice goes to `tts.speak.voice` (§4.2.3).
+**`gemini` family only.** On the `tts` family there is no `created` payload at either level — the voice goes to `tts.speak.voice` (§4.2.3). On `voicenter-gemini` (`387`) the version-level `created` is only the `generationConfig` block below, without `realtimeInputConfig`, and the top level has none (§4.2.3).
 
 **`created` payload at the version level** (`ActiveVersionInfo.AIModelConfig.created`) — v1.5.0 lean shape:
 
@@ -733,7 +735,7 @@ The full set of catalog-eligible default models. See `model-catalog.md` for the 
 | 142 | 21 | Gemini 3.1 - LLM driven | active |
 | 321 | 30 | Voicenter Voicebot | **default since v1.23.1** (the export shows its row `IsActive: 0`; verify on the target server) |
 | 390 | 36 | Voicenter Voicebot - ElevenLabs | active — the v1.23.0 default |
-| 387 | unknown | Voicenter Voicebot - Gemini (Gemini 3.8) | UNVERIFIED — Skill 3 halts |
+| 387 | 33 | Voicenter Voicebot - Gemini (Gemini 3.8) | active — verified v1.23.2 (export BotID 37428 v0.1.151) |
 | 4 | 4 | Public GPT-3.5 Standard | inactive |
 | 7 | 7 | Public PaLM Standard | inactive |
 
