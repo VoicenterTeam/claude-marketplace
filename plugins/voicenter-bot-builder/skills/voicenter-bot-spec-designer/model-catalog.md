@@ -20,6 +20,7 @@ Every entry belongs to a **wire family**, which decides the JSON shape Skill 3 e
 |---|---|---|---|---|
 | `gemini` | `{ "created": { "model": "<string>" } }` | `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` | present | string `"true"`/`"false"` |
 | `tts` | `{}` (empty object) | `tts.speak.voice` (a Voicenter TTS voice name on `321`, an ElevenLabs voice ID on `390`) | **absent** | JSON boolean |
+| `voicenter-gemini` | `{}` (empty object) | `created.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` (a Gemini voice) | present, **voice only** — no `realtimeInputConfig` | JSON boolean |
 
 The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted before v1.23.0.
 
@@ -47,19 +48,19 @@ The GPT entries use the `gemini` shape — it is the only shape Skill 3 emitted 
 | **Voice family** | ElevenLabs (see below) |
 | **Notes** | The default in v1.23.0; selectable since v1.23.1. Verified from a production export: BotID 37437 "נתיב תכנון מסלול - עברית - Voicenter ElevenLabs", version 0.1.149 (`AIModel: 36`, `AccountId: 0`). |
 
-### Voicenter Voicebot - Gemini (Gemini 3.8) — UNVERIFIED
+### Voicenter Voicebot - Gemini (Gemini 3.8)
 
 | Field | Value |
 |---|---|
 | **Display name** | Voicenter Voicebot - Gemini |
 | **`AIModelConfigID`** | `387` |
-| **`AIModelTypeId`** | `<UNKNOWN>` |
-| **Provider model string** | `<UNKNOWN>` |
-| **Wire family** | `<UNKNOWN>` |
-| **Voice family** | `<UNKNOWN>` |
-| **Notes** | The Gemini 3.8 model. **Unverified:** only the config ID is known. **Skill 3 halts** if a spec selects it (`sentinels-and-banner.md` — unverified model). Verify from a production export of a bot on 387, then fill the four unknown fields and drop this marker. |
+| **`AIModelTypeId`** | `33` |
+| **Provider model string** | — (none; the top-level `AIModelConfig` is `{}`) |
+| **Wire family** | `voicenter-gemini` |
+| **Voice family** | Gemini (see below) |
+| **Notes** | The Gemini 3.8 model. **Verified in v1.23.2** from a production export: BotID 37428 "נתיב תכנון מסלול - עברית - Voicenter - Gemini", version 0.1.151 (`AIModel: 33`, `AccountId: 0`, voice `Sadachbia`, PersonaID `261`). Its shape is a hybrid: the outer shell of the `tts` family, but the voice stays a Gemini prebuilt voice inside a version-level `created` that carries nothing else. It has no model string, so the `[GL3.1]`-gated checks (CHK-08/09/10's Gemini 3.1 rules) skip on it. Selectable by name; never the default. |
 
-**Skill 1 may still offer the unverified entry** when the user asks for it by name, but must warn that the build will stop at Skill 3 until the entry is verified. It never picks it as a default.
+**If a catalog entry is ever marked UNVERIFIED** (none is, since v1.23.2), Skill 1 may offer it when the user asks for it by name, but must warn that the build will stop at Skill 3 until the entry is verified. It never picks one as a default.
 
 ### Gemini Live (Voice driven 3.1)
 
@@ -208,7 +209,7 @@ Used with the GPT family (GPT-4 Realtime, GPT-5 Realtime, GPT Realtime Mini).
 
 ### Gemini voices
 
-Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemini 3.1 - LLM driven).
+Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemini 3.1 - LLM driven) and with Voicenter Voicebot - Gemini (`387`, v1.23.2).
 
 | Voice | Wire-format value | Gender |
 |---|---|---|
@@ -220,6 +221,7 @@ Used with the Gemini family (Gemini Live, Gemini 2.5, Gemini Voice Driven, Gemin
 | Leda | `Leda` | Female |
 | Orus | `Orus` | Male |
 | Zephyr | `Zephyr` | Female |
+| Sadachbia | `Sadachbia` | Male |
 
 Casing is preserved exactly as the platform UI presents it. Most OpenAI voices are lowercase; Cedar and Marin are capitalized. The full Gemini set is capitalized.
 

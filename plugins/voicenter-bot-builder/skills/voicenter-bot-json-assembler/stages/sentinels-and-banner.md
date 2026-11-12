@@ -145,7 +145,7 @@ Each section is always emitted, even if its content is "(none)" or "(in agreemen
 #      assembly-mapping.md D.12 (verified rows only — never invent an id), then re-run.
 ```
 
-**BLOCKING HALT — unverified AI model (v1.23.0).** `model-catalog.md` lists some models as **UNVERIFIED** — currently `387` Voicenter Voicebot - Gemini (Gemini 3.8) (`321` was verified in v1.23.1). Only its `AIModelConfigID` is known; its `AIModelTypeId` and wire shape (`gemini` vs `tts`) have not been captured from a production export. If spec section 1 `**AI Model Config:**` names it, Skill 3 **does not emit JSON at all** — a guessed shape imports as a bot whose model config the runtime cannot read. Emit this instead of the banner-plus-JSON, and stop:
+**BLOCKING HALT — unverified AI model (v1.23.0).** `model-catalog.md` lists some models as **UNVERIFIED** — currently none (`321` was verified in v1.23.1, `387` Voicenter Voicebot - Gemini in v1.23.2). For such an entry only the `AIModelConfigID` is known; its `AIModelTypeId` and wire shape (`gemini`, `tts` or `voicenter-gemini`) have not been captured from a production export. If spec section 1 `**AI Model Config:**` names it, Skill 3 **does not emit JSON at all** — a guessed shape imports as a bot whose model config the runtime cannot read. Emit this instead of the banner-plus-JSON, and stop:
 
 ```
 # Voicenter Bot JSON — ASSEMBLY HALTED

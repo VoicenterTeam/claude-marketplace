@@ -597,7 +597,7 @@ One rule (R5's `IntentResponces.Configuration.IntentSelect_1`/`IntentSelect_4` c
 
 The limit and layer fields (`max_duration`, `daily_limit`, …, `IVRLayerSelect_2`) are emitted on both. Shape source: production export BotID 37437 v0.1.149.
 
-**Unverified-model halt.** `387` Voicenter Voicebot - Gemini (Gemini 3.8) is catalogued with only its config ID (`321` was verified in v1.23.1). Selecting it halts assembly with no JSON (`stages/sentinels-and-banner.md`).
+**Unverified-model halt.** A catalog entry marked UNVERIFIED halts assembly with no JSON (`stages/sentinels-and-banner.md`). None is, since v1.23.2: `321` was verified in v1.23.1 and `387` Voicenter Voicebot - Gemini in v1.23.2.
 
 **Persona.** Hebrew is now gender-bound: `261` דובר עברית (Male, or no gender recorded) / `296` דוברת עברית (Female). CHK-25 recomputes it with the gender.
 
@@ -608,3 +608,9 @@ The limit and layer fields (`max_duration`, `daily_limit`, …, `IVRLayerSelect_
 ## v1.23.1 changes (hotfix)
 
 **Default model → `321` Voicenter Voicebot** (`AIModel 30`), verified from production export BotID 37390 v0.1.150. It uses the same `tts` wire family as ElevenLabs — empty top-level `AIModelConfig`, voice at `tts.speak.voice` (a Voicenter TTS voice name such as `eitan`), no `created`, boolean `recordAgentCalls`. The export also carried a leftover Gemini `created` block; Skill 3 does not emit it. The wire family formerly named `elevenlabs` is renamed `tts`, since it is not ElevenLabs-specific. The regression test now asserts the `321` shape too; `387` is the only model that halts.
+
+## v1.23.2 changes (hotfix)
+
+**`387` Voicenter Voicebot - Gemini (Gemini 3.8) is verified** (`AIModel 33`) from production export BotID 37428 v0.1.151, so Skill 3 builds it instead of halting. It gets a third wire family, **`voicenter-gemini`**: empty top-level `AIModelConfig`, a version-level `created` holding **only** `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` (no `realtimeInputConfig`, no model string), no `tts` object, boolean `recordAgentCalls`. The limit and layer fields are still emitted. `Sadachbia` (Male) joins the Gemini voice list.
+
+**CHK-10** gains `voicenter-gemini` shape assertions (not gated on Gemini 3.1). Still 26 checks. `examples/test-elevenlabs-regression.py` asserts the `387` shape and still exercises the unverified halt by flipping the flag in memory. Both frozen goldens are unchanged.

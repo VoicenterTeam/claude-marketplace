@@ -9,7 +9,10 @@ Derives variants of the F1 fixture in memory (no new golden files) and asserts:
    version-level `created`, voice at `tts.speak.voice`, `recordAgentCalls` boolean.
 2. Hebrew bots get PersonaID 261 (Male) / 296 (Female) from `**Agent Gender:**`,
    and 261 when the gender is absent.
-3. A catalogued-but-unverified model (387) halts assembly instead of emitting.
+3. (v1.23.2) Voicenter Voicebot - Gemini (387 / type 33) emits the production shape
+   observed in BotID 37428 v0.1.151: empty top-level `AIModelConfig`, no `tts`, a
+   version-level `created` holding only the prebuilt voice, `recordAgentCalls` boolean.
+   An entry marked unverified still halts assembly (exercised by flipping the flag).
 5. (v1.23.1) Voicenter Voicebot (321 / type 30), the default, emits the same `tts` shape.
 4. The variant passes all 26 cross-reference checks.
 
@@ -84,12 +87,37 @@ def main():
     vfails = V.run(V.build_spec_context(vv), vbot)[0]
     check(not vfails, f'321: cross-reference checks failed: {vfails}')
 
-    for name in ('Voicenter Voicebot - Gemini',):
-        try:
-            A.assemble(A.parse_spec(setf(base, 'AI Model Config', name)))
-            FAILS.append(f'{name}: unverified model assembled instead of halting')
-        except SystemExit as e:
-            check('UNVERIFIED' in str(e), f'{name}: halted for the wrong reason: {e}')
+    # v1.23.2 — Voicenter Voicebot - Gemini (387 / type 33), production export
+    # BotID 37428 v0.1.151: tts-style outer shell, Gemini prebuilt voice inside `created`.
+    gm = setf(base, 'AI Model Config', 'Voicenter Voicebot - Gemini')
+    gm = setf(gm, 'Voice Name', 'Sadachbia')
+    gm = setf(gm, 'Agent Gender', 'Male')
+    gm = setf(gm, 'Primary Language', 'he-IL')
+    gm = setf(gm, 'Record agent calls', 'true')
+    gbot = A.assemble(A.parse_spec(gm))
+    gtop, gvac = gbot['AiModelConfig'], gbot['ActiveVersionInfo']['AIModelConfig']
+    check(gtop['Name'] == 'Voicenter Voicebot - Gemini', '387: Name wrong')
+    check(gtop['AIModelConfigID'] == 387 and gtop['AIModel'] == 33, '387: ids wrong')
+    check(gtop['AIModelConfig'] == {}, '387: top-level AIModelConfig not empty')
+    check('tts' not in gvac, '387: tts present')
+    check(gvac.get('created') == {'generationConfig': {'speechConfig': {'voiceConfig': {
+        'prebuiltVoiceConfig': {'voiceName': 'Sadachbia'}}}}}, '387: created wrong')
+    check(gvac.get('recordAgentCalls') is True, '387: recordAgentCalls not boolean')
+    check(list(gvac)[-1] == 'created', '387: created not last')
+    check(gbot['ActiveVersionInfo']['PersonaID'] == 261, '387: Hebrew Male persona != 261')
+    gfails = V.run(V.build_spec_context(gm), gbot)[0]
+    check(not gfails, f'387: cross-reference checks failed: {gfails}')
+
+    # The unverified-model halt still works for any future entry marked unverified.
+    entry = A.MODEL_CATALOG['Voicenter Voicebot - Gemini']
+    entry['verified'] = False
+    try:
+        A.assemble(A.parse_spec(gm))
+        FAILS.append('unverified model assembled instead of halting')
+    except SystemExit as e:
+        check('UNVERIFIED' in str(e), f'halted for the wrong reason: {e}')
+    finally:
+        entry['verified'] = True
 
     if FAILS:
         print('ELEVENLABS REGRESSION FAILED:')

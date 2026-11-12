@@ -80,11 +80,13 @@ PARAM_TYPES = {
 # model-catalog.md entries (hardcoded per locked decision F). `family` selects the
 # wire shape (§4.2.3/§4.2.4): "gemini" = `created` payloads + prebuiltVoiceConfig;
 # "tts" = empty top-level AIModelConfig + version-level `tts.speak.voice` (both Voicenter
-# Voicebot 321 — the default since v1.23.1, export BotID 37390 — and ElevenLabs 390).
-# `verified: False` entries are catalogued but HALT assembly (v1.23.0).
+# Voicebot 321 — the default since v1.23.1, export BotID 37390 — and ElevenLabs 390);
+# "voicenter-gemini" = empty top-level AIModelConfig + a version-level `created` holding
+# ONLY the Gemini prebuilt voice (Voicenter Voicebot - Gemini 387, v1.23.2, export
+# BotID 37428 v0.1.151). `verified: False` entries are catalogued but HALT assembly.
 MODEL_CATALOG = {
     "Voicenter Voicebot - ElevenLabs": {"AIModelConfigID": 390, "AIModelTypeId": 36,   "model": None, "family": "tts", "verified": True},
-    "Voicenter Voicebot - Gemini":     {"AIModelConfigID": 387, "AIModelTypeId": None, "model": None, "family": None,         "verified": False},
+    "Voicenter Voicebot - Gemini":     {"AIModelConfigID": 387, "AIModelTypeId": 33,   "model": None, "family": "voicenter-gemini", "verified": True},
     "Voicenter Voicebot":              {"AIModelConfigID": 321, "AIModelTypeId": 30,   "model": None, "family": "tts",        "verified": True},
     "Gemini 3.1 - LLM driven": {"AIModelConfigID": 142, "AIModelTypeId": 21, "model": "models/gemini-3.1-flash-live-preview", "family": "gemini", "verified": True},
     "Gemini Live":             {"AIModelConfigID": 139, "AIModelTypeId": 18, "model": "models/gemini-3.1-flash-live-preview", "family": "gemini", "verified": True},
@@ -301,6 +303,7 @@ def assemble(spec):
             "or verify this entry in model-catalog.md first."
             % (ident['AI Model Config'], mc['AIModelConfigID']))
     tts_family = mc['family'] == 'tts'
+    vc_gemini = mc['family'] == 'voicenter-gemini'
 
     # ---- §4.4 Configuration per RT ----
     def configuration(it):
@@ -550,7 +553,8 @@ def assemble(spec):
             "ModifiedDate": ASSEMBLY_TS,
             # §4.2.3 — ElevenLabs carries an EMPTY inner object (production export
             # BotID 37437 v0.1.149); Gemini carries only the model string.
-            "AIModelConfig": {} if tts_family else {"created": {"model": mc['model']}},
+            # Voicenter Voicebot - Gemini (387) too (export BotID 37428 v0.1.151).
+            "AIModelConfig": {} if (tts_family or vc_gemini) else {"created": {"model": mc['model']}},
             "AIModelConfigID": mc['AIModelConfigID'],
         },
         "ActiveVersionInfo": {                                   # §4.2.2
@@ -603,6 +607,18 @@ def assemble(spec):
             if k == "prompts" and voice_active:
                 rebuilt["tts"] = {"speak": {"voice": ident['Voice Name']}}
         out["ActiveVersionInfo"]["AIModelConfig"] = rebuilt
+
+    # §4.2.4 `voicenter-gemini` family branch (v1.23.2; export BotID 37428 v0.1.151 on
+    # 387): the voice stays a Gemini prebuiltVoiceConfig inside `created`, but `created`
+    # carries nothing else (no realtimeInputConfig, no model string), there is no `tts`
+    # object, and recordAgentCalls is a JSON boolean. A text-only bot has no `created`.
+    elif vc_gemini:
+        vac = out["ActiveVersionInfo"]["AIModelConfig"]
+        vac["recordAgentCalls"] = str(vac["recordAgentCalls"]).strip().lower() == "true"
+        if voice_active:
+            vac["created"] = {"generationConfig": vac["created"]["generationConfig"]}
+        else:
+            del vac["created"]
 
     return out
 

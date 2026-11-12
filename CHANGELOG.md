@@ -6,6 +6,26 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.23.2 — hotfix: Voicenter Voicebot - Gemini (387) is verified
+
+Plugin `voicenter-bot-builder` 1.23.2 under marketplace 1.23.2. Emitted-output change only for
+bots that select `387`. Still 26 checks; the default model stays `321`.
+
+- **`387` Voicenter Voicebot - Gemini (Gemini 3.8) verified** from production export BotID 37428
+  "נתיב תכנון מסלול - עברית - Voicenter - Gemini" v0.1.151: `AIModel 33`, `AccountId 0`.
+  Skill 3 builds it instead of halting.
+- Its shape matches neither existing family, so it gets a third, **`voicenter-gemini`**: empty
+  top-level `AIModelConfig` and boolean `recordAgentCalls` (as on `tts`), no `tts` object, and a
+  version-level `created` holding only the Gemini `prebuiltVoiceConfig.voiceName` — no
+  `realtimeInputConfig`, no model string. The limit and layer fields are still emitted.
+- **CHK-10** asserts that shape. No model string means the Gemini 3.1–gated rules skip on `387`.
+- `Sadachbia` (Male) added to the Gemini voices; Skill 1 offers the Gemini list on `387`.
+- No catalog entry is UNVERIFIED now; the halt stays for future entries and the regression test
+  still exercises it by flipping the flag in memory.
+- `test-elevenlabs-regression.py` asserts the `387` shape. Goldens unchanged.
+
+---
+
 ### 1.23.1 — hotfix: default model is Voicenter Voicebot (321)
 
 Plugin `voicenter-bot-builder` 1.23.1 under marketplace 1.23.1. Emitted-output change for new
