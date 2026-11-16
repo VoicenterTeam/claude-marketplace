@@ -53,10 +53,28 @@ base).
 - Harness: `assemble.py` and `verify.py` extended; fixture F3 (`sample-spec-helpers.md`,
   `expected-output-helpers.json`) and `test-helpers-regression.py` (a seeded fault per new
   check) run in CI.
+- **Follow-up from a live build** (one helper, one WebAPI tool, a knowledge base; built from the
+  skills' text alone, imported through the MCP and the knowledge base linked afterwards):
+  `references/tool-settings-catalog.md` gives each tool type's settings — `ToolTypeConfigID` and
+  exact name (WebAPI 18 ApiEndpoint, 21 HttpMethod, 24 RequestPayload, 27 RequestHeaders, read
+  live 2026-11-18; MCP 30/33/36 and Database 39/42/45 from the contract) — as Skill 1's fallback
+  when no `ToolTypeConfig` read by `ToolTypeId` is reachable; the live read wins. The builder had
+  invented `URL` / `Method` with `-999`. CHK-34 now fails a static setting whose name is not one
+  of its type's settings. Skill 2 states that a helper reaches its intents through its
+  `IntentIds` alone — the intent's text neither mentions it nor names it as a tool. The import
+  stage falls back to `SubAgentList` (exact `SubAgentName`; several matches → ask) when a
+  removed item shows no `NewEntityId`. The F3 golden is unchanged.
+- **Recorded for the owners, not changed** (they predate this release): `examples/assemble.py`
+  copies an unknown voice as `<UNKNOWN: Voice Name>` where Skill 3 prescribes
+  `<USER_TO_FILL: …>`, and CHK-10 then fails on the corrected string; the always-asked fields
+  (voice, gender, record calls) have no marker in the skeleton, and `recordAgentCalls` becomes a
+  silent `false`; `**Terminal outcome:**` is optional in the skeleton but blocking in Skill 1
+  Check 19; `**Asks next:**` is `[none]` in Skill 2 and `[none — terminal]` in the skeleton;
+  `assemble.py` pins `CreatedDate` where the text says "at assembly time"; the default
+  max-duration sentence is Hebrew on an English bot.
 - **Open points** (the stricter reading is taken): a tool is always `ToolExecutionTypeID 2`
   (every observed sample is); whether a helper's instruction resolves `{{variables}}`
-  (Skill 2 writes none); no read is named for a new helper's ID after the import except
-  `Data.Removed`'s `NewEntityId`; how `ToolCreate` binds a credential was not traced; tool
+  (Skill 2 writes none); how `ToolCreate` binds a credential was not traced; tool
   names are kept unique within the file; settings from sources 2–4, assignment-level
   parameters and tool conditions are not captured by the interview.
 

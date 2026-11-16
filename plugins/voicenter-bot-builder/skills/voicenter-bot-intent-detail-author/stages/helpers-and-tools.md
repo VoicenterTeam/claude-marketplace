@@ -43,6 +43,8 @@ must say aloud uses the FP-4 quote convention and the TTS-safe rules
 (`${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` rule 8). Use no `{{…}}` variable:
 nothing documents that a helper's instruction resolves them. Never a credential.
 
+**How a helper is reached:** a helper reaches its intents through its own `IntentIds` (spec section 4.8 `**Serves intents:**`) alone. The intent's text needs no mention of the helper and must not name it as a tool.
+
 ## 3. Self-validation (blocking, before the status flip)
 
 | # | Check |

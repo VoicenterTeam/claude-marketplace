@@ -297,6 +297,7 @@ No user prompt required.
 - a `**Used by:**` naming no helper of section 4.8, or a tool used by no helper;
 - a type 4, 7 or 16 tool without `**Add after the import:**`;
 - a setting or argument name twice in one tool, or an argument named like one of its settings;
+- a setting whose name is not one of its type's settings (live read, else `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md`);
 - a setting value that is or holds a credential, token, API key, password, connection string, or `****`;
 - a helper or tool without its section-5 stub.
 

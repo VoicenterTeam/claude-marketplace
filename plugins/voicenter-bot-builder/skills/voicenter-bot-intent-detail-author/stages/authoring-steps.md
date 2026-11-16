@@ -19,6 +19,8 @@ to each in turn.*
 
 ---
 
+**An intent a helper serves** (spec section 4.8) is authored like any other: a helper reaches its intents through its own `IntentIds` (spec section 4.8 `**Serves intents:**`) alone. The intent's text needs no mention of the helper and must not name it as a tool.
+
 ### 4.1 Step 1 — Slot detailing
 
 Section 4 declares slot names, ParameterTypeIds, required flags, and collection orders. Step 1 elaborates each slot.

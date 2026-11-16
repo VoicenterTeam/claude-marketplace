@@ -302,7 +302,7 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 →
 | 31 | Helper intents are the file's intent labels (v1.25.0) | **Blocking.** `IntentIds` is non-empty, holds only the file's own intent labels, none twice (a repeat is a bare 500; a real ID is dropped silently). Remediation: Skill 1 patch mode. |
 | 32 | Helper fields (v1.25.0) | **Blocking.** `SubAgentName` present and ≤ 100, `SubAgentTitle` ≤ 255, `AiModelId` an AI model ID (or `-999`), `SubAgentStatusID` 1 or 2. Remediation: Skill 1 patch mode. |
 | 33 | Tool fields (v1.25.0) | **Blocking.** `ToolName` present, ≤ 100, unique; `ToolDisplayName` ≤ 200; known type, execution type, status and risk; schema only on an AI tool; no `TemplateId`; `VersionNumber` ≤ 20. Remediation: Skill 1 patch mode. |
-| 34 | Tool parameter lists (v1.25.0) | **Blocking.** No `ParameterName` twice in one tool's or one assignment's list; known sources; an AI argument has a null `ToolTypeConfigID` and a `source_filed` naming a schema property, and every schema property has one. Remediation: Skill 1 patch mode / Skill 3. |
+| 34 | Tool parameter lists (v1.25.0) | **Blocking.** No `ParameterName` twice in one tool's or one assignment's list; a static setting named exactly as one of its type's settings (`references/tool-settings-catalog.md`); known sources; an AI argument has a null `ToolTypeConfigID` and a `source_filed` naming a schema property, and every schema property has one. Remediation: Skill 1 patch mode / Skill 3. |
 | 35 | Assignment conditions complete (v1.25.0) | **Blocking.** Every `ConditionList` item has `Parameter`, a known `OperatorID` and `Value`. Remediation: Skill 3 internal bug (the pipeline emits `[]`). |
 | 36 | No credential-only tool type in the file (v1.25.0) | **Blocking.** No Email (4), SMS (7) or FileStorage (16) tool — the import drops them; they are added after the import. Remediation: Skill 1 patch mode. |
 | 37 | No stray null in helpers and tools (v1.25.0) | **Blocking.** Only an AI argument's `ToolTypeConfigID` may be `null`. Remediation: Skill 3 internal bug. |
@@ -679,7 +679,8 @@ per `skills/voicenter-bot-json-assembler/stages/helpers-and-tools.md`:
 - **Banner:** a HELPERS AND TOOLS section (helpers, tools, the tool-rename note) and a
   post-import step per knowledge base, tool to add, and credential setting.
 - **Import (§7.6):** after the import, `Data.Removed` is read by `Type` — `KnowledgeBase` is
-  offered as a `KnowledgeBaseAssignmentCreate` plan (type 4, on the new helper), `ToolSecret`,
+  offered as a `KnowledgeBaseAssignmentCreate` plan (type 4, on the new helper — its `NewEntityId`, or
+  the `SubAgentID` `SubAgentList` gives for the exact `SubAgentName`), `ToolSecret`,
   `Tool`, `ToolAssignment` and `ToolTemplate` are listed to set by hand, and tools marked "Add
   after the import" are offered as `ToolCreate` with their own credential plus
   `ToolAssignmentCreate` (`EntityType 7`).

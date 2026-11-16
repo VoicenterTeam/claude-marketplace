@@ -149,6 +149,8 @@ def main():
               'Config': {'value': 'a'}},
              {'ToolTypeConfigID': 18, 'ParameterName': 'ApiEndpoint', 'ToolParameterSourceID': 5,
               'Config': {'value': 'b'}}])),
+        (34, 'a setting name its type does not have', lambda il: tool0(il)['Parameters'][0].update(
+            ParameterName='URL')),
         (34, 'unknown ToolParameterSourceID', lambda il: tool0(il)['Parameters'][0].update(ToolParameterSourceID=9)),
         (34, 'source_filed not an argument',
          lambda il: tool0(il)['Parameters'][-1]['Config'].update(source_filed='orderId')),

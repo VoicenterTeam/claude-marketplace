@@ -97,7 +97,8 @@ Per emitted tool:
 | `ToolVersion` | `{"VersionNumber": "1.0.0", "Description": "First version", "ConfigurationJson": {}}` |
 
 Never emit `TemplateId`, and never `null` except an argument's `ToolTypeConfigID`. A config ID
-`<UNKNOWN: …>` emits `-999`; a setting value `<UNKNOWN: X>` emits `"<USER_TO_FILL: X>"`. A value
+`<UNKNOWN: …>` emits `-999`. A setting's `ParameterName` is its type's exact setting name
+(`${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md`; CHK-34). A setting value `<UNKNOWN: X>` emits `"<USER_TO_FILL: X>"`. A value
 whose marker starts `credential` is a credential: it stays that marker, never a value.
 
 ## 3. Banner

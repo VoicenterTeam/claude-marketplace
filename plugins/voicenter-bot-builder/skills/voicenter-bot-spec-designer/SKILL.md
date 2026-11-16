@@ -42,6 +42,7 @@ give, and never authors per-intent language (that is Skill 2).
 | `stages/self-validation.md` | §5 — the 25 self-validation checks; run at greenfield close-out and after every patch |
 | `stages/patch-mode.md` | §4 — when a prior spec is attached |
 | `model-catalog.md` | Phase 1 — AI model configs and the voice catalog (hardcoded per decision F) |
+| `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` | Phase 4 §3.5.6 — a tool type's settings when no live `ToolTypeConfig` read is reachable |
 | `trigger-detection-rules.md` | The Phase 2/3 boundary — Deep Research nudge triggers |
 | `templates/voice-default.md`, `templates/chat-default.md` | Phase 2 — templated defaults for an inactive channel |
 

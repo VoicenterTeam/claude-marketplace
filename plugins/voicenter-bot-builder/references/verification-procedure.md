@@ -545,10 +545,10 @@ CHK-15: No duplicate global intents by tool name (C-e)
 ### CHK-34 — Tool parameter lists
 
 - **Verifies:** every `Parameters[]` list, a tool's and an assignment's, is one the import can store.
-- **Source:** `voicebot-json-contract.md` §8 (`uk_TargetParameter`)
+- **Source:** `voicebot-json-contract.md` §8 (`uk_TargetParameter`); `tool-settings-catalog.md`
 - **Severity:** `blocking`
 - **On failure route to:** **Skill 1 patch mode** (a setting or argument named twice); **Skill 3 internal bug** otherwise.
-- **Procedure:** Within each list: fail a `ParameterName` that is absent, longer than 255, or seen earlier in the same list; a `ToolParameterSourceID` outside 1–5. Source `1` (an AI argument): `ToolTypeConfigID` must be null and `Config.source_filed` must name a property of the tool's `ParameterSchemaJson`. Any other source: `ToolTypeConfigID` must be an integer. Source `5`: `Config.value` must be a string. Finally, every `ParameterSchemaJson` property must have its source-`1` parameter.
+- **Procedure:** Within each list: fail a `ParameterName` that is absent, longer than 255, or seen earlier in the same list; a `ToolParameterSourceID` outside 1–5. Source `1` (an AI argument): `ToolTypeConfigID` must be null and `Config.source_filed` must name a property of the tool's `ParameterSchemaJson`. Any other source: `ToolTypeConfigID` must be an integer. Source `5`: `Config.value` must be a string, and on a type `tool-settings-catalog.md` lists (1, 10, 13) the `ParameterName` must be one of that type's setting names, exactly (for an assignment, the assigned tool's type). Finally, every `ParameterSchemaJson` property must have its source-`1` parameter.
 
 ### CHK-35 — Assignment conditions complete
 

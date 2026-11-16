@@ -89,19 +89,22 @@ Only when the file has `intentList.subAgents`. Read every `Data.Removed` entry b
 | `ToolSecret` | Tell the person to set the setting the `Reason` names on the tool `Name` by hand. |
 | `Tool`, `ToolAssignment`, `ToolTemplate`, any other | List it for the person to set by hand: what, on which helper or tool, and the `Reason` as given. |
 
+**The new helper's ID** is the entry's `NewEntityId`. When the entry shows none (or no entry
+names the helper), read `SubAgentList` and take the `SubAgentID` of the helper whose
+`SubAgentName` matches the file's exactly; when several match, ask the person which one; when
+none does, leave that step to the person in the UI.
+
 1. **Link the knowledge bases.** For the `KnowledgeBase` entries, read
    `KnowledgeBaseAssignmentCreate`'s card with `DescribeOperation`, then `PlanPreview` one step per
    entry: `KnowledgeBaseAssignmentTypeID` `4`, the knowledge base `SourceId`, the entity
-   `NewEntityId`, under the input names the card gives. Show the preview, ask via `AskUserQuestion`
+   the new helper's ID, under the input names the card gives. Show the preview, ask via `AskUserQuestion`
    ("Link now" / "I'll link them myself"), and `PlanRun` only on "Link now".
 2. **Add the tools the spec marks `**Add after the import:**`.** Offer each via `AskUserQuestion`
    ("Add it now" / "Later, by hand"). On "Add it now", in one previewed plan with the inputs each
    card requires: the tool's own credential (`CredentialCenterList` for one the person names, or
    `CredentialCenterAssignmentCreate`), `ToolCreate` in the account, then `ToolAssignmentCreate`
    with `EntityType` `7` on each helper that uses it. Ask for any input the spec does not give;
-   never guess one. A helper's new ID comes from a `Data.Removed` entry naming it (`NewEntityId`);
-   when none does, find a sub-agent read through `SearchOperations` and match by `SubAgentName`,
-   or leave the step to the person in the UI. Then tell the person the helper's instruction does
+   never guess one. Then tell the person the helper's instruction does
    not name the new tool yet (Skill 2 on the spec, then update the helper).
 3. **Credential settings left out** (§1.2): list each — setting and tool — to set on the tool by
    hand.

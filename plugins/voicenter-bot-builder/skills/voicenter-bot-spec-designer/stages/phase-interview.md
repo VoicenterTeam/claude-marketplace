@@ -477,13 +477,13 @@ A **helper** (sub-agent) is a specialist the bot hands some intents to, with its
 
 On "Add helpers", capture per `spec-skeleton.md` §4.8, one question per turn.
 
-**Live reads.** The real IDs come from the connected Voicenter MCP: call each read below directly where it is listed, otherwise through `SearchOperations` → `DescribeOperation` → `ExecuteRead`. Show each list as an id+name table and prompt from it. Where no read is reachable, apply §2.4.A's fallback once (install / authenticate / continue manually), then write the unknown marker the skeleton gives — **never a guessed ID**. Log to 7.3 which values came from live reads.
+**Live reads.** The real IDs come from the connected Voicenter MCP: call each read below directly where it is listed, otherwise through `SearchOperations` → `DescribeOperation` → `ExecuteRead`. Show each list as an id+name table and prompt from it. Where no read is reachable, apply §2.4.A's fallback once (install / authenticate / continue manually), then use `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` for a type's settings and write the unknown marker the skeleton gives for anything else — **never a guessed ID or setting name**. Log to 7.3 which values came from live reads.
 
 | Value | Read | Use |
 |---|---|---|
 | A helper's AI model | `VoiceBotConfData` | `Data.AiModelList[]`, `IsActive 1` only — an **AI model** ID, never a `model-catalog.md` model-config ID |
 | Tool types and whether one needs a credential | `ToolConfData` | `Data.ToolTypeList[]`; a non-empty `ProviderCredentialConfigIDList` means it is added after the import |
-| A type's settings | `ToolTypeConfig` with the `ToolTypeId` | `Data.RequiredParameters[]` → `ToolTypeConfigID` and name |
+| A type's settings | `ToolTypeConfig` by `ToolTypeId` | `Data.RequiredParameters[]` → `ToolTypeConfigID` and exact name; without a read, `tool-settings-catalog.md` (live wins; log a difference to 7.3) |
 | Risk levels | `ToolConfData` | `Data.ToolRiskTypeList[]` |
 | Knowledge bases | `KnowledgeBaseList` | `Data[].KnowledgeBaseID` and name |
 
@@ -501,7 +501,7 @@ On "Add helpers", capture per `spec-skeleton.md` §4.8, one question per turn.
 1. **ToolName** — specific snake_case ASCII naming what it does (`clinic_slot_lookup`, not `lookup`), at most 100 characters, unique in the bot. Tell the person once that a name already taken on the account is imported as `<name>_<number>`.
 2. **Display name** and **Purpose** (one line: what it does).
 3. **Type** — `AskUserQuestion` from `ToolConfData` (or MCP 1 / WebAPI 10 / Database 13 / Email 4 / SMS 7 / FileStorage 16). A type that needs a credential — Email, SMS and FileStorage today — gets `**Add after the import:**` with the skeleton's reason; tell the person why: the import cannot bind a credential, so Skill 3 offers to create it once the bot exists.
-4. **Settings** — for each of the type's settings from `ToolTypeConfig`, the value (free text). A value may name an argument as `{{argument}}`. **Never record a credential**: when a value is or holds one — an `Authorization` / API-key / token / cookie header, a password, an MCP `AuthToken`, a Database `ConnectionString`, or an export's masked `****` — write the whole setting as the skeleton's credential marker, and tell the person they set it on the tool after the import.
+4. **Settings** — for each of the type's settings (from `ToolTypeConfig`, else the catalog), the value (free text). The setting's name is written exactly as listed (`ApiEndpoint`, never `URL`) — it is the file's `ParameterName`. A value may name an argument as `{{argument}}`. **Never record a credential**: when a value is or holds one — an `Authorization` / API-key / token / cookie header, a password, an MCP `AuthToken`, a Database `ConnectionString`, or an export's masked `****` — write the whole setting as the skeleton's credential marker, and tell the person they set it on the tool after the import.
 5. **Arguments the model fills** — name, type (`AskUserQuestion`: string / integer / number / boolean), required or optional. Their descriptions are Skill 2's.
 6. **Risk** — `AskUserQuestion` (Read / Action / Destructive / External).
 7. **Used by** — which helpers.

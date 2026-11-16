@@ -490,6 +490,12 @@ CRED_LIKE = re.compile(
     r"|access[-_ ]?token|\btoken[\"']?\s*[:=]|secret|passw(?:or)?d|\bpwd\s*=|cookie"
     r"|://[^/\s:@]+:[^/\s@]+@)")
 CRED_CONFIGS = {33: "AuthToken", 39: "ConnectionString"}
+# references/tool-settings-catalog.md — each type's settings (ToolTypeConfigID -> exact name).
+TOOL_SETTINGS = {
+    10: {18: "ApiEndpoint", 21: "HttpMethod", 24: "RequestPayload", 27: "RequestHeaders"},
+    1: {30: "ServerUrl", 33: "AuthToken", 36: "Timeout"},
+    13: {39: "ConnectionString", 42: "Query", 45: "Timeout"},
+}
 
 
 def run_helper_checks(il, intent_ids, fail, _int):
@@ -608,10 +614,13 @@ def run_helper_checks(il, intent_ids, fail, _int):
                      f"the import drops it; it is added after the import")
 
     # 34 parameter lists, 38 credentials — tool level and assignment level
-    lists = [(f"subAgentTools[{t}]", tool.get("Parameters", []), tool) for t, tool in enumerate(tls)]
-    lists += [(f"subAgents[{h}].ToolAssignments[{a}]", asg.get("Parameters", []), None)
+    by_id = {tool.get("ToolId"): tool for tool in tls}
+    lists = [(f"subAgentTools[{t}]", tool.get("Parameters", []), tool, tool.get("ToolTypeId"))
+             for t, tool in enumerate(tls)]
+    lists += [(f"subAgents[{h}].ToolAssignments[{a}]", asg.get("Parameters", []), None,
+               (by_id.get(asg.get("ToolId")) or {}).get("ToolTypeId"))
               for h, sub in enumerate(subs) for a, asg in enumerate(sub.get("ToolAssignments", []))]
-    for where, params, tool in lists:
+    for where, params, tool, ttype in lists:
         if not isinstance(params, list):
             fail(34, f"{where}.Parameters is not a list")
             continue
@@ -641,6 +650,9 @@ def run_helper_checks(il, intent_ids, fail, _int):
                 fail(34, f"{pw}.ToolTypeConfigID = {cfg_id!r} — a setting needs its config ID")
             if src == 5 and not s(cfg.get("value")):
                 fail(34, f"{pw}.Config.value must be a string")
+            if src == 5 and ttype in TOOL_SETTINGS and pn not in TOOL_SETTINGS[ttype].values():
+                fail(34, f"{pw}.ParameterName {pn!r} is not a setting of type {ttype} "
+                         f"({', '.join(TOOL_SETTINGS[ttype].values())})")
             # 38 nothing that looks like a credential
             for k, v in cfg.items():
                 if not s(v) or CRED_MARKER.match(v):

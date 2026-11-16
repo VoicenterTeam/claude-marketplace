@@ -206,7 +206,7 @@ A global/system catalog intent is a predefined platform intent the bot reference
 - **Type:** [`1 — MCP` | `10 — WebAPI` | `13 — Database` | `4 — Email` | `7 — SMS` | `16 — FileStorage`]
 - **Risk:** [`1 — Read` | `2 — Action` | `3 — Destructive` | `4 — External`]
 - **Settings:**
-  1. [ParameterName] — config [ToolTypeConfigID from the live `ToolTypeConfig` read | `<UNKNOWN: config ID of <setting>>`] — [`value` in backticks | `<UNKNOWN: credential — <what>; set <setting> on tool <ToolName> by hand after the import>` for any value that is or holds a credential, token, API key, password or connection string, never the value itself]
+  1. [ParameterName — the type's exact setting name] — config [ToolTypeConfigID from the live `ToolTypeConfig` read by `ToolTypeId`, else `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` | `<UNKNOWN: config ID of <setting>>`] — [`value` in backticks | `<UNKNOWN: credential — <what>; set <setting> on tool <ToolName> by hand after the import>` for any value that is or holds a credential, token, API key, password or connection string, never the value itself]
   [or `[none]`]
 - **Arguments:**
   1. [argument name] — [`string` | `integer` | `number` | `boolean`], [`required` | `optional`]

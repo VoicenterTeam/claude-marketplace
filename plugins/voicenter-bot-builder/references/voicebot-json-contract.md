@@ -338,7 +338,7 @@ knowledge bases, so CHK-29…CHK-39 are the only guard.
 | `TemplateId` | Kept only when global; omit it. |
 | `ToolExecutionTypeID` | `1` Execute, `2` AI. `ParameterSchemaJson` (the AI arguments' JSON Schema) only with `2`. |
 | `ToolStatusID`, `ToolRiskTypeID` | `1`–`3` (Active, Inactive, Deleted); `1`–`4` (Read, Action, Destructive, External). The file's risk wins. |
-| `Parameters[]` | `{ToolTypeConfigID, ParameterName, ToolParameterSourceID, Config}`. A setting: its type's `ToolTypeConfigID` (`ToolTypeConfig` → `Data.RequiredParameters[]`), source `5`, `Config {"value": "<string>"}`. An AI argument: `ToolTypeConfigID` `null`, source `1`, `Config {"source_filed": "<argument>"}` — spelled `source_filed`. `ParameterName` once per list, ≤ 255. |
+| `Parameters[]` | `{ToolTypeConfigID, ParameterName, ToolParameterSourceID, Config}`. A setting: its type's `ToolTypeConfigID` and exact setting name as `ParameterName` (`ToolTypeConfig` by `ToolTypeId` → `Data.RequiredParameters[]`; fallback [`tool-settings-catalog.md`](tool-settings-catalog.md)), source `5`, `Config {"value": "<string>"}`. An AI argument: `ToolTypeConfigID` `null`, source `1`, `Config {"source_filed": "<argument>"}` — spelled `source_filed`. `ParameterName` once per list, ≤ 255. |
 | `ToolVersion` | `{VersionNumber ≤ 20, Description, ConfigurationJson}`. |
 
 **Secrets.** An export (v2.6.19) masks an MCP tool's `AuthToken` (`ToolTypeConfigID` 33), a
@@ -351,7 +351,7 @@ writes a credential, a token or an API key into the file, and never `****`: such
 
 | `Type` | Means | Then |
 |---|---|---|
-| `KnowledgeBase` | Every knowledge base in the file (`SourceId` = its ID, `NewEntityId` = the new helper). | `KnowledgeBaseAssignmentCreate` with `KnowledgeBaseAssignmentTypeID 4` on `NewEntityId`. |
+| `KnowledgeBase` | Every knowledge base in the file (`SourceId` = its ID, `NewEntityId` = the new helper). | `KnowledgeBaseAssignmentCreate` with `KnowledgeBaseAssignmentTypeID 4` on `NewEntityId` — or, when the entry shows none, the `SubAgentID` that `SubAgentList` gives for the exact `SubAgentName`. |
 | `Tool` | An Email, SMS or FileStorage tool, not created. | `ToolCreate` in the account with its own credential (`CredentialCenterList`, `CredentialCenterAssignmentCreate`), then `ToolAssignmentCreate` with `EntityType 7` on the helper. |
 | `ToolAssignment` | A helper lost a tool that was not created. | Assign it by hand. |
 | `ToolTemplate` | A non-global template was dropped; the tool was kept. | Nothing, or set the template by hand. |
