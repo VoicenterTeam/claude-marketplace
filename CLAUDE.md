@@ -114,7 +114,7 @@ See [docs/authentication.md](docs/authentication.md) for the full matrix. Quick 
 | Socket.io (`token` / `account` / `user`) | `real-time` |
 | Browser JS token | `lead-tracker` |
 | Implicit (dynamic monitor server) | `mute-recording` |
-| None — build-time authoring (no Voicenter API calls at runtime) | `voicenter-bot-spec-designer`, `voicenter-bot-intent-detail-author`, `voicenter-bot-json-assembler` |
+| None of their own — build-time authoring; Skill 1's account/layer lookups and Skill 3's optional import go through a connected Voicenter MCP's OAuth | `voicenter-bot-spec-designer`, `voicenter-bot-intent-detail-author`, `voicenter-bot-json-assembler` |
 
 Never put `VOICENTER_API_CODE` in client-side JavaScript — it is a server-only secret.
 

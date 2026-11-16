@@ -421,6 +421,18 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 | **Single-conversation** | Banner rendered as plain text in the chat message; JSON in a fenced code block; closing message instructs how to copy and import |
 | **Claude Code** | JSON written to `bot-<id>-<date>.json`; banner written to `bot-<id>-<date>.banner.md`; closing message references both files |
 
+### Import through a Voicenter MCP (§7.6, optional — v1.24.0)
+
+After a successful emission, if the session lists tools from a Voicenter MCP, Skill 3 asks once whether to import the file now ("Import now" / "I'll import it myself"). On yes it loads `stages/mcp-import.md`; otherwise — or with no Voicenter MCP — the manual hand-off above stands. The endpoint's behaviour is recorded in `references/voicebot-json-contract.md` §7 (API Manager `POST /VoiceBot/Import/`, observed live 2026-11-18 against v2.6.18, not yet in production).
+
+1. **Pick the path from what the MCP lists.** `PlanPreview` + `PlanRun` and `VoiceBotImport` (listed, or found with `SearchOperations` and read with `DescribeOperation`) → a previewed plan. Only `import_agent`, or `VoiceBotImport` without plans → an import with no preview. Neither → manual hand-off.
+2. **Replace every marker first.** Each `<USER_TO_FILL: …>` and `-999` the banner lists is asked from the person and written into the file (for `AccountID`, offering the MCP's account list, and also into every `intents[].AccountId` / `intentCategories[].AccountId`). A file that still carries a marker is never imported.
+3. **Send only the declared keys:** `Name`, `AccountID`, `Description`, `BotStatusId`, `BotLanguages`, `AiModelConfig`, `ActiveVersionInfo`, `intentList`. `BotID`, `CreatedDate` and `ModifiedDate` are left out — the import ignores them and the MCP refuses undeclared keys — but they stay in the file, which the manual and older import paths still read whole.
+4. **Previewed plan:** `PlanPreview` with one step `{step: 1, tool: "VoiceBotImport", args: <the keys above>, expect: "<one plain sentence>"}`; show the server's preview; `PlanRun` with the preview's hash only on the person's yes. Report the new bot's ID, what the server's read-back confirmed, and every `Data.Removed` entry (transfer targets other than the global hang-up, which the import drops and the person sets again by hand). The banner's post-import steps still apply. One `Skill 3  importing` line goes to spec section 7.3.
+5. **Refusals by name.** `ai_model_config_unusable` → offer `Data.GlobalAiModelConfigs` as a choice; a pick of the same wire family is written into `AiModelConfig` / `ActiveVersionInfo.AIModelConfigId` and previewed again, anything else goes back through Skill 1 patch mode. `import_placeholder_clash` → nothing was stored; a repeated/missing `IntentRelatedID`, `BotIntentId` or `ParameterId` gets a fresh ID from its range and the verification pass is re-run on the file before a new preview; an `IntentId` / `IntentCategoryId` clash means running Skill 3 on the spec again. Any other refusal is shown and nothing is changed.
+6. **Unknown outcome** (5xx, timeout): read the account with `VoiceBotList` before anything else; never import twice blindly.
+7. **No preview** (`import_agent`): Skill 3 says it imports at once and asks before calling it.
+
 ---
 
 ## Anti-list — what Skill 3 does NOT do
@@ -435,6 +447,8 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 - Emit JSON if any **blocking** cross-reference check fails (v1.13.0 wording — a partial JSON looks deployable and breaks at runtime; hard halt is the correct behavior)
 - Emit `max_turns` / `max_turns_sentence` as direct siblings of `prompts` inside `IntentConfig` (the pre-v1.13 shape) — since v1.13.0 they live inside `IntentConfig.additional` together with `sensitive`
 - Modify the spec beyond the section 7.3 generation log entry
+- Query the Voicenter platform to parse, assemble or verify — the only MCP use is the optional import after emission (§7.6)
+- Import without the person's explicit yes, import a file that still carries a marker, or import again after an unknown outcome without first reading the account
 
 ---
 

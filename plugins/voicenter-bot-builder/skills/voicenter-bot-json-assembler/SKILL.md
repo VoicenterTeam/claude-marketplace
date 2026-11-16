@@ -47,6 +47,7 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 | `stages/assembly-mapping.md` | §4 — the complete spec→wire field mapping, ID ranges, per-RT `Configuration` shapes, §16 quirks, static reference data. Also carries the Doc 1 §4–§13 and §15.3/§16 mappings it implements. |
 | `stages/sentinels-and-banner.md` | §4.6 / §5 / §7.2 — sentinel bookkeeping, section-6 drift reporting, banner format |
 | `stages/parse-errors.md` | §3 — only when the parse fails: error format and worked deviation examples |
+| `stages/mcp-import.md` | §7.6 — only when the person wants the emitted file imported now through a connected Voicenter MCP |
 | `skills/voicenter-bot-spec-designer/model-catalog.md` | §4.2.3 — resolving a named model entry to `AIModelConfigID` / `AIModelTypeId` / provider model string |
 
 Skill 3 does **not** load Skill 2's `conversation-routines-style-guide.md`. The style of
@@ -334,11 +335,17 @@ If the file already exists in the workspace (Claude Code), append `-<counter>` b
 
 > Bot JSON written to `<filename>`. Banner sidecar at `<banner filename>`. Replace any `<USER_TO_FILL: ...>` strings or `-999` IDs (full list in the banner) with real platform values, then import to Voicenter.
 
+In either runtime, §7.6 follows.
+
 ### 7.5 Spec section 7.3 updates
 
 Every Skill 3 invocation appends one entry to spec section 7.3 — on success and on failure
 alike, so the spec carries a complete audit trail of assembly attempts. Read
 `stages/sentinels-and-banner.md` §7.5 / §7.6 for the two entry formats.
+
+### 7.6 Import through a Voicenter MCP (optional)
+
+After a successful emission, if the session lists tools from a Voicenter MCP, ask once via `AskUserQuestion` whether to import the file now ("Import now" / "I'll import it myself"). On "Import now", read `stages/mcp-import.md` and follow it. With no Voicenter MCP, or on the other answer, the §7.4 hand-off stands.
 
 ## 8. Anti-list — what Skill 3 does NOT do
 
@@ -355,11 +362,12 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Emit JSON if any blocking cross-reference check fails.** Partial emission is worse than no emission — a partial JSON looks deployable, the user might import it and find out at runtime that it's broken. Hard halt is the correct behavior.
 - **Emit `max_turns` / `max_turns_sentence` as direct siblings of `prompts` inside `IntentConfig` (the pre-v1.13 shape).** Since v1.13.0 they live inside `IntentConfig.additional` together with `sensitive` (§4.3.1, golden-export shape).
 - **Emit an `announcement` key on an RT=1 intent (v1.14.0).** RT=1 `Configuration` carries only `layer` + `intentLoadingAnnouncement`; the farewell lives in the predecessor's `intentInstructions` (§4.4 RT=1; check 20).
-- **Run iteratively or repeatedly within a single invocation.** One parse, one assembly, one sanity check, one cross-reference pass, one emission. If something fails, halt and report. The user re-invokes after fixing.
+- **Run iteratively or repeatedly within a single invocation.** One parse, one assembly, one sanity check, one cross-reference pass, one emission. If something fails, halt and report. The user re-invokes after fixing. (The one exception: the re-verification `stages/mcp-import.md` prescribes after an `import_placeholder_clash`.)
 - **Invoke Skill 1 or Skill 2.** Skill 3 reports routing recommendations; the user invokes the relevant skill manually (per architecture §9.1; skill-to-skill direct invocation is v3).
 - **Validate content quality.** Whether the persona is good, whether the `validationPrompt` is well-styled, whether the slot collection logic makes sense — none of these are Skill 3's concern. Skills 1 and 2 own content quality. Skill 3 only validates structural/cross-reference correctness.
-- **Test the bot at runtime.** No simulation, no behavior check, no deployment, no end-to-end flow. v1 lifecycle ends at "JSON ready for the user to import manually" per locked decision G.
-- **Query the Voicenter platform.** No MCP in v1 (per architecture §9). The model catalog is hardcoded in `model-catalog.md`; the user's account-specific call-context variables come from spec section 4.5.1 (the user's claim, trusted at face value).
+- **Test the bot at runtime.** No simulation, no behavior check, no end-to-end flow. Deployment ends at the import: through §7.6 on the person's yes, otherwise by hand.
+- **Query the Voicenter platform to parse, assemble or verify.** Those steps use the spec and the plugin's files only: the model catalog is hardcoded in `model-catalog.md`; the user's account-specific call-context variables come from spec section 4.5.1 (the user's claim, trusted at face value). The only MCP use is §7.6, after emission.
+- **Import without an explicit yes, or twice after an unknown outcome.** §7.6 sends nothing until the person approves the preview (or, with no preview, the import itself), never sends a file that still carries a marker, and after a 5xx or timeout reads the account before anything else.
 - **Modify quirk preservation.** Doc 1 §16 lists the base quirks and Appendix A extends them (v1.5.0 corrections; v1.13.0 golden-export rows 20–23); Skill 3 emits exactly what they prescribe. Any "this looks redundant, I'll skip it" reasoning is forbidden — the platform's import endpoint may strictly require these keys. When in doubt, emit what production samples emit.
 - **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
 - **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.

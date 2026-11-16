@@ -290,9 +290,10 @@ API Manager v2.6.18 (neither in production yet). Skill 3 §7.6 imports through i
   `intents[].IntentId`, `intents[].IntentParameters[].ParameterId` or `botIntents[].BotIntentId`,
   or a repeated `intentRelations[].IntentRelatedID`, is refused before anything is stored: `400`,
   ReasonPhrase `import_placeholder_clash`, `Data: {List, Field, Id, Index, Problem}` with
-  `Problem` `"repeated"` or `"missing"`, and a Description such as *"intentList.intentRelations[1]
-  .IntentRelatedID -12 repeats an earlier item's id; every item of a list needs its own id.
-  Nothing was imported."* CHK-27 guards all five lists, present and unique.
+  `Problem` `"repeated"` or `"missing"`, and a Description such as
+  *"intentList.intentRelations[1].IntentRelatedID -12 repeats an earlier item's id; every item of
+  a list needs its own id. Nothing was imported."* CHK-27 guards all five lists, present and
+  unique.
 - **Transfer targets:** every transfer target except the global hang-up is removed by the import
   and listed in the answer's `Data.Removed`; each one is set by hand afterwards.
 - **Through the portal MCP every change is a plan:** `PlanPreview` with one `VoiceBotImport` step,

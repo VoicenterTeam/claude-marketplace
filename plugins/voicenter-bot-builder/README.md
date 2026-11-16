@@ -79,7 +79,7 @@ markers.
 
 Runs Skill 3 — parse, assemble, verify, emit. You get `bot-<name>-<date>.json` plus a banner
 listing every default applied, every unknown you must replace, and any mandatory post-import
-step.
+step. With a Voicenter MCP connected, Skill 3 then offers to import the file for you.
 
 **Change an existing bot**
 
@@ -104,9 +104,10 @@ routing recommendations. Never modifies anything.
 - The only artifacts written are files in your own workspace: the Agent Spec markdown and the
   generated bot JSON (plus a banner sidecar in Claude Code).
 - No credentials are requested, stored, or needed. The plugin never contacts the Voicenter
-  platform to build a bot; you import the generated JSON yourself.
+  platform to build a bot. Importing it is your call: by hand, or through a connected Voicenter
+  MCP when you say yes (below).
 
-Two things to be aware of, because they involve *your* choices rather than the plugin's:
+Three things to be aware of, because they involve *your* choices rather than the plugin's:
 
 - If you have the separate **`voicenter-mcp`** plugin installed, Skill 1 will offer to fetch
   your live account and layer lists so you can pick from real values instead of typing IDs.
@@ -116,6 +117,11 @@ Two things to be aware of, because they involve *your* choices rather than the p
   is real by calling it once with sample values you supply. The URL is yours; nothing is sent
   to Voicenter. Secrets are never written to the spec — only the status code, the confirmed
   field paths, and a redacted echo of the request.
+- If a **Voicenter MCP** is connected when Skill 3 finishes, it offers to import the file
+  through that connection, as your own login. Nothing is sent without your yes: where the MCP
+  previews changes, you see the server's preview first; where it only offers the older
+  `import_agent`, which imports at once, Skill 3 says so before asking. Decline and you import
+  the file yourself, as before.
 
 ## Known limitations
 
@@ -141,6 +147,10 @@ Two things to be aware of, because they involve *your* choices rather than the p
   interview and language-authoring skills inherit your session's model, because those genuinely
   need reasoning. `model` is a Claude Code extension: **claude.ai ignores it**, so the same
   assembly costs more there. No behavioural difference either way, only cost.
+- **The previewed import needs the new Voicenter portal MCP.** Importing as a previewed plan
+  (`VoiceBotImport`, API Manager v2.6.18) is not in production yet. That import drops every
+  transfer target except the global hang-up; Skill 3 lists the dropped ones for you to set again
+  in the UI.
 - **Slash commands are Claude Code / Cowork only.** In claude.ai the skills trigger from plain
   language instead. Nothing is lost — the commands are convenience, not capability.
 

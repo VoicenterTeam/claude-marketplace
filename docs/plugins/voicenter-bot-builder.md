@@ -2,7 +2,7 @@
 
 Three-skill pipeline that turns a conversational interview into deployable Voicenter Bot JSON. This is an **authoring** plugin — you use it once per bot, not per call.
 
-The output is a single `bot-<identifier>-<date>.json` file plus a generation banner, ready to import into the Voicenter platform UI. Use this plugin when you want Claude to **design and emit a new bot**, not when you want Claude to operate an existing one (that's the [`voicenter-mcp`](voicenter-mcp.md) plugin) or to write integration code against the platform APIs (that's [`voicenter-api`](voicenter-api.md)).
+The output is a single `bot-<identifier>-<date>.json` file plus a generation banner, ready to import into the Voicenter platform UI — or, when a Voicenter MCP is connected and you say yes, imported for you through it (v1.24.0). Use this plugin when you want Claude to **design and emit a new bot**, not when you want Claude to operate an existing one (that's the [`voicenter-mcp`](voicenter-mcp.md) plugin) or to write integration code against the platform APIs (that's [`voicenter-api`](voicenter-api.md)).
 
 ---
 
