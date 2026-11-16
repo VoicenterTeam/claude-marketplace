@@ -2,7 +2,15 @@
 
 *Load at §7.6, after the file is emitted and verified, and only when the person wants it
 imported now. The endpoint's behaviour is in
-`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` §7.*
+`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` §7 (helpers and tools: §8).*
+
+## Table of contents
+
+- [1. Before anything is sent](#1-before-anything-is-sent)
+- [2. Import as a previewed plan](#2-import-as-a-previewed-plan)
+- [3. When the step fails](#3-when-the-step-fails)
+- [4. A tool without a preview](#4-a-tool-without-a-preview)
+- [5. After the import: helpers and tools](#5-after-the-import-helpers-and-tools)
 
 ## 1. Before anything is sent
 
@@ -16,9 +24,14 @@ imported now. The endpoint's behaviour is in
    UNKNOWN VALUES, ask the person for the value — for `AccountID`, offer the MCP's account list;
    it must be one of the caller's accounts, or the import answers `403` — and write it into the
    emitted file at every place the sentinel went (for `AccountID`, also each
-   `intents[].AccountId` and `intentCategories[].AccountId`). **Never import a file that still
-   carries a marker.** The spec keeps its `<UNKNOWN: …>`; tell the person that Skill 1 patch mode
-   records the value so the next assembly carries it.
+   `intents[].AccountId` and `intentCategories[].AccountId`). For a helper's `AiModelId`,
+   offer `VoiceBotConfData`'s `Data.AiModelList` (active ones — an AI model, not a model
+   configuration); for a `ToolTypeConfigID`, `ToolTypeConfig` for the tool's type; for a
+   `KnowledgeBaseID`, `KnowledgeBaseList` (each read directly or through `SearchOperations` /
+   `ExecuteRead`). **Never import a file that still carries a marker.** The spec keeps its
+   `<UNKNOWN: …>`; tell the person that Skill 1 patch mode records the value so the next assembly
+   carries it. **Credential markers** (`<USER_TO_FILL: credential …>`) are the exception: never ask
+   for the value; leave that `Parameters` item out of the arguments and keep it for §5.
 3. **Build the arguments** from the file: exactly `Name`, `AccountID`, `Description`,
    `BotStatusId`, `BotLanguages`, `AiModelConfig`, `ActiveVersionInfo`, `intentList`. Leave out
    `BotID`, `CreatedDate` and `ModifiedDate`: the import ignores them and the MCP refuses any key
@@ -37,7 +50,8 @@ imported now. The endpoint's behaviour is in
 3. Only on "Import now", call `PlanRun` with the preview's hash. Otherwise stop: nothing was imported.
 4. Report from the run's answer: the new bot's ID, what the server's read-back confirmed, and each
    entry of `Data.Removed` — transfer targets the import dropped (all but the global hang-up),
-   which the person sets again in the UI. The banner's MANDATORY POST-IMPORT steps still apply.
+   which the person sets again in the UI, and, for a file with helpers, the entries §5 acts on.
+   The banner's MANDATORY POST-IMPORT steps still apply; with helpers, continue with §5.
 5. Append to spec section 7.3, in either outcome:
    `[ISO-8601 timestamp]  Skill 3  importing  Bot <ID> on account <AccountID>.` or
    `… Refused: <ReasonPhrase>.` / `… Not run.` / `… Outcome unknown.`
@@ -62,4 +76,37 @@ decide; never send the import again before that read.
 `import_agent` (and `VoiceBotImport` on a server without plans) creates the bot at once, with no
 preview. Say so, and ask via `AskUserQuestion`: "Import now" / "Import by hand". Only on "Import
 now", call it with the §1.3 arguments, restricted to the keys its schema declares, and report the
-bot ID it returns. §3's unknown-outcome rule and §2's log line apply.
+bot ID it returns. §3's unknown-outcome rule, §2's log line and §5 apply.
+
+## 5. After the import: helpers and tools
+
+Only when the file has `intentList.subAgents`. Read every `Data.Removed` entry by `Type`
+(`${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` §8):
+
+| `Type` | Do |
+|---|---|
+| `KnowledgeBase` | Offer to link it (step 1). `SourceId` is the knowledge base, `NewEntityId` the new helper. |
+| `ToolSecret` | Tell the person to set the setting the `Reason` names on the tool `Name` by hand. |
+| `Tool`, `ToolAssignment`, `ToolTemplate`, any other | List it for the person to set by hand: what, on which helper or tool, and the `Reason` as given. |
+
+1. **Link the knowledge bases.** For the `KnowledgeBase` entries, read
+   `KnowledgeBaseAssignmentCreate`'s card with `DescribeOperation`, then `PlanPreview` one step per
+   entry: `KnowledgeBaseAssignmentTypeID` `4`, the knowledge base `SourceId`, the entity
+   `NewEntityId`, under the input names the card gives. Show the preview, ask via `AskUserQuestion`
+   ("Link now" / "I'll link them myself"), and `PlanRun` only on "Link now".
+2. **Add the tools the spec marks `**Add after the import:**`.** Offer each via `AskUserQuestion`
+   ("Add it now" / "Later, by hand"). On "Add it now", in one previewed plan with the inputs each
+   card requires: the tool's own credential (`CredentialCenterList` for one the person names, or
+   `CredentialCenterAssignmentCreate`), `ToolCreate` in the account, then `ToolAssignmentCreate`
+   with `EntityType` `7` on each helper that uses it. Ask for any input the spec does not give;
+   never guess one. A helper's new ID comes from a `Data.Removed` entry naming it (`NewEntityId`);
+   when none does, find a sub-agent read through `SearchOperations` and match by `SubAgentName`,
+   or leave the step to the person in the UI. Then tell the person the helper's instruction does
+   not name the new tool yet (Skill 2 on the spec, then update the helper).
+3. **Credential settings left out** (§1.2): list each — setting and tool — to set on the tool by
+   hand.
+4. **Tool names.** A taken name is created as `<name>_<new ToolId>` without a word. When a read of
+   the account's tools is offered, compare each `ToolName`; for a renamed one, tell the person the
+   helper's instruction still names the old name.
+5. Append to spec section 7.3: `[ISO-8601 timestamp]  Skill 3  importing  Helpers: <n> knowledge
+   bases linked, <n> tools added, <n> items left to set by hand.`
