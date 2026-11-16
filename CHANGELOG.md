@@ -6,6 +6,45 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.24.0 — bot status choice, import-contract checks, import through a Voicenter MCP
+
+Plugin `voicenter-bot-builder` 1.24.0 under marketplace 1.24.0. Behaviour added; nothing breaks.
+**28 checks** (CHK-27, CHK-28 appended). Both frozen goldens are byte-identical. Found by
+importing a bot built with this plugin through API Manager's `POST /VoiceBot/Import/` (tool
+`VoiceBotImport` on the Voicenter portal MCP, API Manager v2.6.18) on 2026-11-18; neither is in
+production yet.
+
+- **Bot status is a choice.** Spec section 1 gains optional `**Bot status:**` — `1` Active,
+  `2` Inactive, `3` Maintenance. Skill 1 asks it once (Active recommended) and omits the field
+  for Active; patch mode treats it as an easy change. Skill 3 parses it strictly (`4` Deleted or
+  anything else is a parse error) and emits it as `BotStatusId`, `1` when absent — the constant
+  every earlier version emitted. The live test wanted a bot imported switched off, and couldn't.
+- **CHK-27 (blocking) — placeholder IDs present and unique** in the five lists the importer
+  keys by ID: `IntentCategoryId`, `IntentId`, `ParameterId` (across all intents), `BotIntentId`,
+  `IntentRelatedID`. The import refuses a clash with `import_placeholder_clash` and stores
+  nothing. CHK-02 had left `IntentRelatedID` to the allocator, and v1.2.0 once emitted a repeat.
+- **CHK-28 (blocking) — bot status in range** and equal to the spec's choice.
+- **Skill 3 §7.6 — optional import through a Voicenter MCP** (`stages/mcp-import.md`). After a
+  verified emission, with a Voicenter MCP connected, Skill 3 asks once whether to import now. On
+  the portal MCP it imports as a plan: `PlanPreview` with one `VoiceBotImport` step, the
+  server's preview shown, `PlanRun` only on the person's yes; then the new bot's ID, the
+  read-back, and `Data.Removed` (transfer targets other than the global hang-up, which the
+  import drops). Markers are replaced first and a file that still has one is never sent;
+  `BotID`, `CreatedDate` and `ModifiedDate` stay in the file but are left out of the import,
+  which ignores them. `ai_model_config_unusable` offers `Data.GlobalAiModelConfigs` as a choice;
+  `import_placeholder_clash` fixes the named ID and re-verifies; an unknown outcome (5xx,
+  timeout) reads the account with `VoiceBotList` before anything else. Where only the older
+  `import_agent` is offered, Skill 3 says it imports at once, with no preview, and asks first.
+  With no MCP the manual hand-off is unchanged.
+- `references/voicebot-json-contract.md` §7 records the import endpoint's behaviour. The Skill 3
+  anti-list's "No MCP in v1" and "lifecycle ends at manual import" lines now say what is true:
+  parsing, assembly and verification never touch the platform; the import is the one MCP use.
+- Harness: `assemble.py` parses and emits the status, `verify.py` implements CHK-27/28, and the
+  new `test-import-contract-regression.py` (in CI) covers the status values, the parse errors,
+  and a repeated or missing ID in every list.
+
+---
+
 ### 1.23.2 — hotfix: Voicenter Voicebot - Gemini (387) is verified
 
 Plugin `voicenter-bot-builder` 1.23.2 under marketplace 1.23.2. Emitted-output change only for

@@ -80,7 +80,7 @@ Design and emit deployable Voicenter Bot JSON through a guided interview. Build-
 |---|---|---|
 | `/voicenter-bot-spec-designer` | 1 — Structural | Interview-driven design: identity, persona, intent graph, slots, RT specifics |
 | `/voicenter-bot-intent-detail-author` | 2 — Per-intent language | Slot descriptions, validationPrompt, RT-specific announcements, post-execution instructions (Conversation Routines style) |
-| `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs the §15.4 cross-reference pass (25 checks, most blocking); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
+| `/voicenter-bot-json-assembler` | 3 — Wire-format projection | Mechanical projection of the spec into Bot JSON; runs the §15.4 cross-reference pass (28 checks, most blocking); emits `bot-<id>-<date>.json` plus a banner of fail-loud sentinels |
 
 ---
 

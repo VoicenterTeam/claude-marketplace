@@ -481,3 +481,7 @@ Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6; Skill 3 ve
 
 - **`387` Voicenter Voicebot - Gemini (Gemini 3.8) is verified** (`AIModelTypeId 33`) from production export BotID 37428 v0.1.151. Skill 1 records it when the user asks for Gemini 3.8 and offers the Gemini voice list; it is never the default. No catalog entry is UNVERIFIED any more.
 - `Sadachbia` (Male) added to the Gemini voices.
+
+## v1.24.0 changes
+
+- **Bot status** — Phase 1 step 14 asks once whether the bot is imported Active (recommended), Inactive or in Maintenance; spec section 1 carries `**Bot status:** 2` or `3`, and nothing for Active. Patch mode treats it as an easy change. Skill 3 emits it as `BotStatusId` and checks it (CHK-28).

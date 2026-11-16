@@ -636,3 +636,11 @@ The limit and layer fields (`max_duration`, `daily_limit`, …, `IVRLayerSelect_
 **`387` Voicenter Voicebot - Gemini (Gemini 3.8) is verified** (`AIModel 33`) from production export BotID 37428 v0.1.151, so Skill 3 builds it instead of halting. It gets a third wire family, **`voicenter-gemini`**: empty top-level `AIModelConfig`, a version-level `created` holding **only** `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` (no `realtimeInputConfig`, no model string), no `tts` object, boolean `recordAgentCalls`. The limit and layer fields are still emitted. `Sadachbia` (Male) joins the Gemini voice list.
 
 **CHK-10** gains `voicenter-gemini` shape assertions (not gated on Gemini 3.1). Still 26 checks. `examples/test-elevenlabs-regression.py` asserts the `387` shape and still exercises the unverified halt by flipping the flag in memory. Both frozen goldens are unchanged.
+
+## v1.24.0 changes
+
+**`BotStatusId` follows the spec.** `**Bot status:**` (`1` Active, `2` Inactive, `3` Maintenance) is parsed strictly and emitted; absent means `1`, the former constant, so both frozen goldens are unchanged.
+
+**Twenty-eight checks.** Check 27 (placeholder IDs present and unique in the five lists the importer keys by ID) and check 28 (bot status in range and equal to the spec's) are appended, both blocking. `examples/test-import-contract-regression.py` (in CI) exercises them.
+
+**Optional import through a Voicenter MCP** (§7.6, above). `references/voicebot-json-contract.md` §7 records API Manager's import endpoint; the anti-list now limits "no platform queries" to parsing, assembly and verification.
