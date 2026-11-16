@@ -62,7 +62,7 @@ confirm it appears in typeahead, and `/bot` and confirm all three commands compl
   delegation actually engages rather than §6.0 silently always falling inline.
 - The returned report matches the output contract in `../../references/verification-procedure.md`
   (all blocks present, in order, severities restated not re-decided).
-- Assembly proceeds; 26 checks reported.
+- Assembly proceeds; 28 checks reported.
 - Emitted JSON is byte-comparable to `../../examples/expected-output-shipping.json`.
 
 **Byte-comparability caveat (finding N6).** Skill 3 stamps the assembly instant into **24 fields
@@ -86,7 +86,7 @@ alternative offered), Skill 1 for 22. Compare against
 `../../examples/expected-violations-report.md`.
 
 **Fixture-drift caveat.** That fixture is frozen at v1.17.0 and its outcome block reads
-`Checks failed: 3 of 24` / `Checks passed: 21`. The pass is now 26 checks, so a current run
+`Checks failed: 3 of 24` / `Checks passed: 21`. The pass is now 28 checks, so a current run
 prints `3 of 26` / `23 passed`. Compare the **per-check rows** — which checks fired, their
 severities, their routing — not the totals line. The fixture is deliberately not regenerated;
 only the arithmetic moved.

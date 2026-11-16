@@ -68,6 +68,7 @@ Open unknowns: <count from 7.4>
 - Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that CHK-07 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / IVRLayerSelect_2) (v1.13.0)
 - Edit the §1 `Negative instructions` field (v1.16.0)
+- Edit the §1 `Bot status` field (v1.24.0)
 - Edit `**Sensitive:**` / `**Max turns:**` / `**Max turns sentence:**` / `**IsSilenceIntent:**` on an intent (v1.14.0) — re-run Checks 23/24 after the edit
 
 **Hard-change taxonomy** (cascade reset required — see 4.5):

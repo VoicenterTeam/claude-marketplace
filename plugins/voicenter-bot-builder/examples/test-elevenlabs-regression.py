@@ -14,7 +14,7 @@ Derives variants of the F1 fixture in memory (no new golden files) and asserts:
    version-level `created` holding only the prebuilt voice, `recordAgentCalls` boolean.
    An entry marked unverified still halts assembly (exercised by flipping the flag).
 5. (v1.23.1) Voicenter Voicebot (321 / type 30), the default, emits the same `tts` shape.
-4. The variant passes all 26 cross-reference checks.
+4. The variant passes all 28 cross-reference checks.
 
 Usage:  python test-elevenlabs-regression.py      (exits 1 on any failure)
 """

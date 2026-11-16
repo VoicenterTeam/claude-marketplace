@@ -139,7 +139,15 @@ def parse_spec(text):
         'Max duration sentence': field(sec1, 'Max duration sentence'),
         'IVRLayerSelect_2':    field(sec1, 'IVRLayerSelect_2', '3'),
         'Negative instructions': field(sec1, 'Negative instructions'),
+        'Bot status':          field(sec1, 'Bot status', '1'),
     }
+    # §3.1 (v1.24.0) — Bot status is 1 Active / 2 Inactive / 3 Maintenance; anything
+    # else, 4 (Deleted) included, is a parse error, never a default.
+    if spec['identity']['Bot status'] not in ('1', '2', '3'):
+        raise SystemExit("PARSE ERROR - Expected: '**Bot status:** 1|2|3'. Found: "
+                         "'**Bot status:** %s'. Fix: use 1 (Active), 2 (Inactive) or "
+                         "3 (Maintenance), or omit the field for Active."
+                         % spec['identity']['Bot status'])
 
     # §2 persona bundle -> prompts (§4.2.4)
     sec2 = text.split('## 2. Persona Bundle')[1].split('## 3. Caller Silence Behavior')[0]
@@ -537,7 +545,7 @@ def assemble(spec):
             "silenceRelations": [],                              # §4.3.6
             "apiSilenceRelations": api_rel,
         },
-        "BotStatusId": 1,
+        "BotStatusId": int(ident['Bot status']),         # §4.2.1 row 5 (v1.24.0)
         "CreatedDate": ASSEMBLY_TS,
         "Description": ident['Description'],
         "BotLanguages": [],

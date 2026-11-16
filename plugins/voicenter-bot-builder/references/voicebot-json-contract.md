@@ -23,9 +23,11 @@
 - [4. Mandatory gate before returning any JSON](#4-mandatory-gate-before-returning-any-json)
 - [5. Validator (runnable, self-contained — Python 3 stdlib only)](#5-validator-runnable-self-contained--python-3-stdlib-only)
 - [6. JSON Schema (draft 2020-12, structural checks only — optional fast gate)](#6-json-schema-draft-2020-12-structural-checks-only--optional-fast-gate)
+- [7. The import endpoint (API Manager `POST /VoiceBot/Import/`)](#7-the-import-endpoint-api-manager-post-voicebotimport)
 
-**What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 in
-[`verification-procedure.md`](verification-procedure.md). The `AIModelConfigID` whitelist in R11
+**What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7), CHK-25, CHK-27
+(R3) and CHK-28 (R8/R11) in [`verification-procedure.md`](verification-procedure.md), and the
+optional import of §7. The `AIModelConfigID` whitelist in R11
 lists three ids (303, 312, 321) not yet in the assembler's catalog (v1.23.1: `321` is now catalogued — Voicenter Voicebot, the default) — see the known-gap note in
 `skills/voicenter-bot-json-assembler/stages/assembly-mapping.md` Appendix D.11.
 
@@ -266,3 +268,36 @@ The validator above is authoritative (it also checks cross-references and
 duplicates, which schema can't). See the source contract for the full schema;
 omitted here since Skill 3's own §6 cross-reference pass (SKILL.md) plays the
 same role for the bot-builder pipeline's specific wire shapes.
+
+## 7. The import endpoint (API Manager `POST /VoiceBot/Import/`)
+
+Observed live on 2026-11-18 through the Voicenter portal MCP's `VoiceBotImport` tool, against
+API Manager v2.6.18 (neither in production yet). Skill 3 §7.6 imports through it.
+
+- **Body:** the file itself. Declared inputs, exactly: `Name`, `AccountID` (required; one of the
+  caller's accounts, else `403`), `Description`, `BotStatusId` (1 Active, 2 Inactive,
+  3 Maintenance), `BotLanguages`, `AiModelConfig`, `ActiveVersionInfo`, `intentList`. The MCP
+  refuses any other top-level key before sending.
+- **Ignored keys:** `BotID`, `CreatedDate`, `ModifiedDate`. Skill 3 still emits them — the manual
+  and older import paths take the whole file — and an import through the MCP leaves them out.
+- **`AiModelConfig`:** `{"AccountId": 0, "AIModelConfigID": <global config>}` reuses that global
+  configuration; `AccountId` must be the number `0`. Otherwise the import copies it and needs
+  `AIModel`, `Name` and `AIModelConfig`. If neither works: `400`, ReasonPhrase
+  `ai_model_config_unusable`, `Data.GlobalAiModelConfigs: [{AIModelConfigID, Name}]` — the usable
+  global configs. A global config that is no longer active is still accepted, without a word, so
+  the file must name an active one.
+- **Placeholder IDs (R3):** a repeated or missing `intentCategories[].IntentCategoryId`,
+  `intents[].IntentId`, `intents[].IntentParameters[].ParameterId` or `botIntents[].BotIntentId`,
+  or a repeated `intentRelations[].IntentRelatedID`, is refused before anything is stored: `400`,
+  ReasonPhrase `import_placeholder_clash`, `Data: {List, Field, Id, Index, Problem}` with
+  `Problem` `"repeated"` or `"missing"`, and a Description such as *"intentList.intentRelations[1]
+  .IntentRelatedID -12 repeats an earlier item's id; every item of a list needs its own id.
+  Nothing was imported."* CHK-27 guards all five lists, present and unique.
+- **Transfer targets:** every transfer target except the global hang-up is removed by the import
+  and listed in the answer's `Data.Removed`; each one is set by hand afterwards.
+- **Through the portal MCP every change is a plan:** `PlanPreview` with one `VoiceBotImport` step,
+  the person's yes, then `PlanRun` with the preview's hash; the server reads the new bot back. A
+  refusal comes back as a failed step with its reason and data. A 5xx or a timeout means it is not
+  known whether the import took effect: read the account (`VoiceBotList`) before trying again.
+- **Today's production Voicenter MCP** may offer an older tool instead, `import_agent`: the same
+  file with typed top-level fields, creating the bot at once with no preview.

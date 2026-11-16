@@ -50,6 +50,8 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 
 The cached mappings are used in §4.3 wherever an ID is referenced (transition rows, parameter parent-ID, api-silence relations, botIntents references).
 
+Every `IntentCategoryId`, `IntentId`, `ParameterId` (across all intents), `BotIntentId` and `IntentRelatedID` must be present and unique in its list — the importer keys its map tables on them and refuses the whole file otherwise. CHK-27 verifies it.
+
 **Catalog intents (section 4.6) bypass placeholder allocation entirely.** Their `IntentId`, `IntentCategoryId`, `ParameterId`, `IntentScriptId`, and any nested IDs are real platform-assigned positives and are copied through verbatim. Do NOT assign them `-10`/`-1000`/`-3` placeholders and do NOT add them to the cached `<identifier> → IntentId` map used for the bot's own intents (they are referenced by real `IntentId`, not identifier).
 
 The numerical ranges are wide so a human reading the JSON can identify what kind of ID a placeholder represents at a glance. Real platform-assigned IDs after import will be positive integers, so there's no collision risk on re-export.
@@ -66,7 +68,7 @@ Emit fields in this order (matches production export — v1.5.0):
 | 2 | (allocated) | `<root>.BotID` | `-1` |
 | 3 | Account ID | `<root>.AccountID` | Direct copy, or `-999` sentinel if `<UNKNOWN>` |
 | 4 | (assembled) | `<root>.intentList` | §4.3 below |
-| 5 | (constant) | `<root>.BotStatusId` | `1` (per Doc 1 §4) |
+| 5 | Bot status | `<root>.BotStatusId` | Spec section 1 `**Bot status:**` (`1` Active, `2` Inactive, `3` Maintenance); `1` when absent (v1.24.0; was the constant `1`). Verified by CHK-28 |
 | 6 | (generated) | `<root>.CreatedDate` | ISO timestamp at assembly time, format `"YYYY-MM-DD HH:MM:SS"` |
 | 7 | Description | `<root>.Description` | Direct copy |
 | 8 | (constant) | `<root>.BotLanguages` | `[]` (preserved per §16) |
@@ -223,7 +225,7 @@ The `silence_behaviour.intent` failover is bot-level (caller silence regardless 
 
 Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. Skill 3 builds them from the cached ID map (§4.1) and section 4-5 content.
 
-**Emit the six collections in the sub-section order below** — `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`. Like every other table in this file, the order is contractual. Note that `silenceRelations` is always `[]` and therefore easy to misplace without any check firing: no CHK-NN inspects key order, so a misordered emission still passes all 26 checks and is caught only by byte-comparison against a golden.
+**Emit the six collections in the sub-section order below** — `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`. Like every other table in this file, the order is contractual. Note that `silenceRelations` is always `[]` and therefore easy to misplace without any check firing: no CHK-NN inspects key order, so a misordered emission still passes all 28 checks and is caught only by byte-comparison against a golden.
 
 #### 4.3.1 `intents[]`
 
@@ -622,10 +624,10 @@ Path 2 (account-private new-config insert) is documented in §4.2.3 but not exer
 
 | ID | Name | When |
 |---|---|---|
-| **1** | Active | **v1 default — always emitted** |
-| 2 | Inactive | not emitted by Skill 3 |
-| 3 | Maintenance | not emitted |
-| 4 | Deleted | not emitted |
+| **1** | Active | **default** — spec section 1 has no `**Bot status:**`, or `1` |
+| 2 | Inactive | `**Bot status:** 2` (v1.24.0) — imported switched off |
+| 3 | Maintenance | `**Bot status:** 3` (v1.24.0) |
+| 4 | Deleted | never emitted — §3.1 refuses it, CHK-28 backstops |
 
 ### D.3 `BotVersionStatusId` (`ActiveVersionInfo`)
 

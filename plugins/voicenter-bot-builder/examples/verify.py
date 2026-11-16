@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical transcription of Skill 3 §6 — the 26-check cross-reference pass.
+"""Mechanical transcription of Skill 3 §6 — the 28-check cross-reference pass.
 
 Implements the detections in Skill 3 SKILL.md §6.2, run against the assembled
 wire structure (plus the spec, which checks 16-24 additionally consult).
@@ -8,8 +8,8 @@ Used twice in S0: to confirm F1 assembles clean, and to record which checks fire
 on the F2 seeded fixture (the v1.17.0 detection baseline that V-C3/V-C4/V-A2
 compare against).
 
-Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26, then 8, 9, 10, 14, 25.
-Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26. 8 is banded.
+Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26-28, then 8, 9, 10, 14, 25.
+Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26-28. 8 is banded.
 9, 14, 22, 23 advisory; 10 blocking on mismatch; 25 blocking since v1.22.0.
 
 CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.0
@@ -27,7 +27,7 @@ import unicodedata
 
 import assemble as A
 
-BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26}
+BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26, 27, 28}
 NAMES = {
     1: "botIntents[].IntentID resolves", 2: "intentRelations[] resolves",
     3: "apiSilenceRelations[] resolves", 4: "intents[].IntentCategoryId resolves",
@@ -48,6 +48,8 @@ NAMES = {
     24: "Turn-yield announcement gating (FP-3)",
     25: "Persona derivation from Primary Language (contract R7/R11)",
     26: "Layer fields are integers (contract §2 Types)",
+    27: "Import placeholder IDs present and unique (contract R3/§7)",
+    28: "Bot status in range (contract R8/R11/§7)",
 }
 
 # Appendix D.12 — known shared Persona rows (AccountId=0) that are never emitted.
@@ -341,6 +343,35 @@ def run(spec, bot):
             fail(26, f"{tn}: Configuration.NEXT_VO_ID = {cfg['NEXT_VO_ID']!r} "
                      f"({type(cfg['NEXT_VO_ID']).__name__}) — must be a JSON integer")
 
+    # 27 placeholder IDs present and unique — the five lists the importer keys by ID.
+    # The import refuses the whole file (import_placeholder_clash) on either problem.
+    id_lists = [
+        ("intentCategories", "IntentCategoryId", il["intentCategories"]),
+        ("intents", "IntentId", ints),
+        ("intents[].IntentParameters", "ParameterId",
+         [p for i in ints for p in i["IntentParameters"]]),
+        ("botIntents", "BotIntentId", il["botIntents"]),
+        ("intentRelations", "IntentRelatedID", il["intentRelations"]),
+    ]
+    for lst, fld, items in id_lists:
+        seen_ids = set()
+        for idx, item in enumerate(items):
+            v = item.get(fld)
+            if not _int(v):
+                fail(27, f"{lst}[{idx}].{fld} = {v!r} — missing")
+            elif v in seen_ids:
+                fail(27, f"{lst}[{idx}].{fld} {v} — repeated")
+            else:
+                seen_ids.add(v)
+
+    # 28 bot status in range and equal to the spec's choice (default 1).
+    st = bot.get("BotStatusId")
+    want = int(spec["identity"].get("Bot status") or 1)
+    if not _int(st) or st not in (1, 2, 3):
+        fail(28, f"BotStatusId = {st!r} — must be 1, 2 or 3")
+    elif st != want:
+        fail(28, f"BotStatusId {st} != spec Bot status {want}")
+
     # 8/9 token estimate (§6.2 check 8 specifics)
     top_created = bot["AiModelConfig"]["AIModelConfig"].get("created", {})
     gated = top_created.get("model") == "models/gemini-3.1-flash-live-preview"
@@ -461,7 +492,7 @@ def main():
     fails, tok, gated, skipped = run(spec, bot)
     blocking = sorted(n for n in fails if n in BLOCKING
                       and not all("ADVISORY" in m for m in fails[n]))
-    ran = 26 - len(skipped)
+    ran = 28 - len(skipped)
     print(f"Token estimate: {tok} tok (checks 8/9/10 {'FIRE' if gated else 'skip'})")
     print(f"Checks run: {ran} | failed: {len(fails)} | blocking: {len(blocking)}\n")
     for n in sorted(fails):

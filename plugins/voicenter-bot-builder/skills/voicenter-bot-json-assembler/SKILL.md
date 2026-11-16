@@ -33,10 +33,10 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 
 | Read | Why |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 26 checks (CHK-01…CHK-26) — read and execute this file; §6 only decides which path runs it** |
+| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 28 checks (CHK-01…CHK-28) — read and execute this file; §6 only decides which path runs it** |
 | `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | FP-1…FP-13 incl. the FP-3 turn-yield rule; verified by CHK-16…CHK-24 |
 | `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine; Skill 3 owns CHK-08 (rule 1), CHK-09 (rule 2), CHK-10 (rule 12) and the banner sentinels (rule 13) |
-| `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot; Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 |
+| `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot, and the import endpoint (§7); Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7), CHK-25, CHK-27 and CHK-28 |
 | Doc 2 §3.7 — Strict-template enforcement | The §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | What this file implements |
 
@@ -116,6 +116,7 @@ Specifically, the parser expects:
 - **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error (§3.2) — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`. Bold markdown around the colon-terminated label, exactly as written.
 - **Section 1 optional limit fields (v1.13.0; maxDurationLayerId default revised v1.14.0):** `**Daily limit:**` (int), `**Daily limit layer:**` (int), `**Max duration layer:**` (int), `**Daily limit sentence:**` (free text), `**Max duration sentence:**` (free text), `**IVRLayerSelect_2:**` (int). All optional; absence parses to defaults 600 / 3 / **0** / production-default sentence / production-default Hebrew sentence / 3 (see §4.2.2). A non-integer where an int is expected is a parse error.
+- **Section 1 `**Bot status:**` (v1.24.0, optional):** `1` | `2` | `3` (Active / Inactive / Maintenance), emitted to root `BotStatusId`. Absence parses as `1`. Any other value, `4` (Deleted) included, is a parse error.
 - **Section 1 `**Negative instructions:**` (v1.16.0, optional):** free text. **Parse-only — NOT emitted to the wire JSON** (the wire field name is unverified). When present, Skill 3 emits a MANDATORY POST-IMPORT banner step telling the operator to paste the text into the UI's AI Security Settings → Negative Instructions field (§7.2). Absence ⇒ no banner step.
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms (e.g., `[done]`, `[in progress]`).
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. The angle-bracket format is not optional; `(UNKNOWN: ...)` is a parse error.
@@ -185,23 +186,13 @@ drift-reporting format.
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run the **26-check cross-reference pass**.
+After §4 assembly and §5 sanity check: run the **28-check cross-reference pass**.
 
-**The checks live in exactly one place.** Read and execute
-`${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries
-CHK-01…CHK-26 with their run order, model gating, severity assignment, per-check failure
-routing, and the output contract both execution paths emit. No check procedure text is
-duplicated here — if you find yourself recalling a check from memory, re-read the file.
+**The checks live in exactly one place.** Read and execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries CHK-01…CHK-28 with their run order, model gating, severity assignment, per-check failure routing, and the output contract both execution paths emit. No check procedure text is duplicated here — if you find yourself recalling a check from memory, re-read the file.
 
-What stays in this SKILL.md is **decision logic**: which path executes the procedure
-(§6.0–§6.2), and what Skill 3 does with the results (§6.4).
+What stays in this SKILL.md is **decision logic**: which path executes the procedure (§6.0–§6.2), and what Skill 3 does with the results (§6.4).
 
-Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4,
-three from Compass doctrine, three botIntents-role integrity checks, one
-duplicate-global-intent check, nine field-placement doctrine checks, and one persona
-derivation check. CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21, CHK-24, CHK-25 and
-CHK-26 are blocking; CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09,
-CHK-14, CHK-22, CHK-23 are advisory.
+Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4, three from Compass doctrine, three botIntents-role integrity checks, one duplicate-global-intent check, nine field-placement doctrine checks, and four import-contract checks (persona derivation, layer typing, placeholder IDs, bot status). CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 and CHK-25…CHK-28 are blocking; CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22, CHK-23 are advisory.
 
 ### 6.0 Execution mode
 
@@ -237,7 +228,7 @@ When a report comes back from the verifier:
 
 1. **Validate it against the contract** before trusting it. A report is valid iff the
    `## Verification Report` header is present, the Verdicts table contains exactly
-   CHK-01…CHK-26 in order, and every verdict is in the allowed vocabulary
+   CHK-01…CHK-28 in order, and every verdict is in the allowed vocabulary
    (`pass` / `FAIL` / `error`).
 2. **If valid: consume it verbatim.** Apply blocking/advisory handling (§6.4) and the
    report's routing recommendations exactly as the inline path would apply its own results.
@@ -251,7 +242,7 @@ When a report comes back from the verifier:
 
 ### 6.2 Inline path (degraded mode)
 
-This is **degraded mode** — not because the checks are weaker (they are the same 26 from the
+This is **degraded mode** — not because the checks are weaker (they are the same 28 from the
 same file), but because there is no context isolation. You watched this spec get built, so
 your memory of what was intended can quietly substitute for what is written. That asymmetry
 is the only difference between the two paths, and it is why the discipline below is
@@ -264,7 +255,7 @@ checks (the CHK-07 and CHK-16…CHK-20 classes).
 > against what is written, not what was intended. Treat the spec as if someone else authored
 > it.
 
-Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-26
+Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-28
 in its run order, apply its severity assignments, and emit the same output contract a
 delegated run would produce. The contract is not optional on this path — MS6's equivalence
 test compares the two paths' reports mechanically.

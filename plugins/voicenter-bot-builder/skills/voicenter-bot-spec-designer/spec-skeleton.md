@@ -25,6 +25,7 @@
 **Max duration sentence:** [text; optional — spoken when max call duration is reached. v1.14.0 default (production-derived): `"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "`. Skill 1 confirms the default with the user in one Phase-1 question (keep or replace); Skill 3 emits the default if omitted.]
 **IVRLayerSelect_2:** [int; optional (v1.13.0), default 3 — emitted to `AIModelConfig.IVRLayerSelect_2`]
 **Negative instructions:** [free text; optional (v1.16.0) — the UI's AI Security Settings free-text field: what the agent must never say or commit to (legally, medically, financially, etc.). NOT emitted to the wire JSON — the wire field name is unverified; Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step (paste into the UI's AI Security Settings → Negative Instructions). Check 15 relocates must-never-say/never-commit content here instead of recommending removal. Omit when none.]
+**Bot status:** [`1` Active | `2` Inactive | `3` Maintenance; optional (v1.24.0) — emitted to root `BotStatusId`. Omit for Active (Skill 3 emits `1`). Any other value is a Skill 3 parse error.]
 
 ---
 

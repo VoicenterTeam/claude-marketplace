@@ -207,6 +207,13 @@ jobs:
         working-directory: plugins/voicenter-bot-builder/examples
         run: python test-elevenlabs-regression.py
 
+      # v1.24.0 — the bot status choice (CHK-28) and the import's placeholder-ID rule
+      # (CHK-27): every list the import keys by ID carries its own ID, a repeated
+      # intentRelations[].IntentRelatedID included.
+      - name: Bot status + placeholder-ID regression
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python test-import-contract-regression.py
+
       - name: F2 fires exactly the three seeded violations
         working-directory: plugins/voicenter-bot-builder/examples
         run: |
