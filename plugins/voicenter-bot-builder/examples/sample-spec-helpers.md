@@ -427,7 +427,7 @@ Thanks for calling Brightview Family Clinic. Who am I speaking with?
 - **Description:** Answering questions about visiting the clinic
 - **Serves intents:** confirm_slot_booking
 - **AI model:** 31 — looked up live (VoiceBotConfData, active)
-- **Knowledge bases to link after the import:** 30008 — Clinic visitor guide
+- **Knowledge bases to link after the import:** 12345 — Clinic visitor guide
 
 ### Tool: clinic_slot_lookup
 
@@ -1010,7 +1010,7 @@ flowchart TD
 - 2026-08-08T09:00:00Z  Skill 1  greenfield  FP-12 callback block authored in §2.4 using en-US call-context variables {{todayDate}}/{{currentTime}} in place of the Hebrew-locale {{todayHe}}/{{timeHe}} named in the doctrine; both declared in 4.5.1.
 - 2026-08-08T09:00:00Z  Skill 1  greenfield  Compass rule 7 advisory: must-never-say content routed to section 1 **Negative instructions:** per the v1.16.0 check 15 relocation path rather than into persona.
 - 2026-08-08T09:00:00Z  Skill 1  greenfield  Deep Research nudge not offered (no trigger cue fired).
-- 2026-11-17T10:00:00Z  Skill 1  patch  Section 4.8 added: 2 helpers (booking_helper, clinic_info_helper), 2 tools (clinic_slot_lookup; send_booking_email to add after the import — Email needs a credential). AI model 31 and ToolTypeConfigIDs 18/21/24/27 looked up live; knowledge base 30008 recorded to link after the import; the RequestHeaders credential recorded as unknown, never written.
+- 2026-11-17T10:00:00Z  Skill 1  patch  Section 4.8 added: 2 helpers (booking_helper, clinic_info_helper), 2 tools (clinic_slot_lookup; send_booking_email to add after the import — Email needs a credential). AI model 31 and ToolTypeConfigIDs 18/21/24/27 looked up live; knowledge base 12345 recorded to link after the import; the RequestHeaders credential recorded as unknown, never written.
 - 2026-08-08T09:05:00Z  Skill 2  detailing  Batch 1: detailed 1 intent (fetch_available_slots). 1 hard intent handled as a singleton. Self-validation passed.
 - 2026-08-08T09:05:00Z  Skill 2  detailing  announcement intentionally empty on collect_appointment_preferences — FP-3 case (c).
 - 2026-08-08T09:05:00Z  Skill 2  detailing  announcement intentionally empty on confirm_slot_booking — FP-3 case (b).

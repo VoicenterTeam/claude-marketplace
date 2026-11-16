@@ -64,7 +64,7 @@ def main():
     check(subs[1]['IntentIds'] == [iid['confirm_slot_booking']], 'two helpers do not share an intent')
     check(subs[0]['ToolAssignments'] == [{'ToolId': -6000, 'IsEnabled': 1, 'Parameters': [],
                                           'ConditionList': []}], 'booking helper assignment')
-    check(subs[1]['KnowledgeBases'] == [{'KnowledgeBaseID': 30008,
+    check(subs[1]['KnowledgeBases'] == [{'KnowledgeBaseID': 12345,
                                          'KnowledgeBaseName': 'Clinic visitor guide'}], 'knowledge base')
     check(all(t['ToolTypeId'] not in (4, 7, 16) for t in tls), 'deferred type in the file')
     prm = {p['ParameterName']: p for p in tls[0]['Parameters']}
