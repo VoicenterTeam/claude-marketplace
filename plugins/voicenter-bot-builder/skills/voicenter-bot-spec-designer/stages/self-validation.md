@@ -1,13 +1,14 @@
-# Skill 1 stage — Self-validation checklist (24 checks)
+# Skill 1 stage — Self-validation checklist (25 checks)
 
 *Load at greenfield close-out and after every patch, before declaring the spec ready. These
-are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-28
+are Skill 1's own checks on its own output — distinct from Skill 3's CHK-01…CHK-39
 cross-reference pass, which validates the assembled JSON. The two numbering schemes are
 unrelated; do not cross-reference them by number.*
 
-24 checks total: 16 blocking, 7 advisory (Checks 8 + 11–15 + 24, of which 11–15 are Compass
+25 checks total: 17 blocking, 7 advisory (Checks 8 + 11–15 + 24, of which 11–15 are Compass
 doctrine), 1 structural-correctness. Checks 16–17 are house rules covering the opening
-announcement/behaviour pair; 18–21 are field-placement doctrine; 22–24 are v1.14.0 rules.
+announcement/behaviour pair; 18–21 are field-placement doctrine; 22–24 are v1.14.0 rules;
+25 covers section 4.8 (helpers and tools) and runs only when it exists.
 
 **Execute in the order below.** Blocking failures are surfaced one at a time, in order, with
 the exact failure message given.
@@ -18,6 +19,7 @@ the exact failure message given.
 - [Checks 11–15 — Compass doctrine (advisory)](#check-11--prompt-prose-in-the-bots-primary-language-v1230-replaces-compass-rule-3--advisory)
 - [Checks 16–17 — opening announcement / behaviour house rules](#check-16--opening-announcement-ends-with-a-question-house-rule-v1121--blocking)
 - [Checks 18–24 — field-placement and v1.14.0 rules](#check-18--opening-gate-merge-v1130-fp-2--blocking)
+- [Check 25 — helpers and tools](#check-25--helpers-and-tools-section-48--blocking)
 - [Severity-handling rules](#severity-handling-rules)
 
 ---
@@ -284,6 +286,24 @@ No user prompt required.
 > Sensitive-flag placement: [intent `[name]` collects [what] but is not flagged / intent `[name]` is flagged but collects nothing sensitive / the flag sits on the asking intent — it belongs on the collecting intent `[N+1 name]`]. When flagged, the details remain usable in API calls configured on that intent but are NOT saved in LOGS/TRACES (Information Security).
 
 **Remediation:** prompt via `AskUserQuestion` per Section 2.4.B (header: "Sensitive flag", 2 options: "Set Sensitive: true *(Recommended)*" / "Keep false"). On setting the flag, ALWAYS deliver the §3.4.3 disclosure message. Record the resolution in 7.3; continue either way.
+
+### Check 25 — Helpers and tools (section 4.8) — blocking
+
+**Trigger (any of), only when section 4.8 exists:**
+- a helper without `**Name:**`, or a name over 100 characters, or a title over 255;
+- a helper serving no intent, an identifier that is not a section-4 intent (a catalog intent included), or the same intent twice;
+- an `**AI model:**` that is neither an ID from the live read nor the unknown marker;
+- a ToolName that is not snake_case ASCII, is over 100 characters, or repeats another tool's;
+- a `**Used by:**` naming no helper of section 4.8, or a tool used by no helper;
+- a type 4, 7 or 16 tool without `**Add after the import:**`;
+- a setting or argument name twice in one tool, or an argument named like one of its settings;
+- a setting value that is or holds a credential, token, API key, password, connection string, or `****`;
+- a helper or tool without its section-5 stub.
+
+**Failure message:**
+> Helpers and tools: [specifics]. The import refuses most of these with an error that names nothing and stores nothing, or drops the item without a word; Skill 3 checks the same rules on the file. A credential is never written into the spec or the file: the setting is recorded as `<UNKNOWN: credential — …>` and set on the tool after the import.
+
+**Remediation:** fix in place with the user (one question per turn); for a credential, replace the value with the marker without asking. Re-check.
 
 ---
 
