@@ -214,6 +214,19 @@ jobs:
         working-directory: plugins/voicenter-bot-builder/examples
         run: python test-import-contract-regression.py
 
+      # v1.25.0 — a bot's helpers (sub-agents) and tools. F3 is F1 plus spec section 4.8;
+      # its golden equals the shipping golden outside intentList.subAgents / subAgentTools.
+      - name: F3 (helpers and tools) reproduces its golden and passes every check
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: |
+          python assemble.py sample-spec-helpers.md -o /tmp/f3.json
+          diff /tmp/f3.json expected-output-helpers.json
+          python verify.py sample-spec-helpers.md expected-output-helpers.json
+
+      - name: Helpers regression (CHK-29…CHK-39 each fire on a seeded fault)
+        working-directory: plugins/voicenter-bot-builder/examples
+        run: python test-helpers-regression.py
+
       - name: F2 fires exactly the three seeded violations
         working-directory: plugins/voicenter-bot-builder/examples
         run: |

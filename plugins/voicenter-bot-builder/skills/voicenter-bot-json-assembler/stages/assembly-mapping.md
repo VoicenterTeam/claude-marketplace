@@ -35,6 +35,8 @@ Per Doc 1 §15.3 Option A and Doc 2 §6.5: sequential negative integers, range-c
 | `IntentRelatedID` | `-2000, -2001, ...` | **v1.5.0:** one per `intentRelations[]` row (no longer mirrors `NextIntentID`) |
 | `IntentConditionGroupID` | `-3000, -3001, ...` | One per **emitted** `botIntents[]` entry (subset — §4.3.3) + one per `intentRelations[]` row. |
 | `IntentSourceID` | `-4000, -4001, ...` | **v1.5.0:** one per intent when voice channel is active |
+| `SubAgentID` | `-5000, -5001, ...` | **v1.25.0:** one per spec section 4.8 helper (Skill 3 §4.7) |
+| `ToolId` | `-6000, -6001, ...` | **v1.25.0:** one per section 4.8 tool emitted to the file (Skill 3 §4.7) |
 
 **`IntentConditionRelationID` does not need a new range.** It mirrors `BotIntentId` (when inside `botIntents[]`) or `IntentRelatedID` (when inside `intentRelations[]`) — the production export pattern. Skill 3 fills it from the matching parent value.
 
@@ -225,7 +227,7 @@ The `silence_behaviour.intent` failover is bot-level (caller silence regardless 
 
 Per Doc 1 §8, `intentList` has six parallel collections wired by integer IDs. Skill 3 builds them from the cached ID map (§4.1) and section 4-5 content.
 
-**Emit the six collections in the sub-section order below** — `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`. Like every other table in this file, the order is contractual. Note that `silenceRelations` is always `[]` and therefore easy to misplace without any check firing: no CHK-NN inspects key order, so a misordered emission still passes all 28 checks and is caught only by byte-comparison against a golden.
+**Emit the six collections in the sub-section order below** — `intents`, `botIntents`, `intentRelations`, `intentCategories`, `silenceRelations`, `apiSilenceRelations`. Like every other table in this file, the order is contractual. Note that `silenceRelations` is always `[]` and therefore easy to misplace without any check firing: no CHK-NN inspects key order, so a misordered emission still passes all 39 checks and is caught only by byte-comparison against a golden. When the spec has section 4.8, `subAgents` and `subAgentTools` follow `apiSilenceRelations` (Skill 3 §4.7).
 
 #### 4.3.1 `intents[]`
 

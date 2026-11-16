@@ -33,10 +33,10 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 
 | Read | Why |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 28 checks (CHK-01…CHK-28) — read and execute this file; §6 only decides which path runs it** |
+| `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | **The 39 checks (CHK-01…CHK-39) — read and execute this file; §6 only decides which path runs it** |
 | `${CLAUDE_PLUGIN_ROOT}/references/field-placement-doctrine.md` | FP-1…FP-13 incl. the FP-3 turn-yield rule; verified by CHK-16…CHK-24 |
 | `${CLAUDE_PLUGIN_ROOT}/references/voice-prompt-doctrine.md` | Compass doctrine; Skill 3 owns CHK-08 (rule 1), CHK-09 (rule 2), CHK-10 (rule 12) and the banner sentinels (rule 13) |
-| `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot, and the import endpoint (§7); Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7), CHK-25, CHK-27 and CHK-28 |
+| `${CLAUDE_PLUGIN_ROOT}/references/voicebot-json-contract.md` | `ImportBotFromJSON` stored-procedure hard rules (R1–R12), 2026-08-10 DB snapshot, the import endpoint (§7), and helpers and tools (§8); Skill 3 owns `ActiveVersionInfo.PersonaID` emission (R7), CHK-25 and CHK-27…CHK-39 |
 | Doc 2 §3.7 — Strict-template enforcement | The §3 parse rules |
 | Doc 2 §6 — Skill 3 architecture | What this file implements |
 
@@ -47,12 +47,11 @@ constant, or a fail-loud sentinel. Load the authorities below before touching th
 | `stages/assembly-mapping.md` | §4 — the complete spec→wire field mapping, ID ranges, per-RT `Configuration` shapes, §16 quirks, static reference data. Also carries the Doc 1 §4–§13 and §15.3/§16 mappings it implements. |
 | `stages/sentinels-and-banner.md` | §4.6 / §5 / §7.2 — sentinel bookkeeping, section-6 drift reporting, banner format |
 | `stages/parse-errors.md` | §3 — only when the parse fails: error format and worked deviation examples |
+| `stages/helpers-and-tools.md` | §3, §4 and §7.2 — only when the spec has section 4.8: its parse rules, `subAgents[]` / `subAgentTools[]` mapping and banner lines |
 | `stages/mcp-import.md` | §7.6 — only when the person wants the emitted file imported now through a connected Voicenter MCP |
 | `skills/voicenter-bot-spec-designer/model-catalog.md` | §4.2.3 — resolving a named model entry to `AIModelConfigID` / `AIModelTypeId` / provider model string |
 
-Skill 3 does **not** load Skill 2's `conversation-routines-style-guide.md`. The style of
-`validationPrompt` and `intentInstructions` is Skill 2's concern; Skill 3 emits that text
-verbatim from the spec regardless of style.
+Skill 3 does **not** load Skill 2's `conversation-routines-style-guide.md`. The style of `validationPrompt` and `intentInstructions` is Skill 2's concern; Skill 3 emits that text verbatim from the spec regardless of style.
 
 ---
 
@@ -81,7 +80,7 @@ Three gates run before any assembly work. All are blocking. Refusal at any gate 
 
 #### Gate A — Completeness
 
-Walk section 5. Count entries with status `[structural]` or `[detailed-revisit]`. If the count is greater than zero, refuse:
+Walk section 5. Count entries — intents, and any helpers and tools — with status `[structural]` or `[detailed-revisit]`. If the count is greater than zero, refuse:
 
 > Skill 3 will not assemble an incomplete spec. Section 5 has [N] intents still pending: [list with status per intent]. Run **Skill 2 (Intent Detail Author)** to detail them, then re-invoke Skill 3.
 
@@ -113,7 +112,7 @@ The Agent Spec template is documented in Doc 2 §3 and codified in Skill 1's `sp
 
 Specifically, the parser expects:
 
-- **Section headers exact:** `## 1. Bot Identity`, `## 2. Persona Bundle`, `## 3. Caller Silence Behavior`, `## 4. Intent List (Structural)`, `## 4.5 Available Variables`, `## 4.6 Global/System Catalog Intents`, `## 5. Intent Details`, `## 6. Cross-References`, `## 7. Generation Metadata`. Exact strings, exact numbering, exact punctuation. `## 1: Bot Identity` is a parse error. `## Bot Identity` is a parse error.
+- **Section headers exact:** `## 1. Bot Identity`, `## 2. Persona Bundle`, `## 3. Caller Silence Behavior`, `## 4. Intent List (Structural)`, `## 4.5 Available Variables`, `## 4.6 Global/System Catalog Intents`, `## 4.8 Helpers and Tools` (optional), `## 5. Intent Details`, `## 6. Cross-References`, `## 7. Generation Metadata`. Exact strings, exact numbering, exact punctuation. `## 1: Bot Identity` is a parse error. `## Bot Identity` is a parse error.
 - **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error (§3.2) — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`. Bold markdown around the colon-terminated label, exactly as written.
 - **Section 1 optional limit fields (v1.13.0; maxDurationLayerId default revised v1.14.0):** `**Daily limit:**` (int), `**Daily limit layer:**` (int), `**Max duration layer:**` (int), `**Daily limit sentence:**` (free text), `**Max duration sentence:**` (free text), `**IVRLayerSelect_2:**` (int). All optional; absence parses to defaults 600 / 3 / **0** / production-default sentence / production-default Hebrew sentence / 3 (see §4.2.2). A non-integer where an int is expected is a parse error.
@@ -128,6 +127,7 @@ Specifically, the parser expects:
 - **Sensitive in section 4 (v1.13.0, optional):** `**Sensitive:** true|false` only. Absence parses as `false`. Any other value is a parse error.
 - **IsSilenceIntent in section 4 (v1.14.0, optional):** `**IsSilenceIntent:** true|false` only. Absence parses as `false`. Any other value is a parse error. Drives the intent-root `IsSilenceIntent` integer (§4.3.1 row 13).
 - **Intent header in section 5:** `### Intent: <identifier>` (no ordinal). Identifier matches a section 4 entry.
+- **Section 4.8 (v1.25.0, optional) and its section-5 `### Helper:` / `### Tool:` entries:** the grammar and parse errors are in `stages/helpers-and-tools.md` §1. Absent ⇒ no helper keys are emitted.
 - **Section 4.5.5 (v1.13.0, optional):** header exact `### 4.5.5 CustomData keys (per-call payload)` under `## 4.5 Available Variables`; entries `- \`{{key}}\` — <meaning>`. Absence ⇒ empty CustomData key list (CHK-07 then allows only 4.5.1–4.5.4 references).
 - **Slot lines in section 4:** numbered list under `**Slots:**` heading, format `[slot_name] — \`ParameterTypeId\` [N], Required [\`true\`|\`false\`], Order [N], OptionList [if ENUM], DefaultValue [value]`. The `DefaultValue` segment is optional (v1.16.0); absence parses to `""` (the pre-v1.16.0 slot-line format without the segment remains valid).
 - **Transition lines in section 4:** numbered list under `**Transitions out:**` heading, each item is a target intent identifier optionally followed by a parenthetical role label (e.g., `1. get_available_slots (success path)`).
@@ -152,8 +152,7 @@ The transition-target check (last two rows) blurs into cross-reference territory
 
 ## 4. Spec-to-wire-format assembly
 
-Run only if all three pre-flight gates pass and the parser succeeds. Assembly happens in
-memory; nothing is emitted until §6 (cross-reference pass) also passes.
+Run only if all three pre-flight gates pass and the parser succeeds. Assembly happens in memory; nothing is emitted until §6 (cross-reference pass) also passes.
 
 **Read `stages/assembly-mapping.md` before emitting any field.** It carries the whole
 mapping and the emission order, which is part of the contract:
@@ -166,6 +165,7 @@ mapping and the emission order, which is part of the contract:
 | 4.4 | Per-RT `IntentResponces.Configuration` shapes (RT=1/2/3/4) | `stages/assembly-mapping.md` §4.4, when emitting each intent's response |
 | 4.5 | Quirk preservation — verify the assembled structure against the §16 contract | `stages/assembly-mapping.md` §4.5 + Appendix A, after §4.4 |
 | 4.6 | Sentinel bookkeeping for spec unknowns | `stages/sentinels-and-banner.md` §4.6, after §4.5 |
+| 4.7 | `intentList.subAgents[]` / `subAgentTools[]` — only when the spec has section 4.8 | `stages/helpers-and-tools.md` §2, after §4.3 |
 
 Two rules that gate the whole step and therefore stay here:
 
@@ -187,13 +187,13 @@ drift-reporting format.
 
 ## 6. The §15.4 cross-reference pass
 
-After §4 assembly and §5 sanity check: run the **28-check cross-reference pass**.
+After §4 assembly and §5 sanity check: run the **39-check cross-reference pass**.
 
-**The checks live in exactly one place.** Read and execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries CHK-01…CHK-28 with their run order, model gating, severity assignment, per-check failure routing, and the output contract both execution paths emit. No check procedure text is duplicated here — if you find yourself recalling a check from memory, re-read the file.
+**The checks live in exactly one place.** Read and execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`. That file carries CHK-01…CHK-39 with their run order, model gating, severity assignment, per-check failure routing, and the output contract both execution paths emit. No check procedure text is duplicated here — if you find yourself recalling a check from memory, re-read the file.
 
 What stays in this SKILL.md is **decision logic**: which path executes the procedure (§6.0–§6.2), and what Skill 3 does with the results (§6.4).
 
-Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4, three from Compass doctrine, three botIntents-role integrity checks, one duplicate-global-intent check, nine field-placement doctrine checks, and four import-contract checks (persona derivation, layer typing, placeholder IDs, bot status). CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 and CHK-25…CHK-28 are blocking; CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22, CHK-23 are advisory.
+Coverage summary (the procedure file is authoritative): eight checks per Doc 1 §15.4, three from Compass doctrine, three botIntents-role integrity checks, one duplicate-global-intent check, nine field-placement doctrine checks, four import-contract checks (persona derivation, layer typing, placeholder IDs, bot status), and eleven helper-and-tool checks (CHK-29…CHK-39). CHK-01…CHK-07, CHK-11…CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 and CHK-25…CHK-39 are blocking; CHK-08 is banded by token count; CHK-10 blocks on mismatch; CHK-09, CHK-14, CHK-22, CHK-23 are advisory.
 
 ### 6.0 Execution mode
 
@@ -229,7 +229,7 @@ When a report comes back from the verifier:
 
 1. **Validate it against the contract** before trusting it. A report is valid iff the
    `## Verification Report` header is present, the Verdicts table contains exactly
-   CHK-01…CHK-28 in order, and every verdict is in the allowed vocabulary
+   CHK-01…CHK-39 in order, and every verdict is in the allowed vocabulary
    (`pass` / `FAIL` / `error`).
 2. **If valid: consume it verbatim.** Apply blocking/advisory handling (§6.4) and the
    report's routing recommendations exactly as the inline path would apply its own results.
@@ -243,7 +243,7 @@ When a report comes back from the verifier:
 
 ### 6.2 Inline path (degraded mode)
 
-This is **degraded mode** — not because the checks are weaker (they are the same 28 from the
+This is **degraded mode** — not because the checks are weaker (they are the same 39 from the
 same file), but because there is no context isolation. You watched this spec get built, so
 your memory of what was intended can quietly substitute for what is written. That asymmetry
 is the only difference between the two paths, and it is why the discipline below is
@@ -256,7 +256,7 @@ checks (the CHK-07 and CHK-16…CHK-20 classes).
 > against what is written, not what was intended. Treat the spec as if someone else authored
 > it.
 
-Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-28
+Then execute `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md`: run CHK-01…CHK-39
 in its run order, apply its severity assignments, and emit the same output contract a
 delegated run would produce. The contract is not optional on this path — MS6's equivalence
 test compares the two paths' reports mechanically.
@@ -305,7 +305,7 @@ Every banner section is emitted even when its content is "(none)" — a consiste
 matters more than brevity, because operators learn to scan for specific headings.
 
 Read `stages/sentinels-and-banner.md` §7.2 for the section-by-section format, the
-DOCTRINE SENTINELS population rule, and Appendix C's worked example.
+DOCTRINE SENTINELS population rule, and Appendix C's worked example; with section 4.8, add `stages/helpers-and-tools.md` §3.
 
 ### 7.3 Filename convention
 
@@ -370,6 +370,7 @@ Skill 3's main risk is doing too much: filling in plausible-looking values for u
 - **Import without an explicit yes, or twice after an unknown outcome.** §7.6 sends nothing until the person approves the preview (or, with no preview, the import itself), never sends a file that still carries a marker, and after a 5xx or timeout reads the account before anything else.
 - **Modify quirk preservation.** Doc 1 §16 lists the base quirks and Appendix A extends them (v1.5.0 corrections; v1.13.0 golden-export rows 20–23); Skill 3 emits exactly what they prescribe. Any "this looks redundant, I'll skip it" reasoning is forbidden — the platform's import endpoint may strictly require these keys. When in doubt, emit what production samples emit.
 - **Skip the banner.** Even on a spec with zero unknowns and zero drift, the banner is emitted with empty sections (`(none)`, `(in agreement)`). The banner contract is consistent regardless of spec state.
+- **Write a credential, token or API key into the file.** A credential setting stays its `<USER_TO_FILL: credential …>` marker (`stages/helpers-and-tools.md` §2.2); the person sets it on the tool after the import.
 - **Use any sentinel value other than the ones in §4.6.** Strings → `<USER_TO_FILL: ...>`, IDs → `-999`, objects → `{}` with banner note. No alternate forms ("UNKNOWN", "TBD", "REPLACE_ME", `null` for IDs), no nuanced sentinels per field type. Consistency is the point.
 - **Tolerate intent identifier collisions.** If two intents share an identifier across section 4 (which shouldn't happen post Skill 1 validation but could from a hand-edit), Skill 3 reports a parse error rather than silently reusing the cached ID. Identifier uniqueness is structurally required.
 - **Rewrite or compress prompt text to meet the Compass rule 1 token budget.** When check 8 (token budget) fires at the blocking threshold (≥ 5,000 tok), Skill 3 halts and routes to Skill 1 / Skill 2 patch — it does not auto-trim, summarize, paraphrase, or re-section the user's prompt content. The user owns the prose; Skill 3's job is to measure and refuse, never to author.

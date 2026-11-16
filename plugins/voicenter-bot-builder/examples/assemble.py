@@ -227,10 +227,12 @@ def parse_spec(text):
         })
     spec['intents'] = intents
 
-    # §5 per-intent language content
+    # §5 per-intent language content. Helper and tool entries (v1.25.0) follow the
+    # intents; the intent parse stops at the first of them.
     sec5 = text.split('## 5. Intent Details')[1].split('## 6. Cross-References')[0]
+    sec5_ints = re.split(r'\n### (?:Helper|Tool): ', sec5)[0]
     details = {}
-    for blk in re.split(r'\n### Intent: ', sec5)[1:]:
+    for blk in re.split(r'\n### Intent: ', sec5_ints)[1:]:
         ident = blk.split('\n')[0].strip()
         d = {
             'validationPrompt': fenced(blk, 'validationPrompt'),
@@ -249,7 +251,189 @@ def parse_spec(text):
         d['slot_desc'] = dict(re.findall(r'^- `(\w+)` — Description:\s*(.*?)\s*Type ', blk, re.M))
         details[ident] = d
     spec['details'] = details
+    spec['helpers'], spec['tools'] = parse_helpers(text, spec['intents'], sec5)
     return spec
+
+
+# --------------------------------------------------------------------------
+# §3.1 / stage helpers-and-tools.md §1 — spec section 4.8 (v1.25.0, optional)
+# --------------------------------------------------------------------------
+
+UNKNOWN = re.compile(r'^<UNKNOWN: ([^>]+)>$')
+DEFERRED_TYPES = {4: 'Email', 7: 'SMS', 16: 'FileStorage'}
+
+
+def parse_error(expected, found, fix):
+    raise SystemExit("PARSE ERROR - Expected: %s. Found: %s. Fix: %s" % (expected, found, fix))
+
+
+def id_or_unknown(value, what):
+    """An integer ID, or an <UNKNOWN: ...> marker (emitted as the -999 sentinel)."""
+    v = (value or '').strip()
+    m = re.match(r'^(\d+)(?:\s+—\s+.*)?$', v)
+    if m:
+        return int(m.group(1))
+    if UNKNOWN.match(v):
+        return -999
+    parse_error("'%s' as an integer or <UNKNOWN: ...>" % what, repr(v),
+                'write the ID looked up through the MCP, or the unknown marker')
+
+
+def parse_helpers(text, intents, sec5):
+    if '\n## 4.8 Helpers and Tools' not in text:
+        if re.search(r'\n### (?:Helper|Tool): ', sec5):
+            parse_error("'## 4.8 Helpers and Tools' for the section 5 helper and tool entries",
+                        'none', 'run Skill 1 patch mode to restore section 4.8')
+        return [], []
+    sec48 = text.split('\n## 4.8 Helpers and Tools')[1].split('\n## 5. Intent Details')[0]
+    known = {i['identifier'] for i in intents}
+    lang = {}
+    for kind, blk in re.findall(r'\n### (Helper|Tool): (.*?)(?=\n### |\Z)', sec5, re.S):
+        name = blk.split('\n')[0].strip()
+        lang[(kind, name)] = blk
+    helpers, tools = [], []
+    for kind, blk in re.findall(r'\n### (Helper|Tool): (.*?)(?=\n### |\n---|\Z)', sec48, re.S):
+        name = blk.split('\n')[0].strip()
+        entry = lang.get((kind, name))
+        if entry is None:
+            parse_error("a section 5 '### %s: %s' entry" % (kind, name), 'none',
+                        'run Skill 1 patch mode to add the stub, then Skill 2')
+        if kind == 'Helper':
+            serves = [s.strip() for s in (field(blk, 'Serves intents') or '').split(',') if s.strip()]
+            for s in serves:
+                if s not in known:
+                    parse_error("'**Serves intents:**' naming section 4 intents", repr(s),
+                                'name a bot-own intent identifier from section 4')
+            kbs = []
+            raw = field(blk, 'Knowledge bases to link after the import', '[none]')
+            if raw != '[none]':
+                for part in raw.split(';'):
+                    m = re.match(r'^\s*(\d+|<UNKNOWN: [^>]+>) — (.+?)\s*$', part)
+                    if not m:
+                        parse_error("'<KnowledgeBaseID> — <name>' items separated by '; '",
+                                    repr(part.strip()), 'use the ID from the knowledge base list or <UNKNOWN: ...>')
+                    kbs.append({'id': id_or_unknown(m.group(1), 'knowledge base ID'),
+                                'name': m.group(2)})
+            if not field(blk, 'Name'):
+                parse_error("'**Name:** <helper name>'", 'none', 'give the helper a name')
+            helpers.append({
+                'identifier': name,
+                'Name': field(blk, 'Name'),
+                'Title': field(blk, 'Title', ''),
+                'Description': field(blk, 'Description', ''),
+                'serves': serves,
+                'ai_model': id_or_unknown(field(blk, 'AI model'), 'AI model'),
+                'kbs': kbs,
+                'Instruction': strip_block(fenced(entry, 'Instruction')),
+            })
+        else:
+            ttype = id_or_unknown(field(blk, 'Type'), 'Type')
+            deferred = field(blk, 'Add after the import')
+            if ttype in DEFERRED_TYPES and not deferred:
+                parse_error("'**Add after the import:**' on a type %d (%s) tool"
+                            % (ttype, DEFERRED_TYPES[ttype]), 'none',
+                            'this type needs a credential the import cannot bind; record it as to add after the import')
+            settings = []
+            sblk = blk.split('**Settings:**')[1].split('- **')[0] if '**Settings:**' in blk else ''
+            for m in re.finditer(r'^\s+\d+\.\s+(\w+) — config (\d+|<UNKNOWN: [^>]+>) — (`[^`]*`|<UNKNOWN: [^>]+>)\s*$',
+                                 sblk, re.M):
+                nm, cfg, val = m.groups()
+                um = UNKNOWN.match(val)
+                settings.append({'name': nm, 'config': id_or_unknown(cfg, 'config'),
+                                 'value': '<USER_TO_FILL: %s>' % um.group(1) if um else val[1:-1]})
+            args = []
+            ablk = blk.split('**Arguments:**')[1].split('- **')[0] if '**Arguments:**' in blk else ''
+            for m in re.finditer(r'^\s+\d+\.\s+(\w+) — (string|integer|number|boolean), (required|optional)\s*$',
+                                 ablk, re.M):
+                args.append({'name': m.group(1), 'type': m.group(2), 'required': m.group(3) == 'required'})
+            descs = dict(re.findall(r'^- `(\w+)` — Description:\s*(.*?)\s*$', entry, re.M))
+            for a in args:
+                a['description'] = descs.get(a['name'], '')
+            used_by = [s.strip() for s in (field(blk, 'Used by') or '').split(',') if s.strip()]
+            risk = (field(blk, 'Risk') or '').split(' ')[0]
+            if risk not in ('1', '2', '3', '4'):
+                parse_error("'**Risk:** 1|2|3|4'", repr(risk),
+                            'use 1 (Read), 2 (Action), 3 (Destructive) or 4 (External)')
+            tools.append({
+                'ToolName': name,
+                'Display name': field(blk, 'Display name', name),
+                'type': ttype,
+                'risk': int(risk),
+                'settings': settings,
+                'args': args,
+                'used_by': used_by,
+                'deferred': deferred,
+                'Description': strip_block(fenced(entry, 'Tool description')),
+            })
+    declared = {('Helper', h['identifier']) for h in helpers} | {('Tool', t['ToolName']) for t in tools}
+    for kind, name in lang:
+        if (kind, name) not in declared:
+            parse_error("a section 4.8 '### %s: %s' block" % (kind, name), 'none',
+                        'run Skill 1 patch mode — a section 5 entry needs its section 4.8 block')
+    for h in helpers:
+        if not h['serves']:
+            parse_error("'**Serves intents:**' naming at least one intent", 'none on ' + h['identifier'],
+                        'name the section 4 intents the helper serves')
+    hnames = {h['identifier'] for h in helpers}
+    for t in tools:
+        for h in t['used_by']:
+            if h not in hnames:
+                parse_error("'**Used by:**' naming section 4.8 helpers", repr(h),
+                            'name a helper identifier declared in section 4.8')
+    return helpers, tools
+
+
+def assemble_helpers(spec, iid):
+    """stage helpers-and-tools.md §2 — intentList.subAgents[] and subAgentTools[]."""
+    tid, out_tools = {}, []
+    for t in [t for t in spec['tools'] if not t['deferred']]:
+        tid[t['ToolName']] = -6000 - len(tid)                    # §2.1 tool labels
+        tool = {
+            "ToolId": tid[t['ToolName']],
+            "ToolName": t['ToolName'],
+            "ToolDisplayName": t['Display name'],
+            "ToolTypeId": t['type'],
+            "ToolExecutionTypeID": 2,
+            "Description": t['Description'],
+            "IsActive": 1,
+            "ToolStatusID": 1,
+            "ToolRiskTypeID": t['risk'],
+        }
+        if t['args']:
+            tool["ParameterSchemaJson"] = {
+                "type": "object",
+                "required": [a['name'] for a in t['args'] if a['required']],
+                "properties": {a['name']: {"type": a['type'], "description": a['description']}
+                               for a in t['args']},
+                "additionalProperties": False,
+            }
+        tool["Parameters"] = (
+            [{"ToolTypeConfigID": s['config'], "ParameterName": s['name'],
+              "ToolParameterSourceID": 5, "Config": {"value": s['value']}} for s in t['settings']] +
+            [{"ToolTypeConfigID": None, "ParameterName": a['name'],
+              "ToolParameterSourceID": 1, "Config": {"source_filed": a['name']}} for a in t['args']])
+        tool["ToolVersion"] = {"VersionNumber": "1.0.0", "Description": "First version",
+                               "ConfigurationJson": {}}
+        out_tools.append(tool)
+    out_helpers = []
+    for n, h in enumerate(spec['helpers']):
+        out_helpers.append({
+            "SubAgentID": -5000 - n,                              # §2.1 helper labels
+            "SubAgentName": h['Name'],
+            "SubAgentTitle": h['Title'],
+            "SubAgentStatusID": 1,
+            "SubAgentDescription": h['Description'],
+            "Instruction": h['Instruction'],
+            "AiModelId": h['ai_model'],
+            "IntentIds": [iid[s] for s in h['serves']],
+            "KnowledgeBases": [{"KnowledgeBaseID": k['id'], "KnowledgeBaseName": k['name']}
+                               for k in h['kbs']],
+            "ToolAssignments": [{"ToolId": tid[t['ToolName']], "IsEnabled": 1,
+                                 "Parameters": [], "ConditionList": []}
+                                for t in spec['tools']
+                                if h['identifier'] in t['used_by'] and t['ToolName'] in tid],
+        })
+    return out_helpers, out_tools
 
 
 def strip_block(s):
@@ -591,6 +775,13 @@ def assemble(spec):
         },
     }
 
+    # stage helpers-and-tools.md §2 (v1.25.0) — only when spec section 4.8 declares a
+    # helper; a spec without one emits exactly what earlier versions emitted.
+    if spec.get('helpers'):
+        subs, tools = assemble_helpers(spec, iid)
+        out["intentList"]["subAgents"] = subs
+        out["intentList"]["subAgentTools"] = tools
+
     # §4.2.2 row 11 — PersonaID, added by the functional v1.18.0 per
     # voicebot-json-contract.md R7, derived from Primary Language since v1.22.0.
     # Appended last (position unverified against a golden export). Omitted under
@@ -649,7 +840,10 @@ def main():
     print(f"wrote {a.out}: {len(spec['intents'])} intents, "
           f"{len(out['intentList']['botIntents'])} botIntents, "
           f"{len(out['intentList']['intentRelations'])} relations, "
-          f"{len(out['intentList']['apiSilenceRelations'])} apiSilenceRelations")
+          f"{len(out['intentList']['apiSilenceRelations'])} apiSilenceRelations"
+          + (f", {len(out['intentList']['subAgents'])} helpers, "
+             f"{len(out['intentList']['subAgentTools'])} tools"
+             if 'subAgents' in out['intentList'] else ""))
 
 
 if __name__ == "__main__":

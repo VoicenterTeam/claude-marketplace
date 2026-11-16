@@ -4,7 +4,7 @@
 
 After a few hundred production builds on v1.17.x, three problems:
 
-1. **Verifier anchoring.** Skill 3's 28-check cross-reference pass runs inside
+1. **Verifier anchoring.** Skill 3's 39-check cross-reference pass runs inside
    the same context that watched the spec get built. It verifies what it
    remembers intending, not what is written. A fresh-context verifier is a
    better verifier.
