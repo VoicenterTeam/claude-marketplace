@@ -6,6 +6,62 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.25.0 — a bot's helpers (sub-agents) and their tools
+
+Plugin `voicenter-bot-builder` 1.25.0 under marketplace 1.25.0. Behaviour added; nothing breaks.
+**39 checks** (CHK-29…CHK-39 appended, all blocking). A spec without the new section emits
+exactly what 1.24.0 emitted: both F1 goldens are byte-identical. The wire format follows the
+import contract traced from API Manager's code (routine `ImportBotFromJSON` steps 11a/11b,
+v2.6.18; export masking v2.6.19), recorded in `references/voicebot-json-contract.md` §8, and
+checked against a file imported live on 2026-11-18 (one helper, one WebAPI tool, one knowledge
+base).
+
+- **Skill 1 — optional spec section 4.8.** Offered once after the advanced features, skipped by
+  default. Per helper: name, title, description, the section-4 intents it serves, its AI model,
+  and knowledge bases recorded *to link after the import*. Per tool: a specific name, display
+  name, purpose, type, settings, the arguments the model fills, risk, and the helpers using it.
+  Real IDs are read live through a connected Voicenter MCP (`VoiceBotConfData` AI models —
+  an AI model ID, not a model-config ID —, `ToolConfData`, `ToolTypeConfig`,
+  `KnowledgeBaseList`); without one, the unknown marker. Email, SMS and FileStorage tools are
+  recorded "Add after the import". A credential — or an export's `****` — is never recorded:
+  the setting gets a credential marker. New self-validation Check 25; patch-mode rules.
+- **Skill 2 — `stages/helpers-and-tools.md`.** Tool and argument descriptions, then each
+  helper's `Instruction` (Role / Tools / Rules, per a new `prompt-structure.md` row), naming
+  every assigned tool exactly as the file does. Checks H1–H6. The entries join the work queue
+  as one last batch.
+- **Skill 3 — `intentList.subAgents[]` / `subAgentTools[]`** (`stages/helpers-and-tools.md`):
+  labels `-5000…` and `-6000…`; intents by the file's labels; tools through
+  `ToolAssignments[].ToolId`; `source_filed` kept as the import spells it; no `null` but an AI
+  argument's `ToolTypeConfigID`; no `TemplateId`; Email/SMS/FileStorage tools left out. Banner:
+  HELPERS AND TOOLS plus a post-import step per knowledge base, tool to add and credential
+  setting.
+- **CHK-29…CHK-39** — labels; assignments; helper intents; helper fields; tool fields;
+  parameter lists; conditions; no credential-only tool type; no stray null; no credential;
+  the instruction names its tools. Each is a failure the import answers with a bare 500 (whole
+  import rolled back, nothing named) or drops without a word; the API's maintainers are not
+  changing those 500s, so these checks are the only guard.
+- **Import stage §5.** After an MCP import, `Data.Removed` is read by `Type`: `KnowledgeBase` →
+  an offered `KnowledgeBaseAssignmentCreate` plan (type 4, on the new helper); `ToolSecret`,
+  `Tool`, `ToolAssignment`, `ToolTemplate` → listed to set by hand. Tools marked "Add after the
+  import" are offered as `ToolCreate` with their own credential plus `ToolAssignmentCreate`
+  (`EntityType 7`). A credential marker is never asked for: its parameter is left out of the
+  import.
+- **Where the older reference text and the contract disagree, the contract wins** (noted in
+  `voicebot-json-contract.md` §8): §0's "a returned bot id is not proof of success … PARTIAL
+  data" — a failure in these lists rolls everything back and answers 500; §2's "Free-text fields
+  may be `null`" — not in these lists.
+- Harness: `assemble.py` and `verify.py` extended; fixture F3 (`sample-spec-helpers.md`,
+  `expected-output-helpers.json`) and `test-helpers-regression.py` (a seeded fault per new
+  check) run in CI.
+- **Open points** (the stricter reading is taken): a tool is always `ToolExecutionTypeID 2`
+  (every observed sample is); whether a helper's instruction resolves `{{variables}}`
+  (Skill 2 writes none); no read is named for a new helper's ID after the import except
+  `Data.Removed`'s `NewEntityId`; how `ToolCreate` binds a credential was not traced; tool
+  names are kept unique within the file; settings from sources 2–4, assignment-level
+  parameters and tool conditions are not captured by the interview.
+
+---
+
 ### 1.24.0 — bot status choice, import-contract checks, import through a Voicenter MCP
 
 Plugin `voicenter-bot-builder` 1.24.0 under marketplace 1.24.0. Behaviour added; nothing breaks.

@@ -485,3 +485,10 @@ Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6; Skill 3 ve
 ## v1.24.0 changes
 
 - **Bot status** — Phase 1 step 14 asks once whether the bot is imported Active (recommended), Inactive or in Maintenance; spec section 1 carries `**Bot status:** 2` or `3`, and nothing for Active. Patch mode treats it as an easy change. Skill 3 emits it as `BotStatusId` and checks it (CHK-28).
+
+## v1.25.0 changes
+
+- **Helpers and tools (optional spec section 4.8).** After the advanced-features prompt, Phase 4 §3.5.6 asks once whether the bot hands any intents to a helper (a sub-agent with its own instruction and AI model); "Skip" is recommended and writes nothing, so a bot without helpers is unchanged. Per helper: name, title, description, the section-4 intents it serves (several helpers may share one), its AI model, and knowledge bases recorded *to link after the import*. Per tool: a specific snake_case name, display name, purpose, type, settings, the arguments the model fills, risk, and the helpers that use it.
+- **Live reads, never guesses.** The helper's AI model (`VoiceBotConfData` → `AiModelList`, active — an AI model ID, not a model-config ID), tool types (`ToolConfData`), a type's setting IDs (`ToolTypeConfig`) and knowledge bases (`KnowledgeBaseList`) come from the connected Voicenter MCP; without one, the `<UNKNOWN: …>` marker.
+- **Credentials stay out.** Email, SMS and FileStorage tools are recorded `**Add after the import:**` — the import cannot bind their credential. A setting that is or holds a credential (or an export's `****`) is recorded as `<UNKNOWN: credential — …>`, to set on the tool by hand after the import.
+- Section 5 gets a `[structural]` stub per helper and tool for Skill 2. Self-validation **Check 25** covers section 4.8; patch mode treats helper and tool edits as easy changes that reset the affected section-5 entries.

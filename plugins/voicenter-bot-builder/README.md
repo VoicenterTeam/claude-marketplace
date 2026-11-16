@@ -20,7 +20,7 @@ plugin splits that work into three stages, each with its own guardrails:
 |---|---|---|
 | 1 | **Agent Spec Designer** | The structural skeleton — identity, persona, flow graph, intents, slots — via interview. Writes an Agent Spec markdown file. |
 | 2 | **Intent Detail Author** | The language content per intent: what the bot says, how it captures answers, what it does next. Walks intents in batches with checkpoints. |
-| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 28-check verification pass. |
+| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 39-check verification pass. |
 
 The **Agent Spec markdown is the source of truth** at every stage. No skill invents a value:
 anything the interview didn't establish is emitted as a fail-loud sentinel and listed in the
@@ -81,6 +81,18 @@ Runs Skill 3 — parse, assemble, verify, emit. You get `bot-<name>-<date>.json`
 listing every default applied, every unknown you must replace, and any mandatory post-import
 step. With a Voicenter MCP connected, Skill 3 then offers to import the file for you.
 
+**Give the bot helpers and tools** *(optional)*
+
+> Hand the booking intents to a helper that can look up open slots through our scheduling API.
+
+Skill 1 asks once whether the bot needs helpers (sub-agents: a specialist the bot hands some
+intents to, with its own instruction and AI model) and the tools they call; skipping is the
+default and changes nothing. With a Voicenter MCP it reads the real AI models, tool settings and
+knowledge bases live. Skill 2 writes each helper's instruction and each tool's description;
+Skill 3 emits them as `intentList.subAgents` / `subAgentTools`. Knowledge bases, Email / SMS /
+FileStorage tools and any credential a tool needs are set up after the import — never written
+into the file; Skill 3 lists them in the banner and, through the MCP, offers to do them.
+
 **Change an existing bot**
 
 > Here's my agent-spec.md — add an intent that checks insurance coverage before booking.
@@ -92,7 +104,7 @@ shows you that cascade, and waits for confirmation before applying it.
 
 > @voicenter-bot-builder:spec-verifier verify agent-spec.md
 
-Runs the 28-check pass in an isolated read-only context and returns a pass/fail report with
+Runs the 39-check pass in an isolated read-only context and returns a pass/fail report with
 routing recommendations. Never modifies anything.
 
 ## Data handling
@@ -130,7 +142,7 @@ Three things to be aware of, because they involve *your* choices rather than the
   output (JSON keys, identifiers, filenames, check IDs) is deliberately ASCII/LTR, so what is
   *generated* is correct even where the *display* is confusing. Read generated JSON from the
   file rather than the terminal if the direction looks scrambled.
-- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 28-check pass can
+- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 39-check pass can
   run in a fresh isolated context, which catches more than a verifier that watched the spec get
   written. In claude.ai consumer chat, subagents are inert, so the *identical* checks run
   inline from the same procedure file. No feature is lost — only the context isolation.
@@ -151,6 +163,11 @@ Three things to be aware of, because they involve *your* choices rather than the
   (`VoiceBotImport`, API Manager v2.6.18) is not in production yet. That import drops every
   transfer target except the global hang-up; Skill 3 lists the dropped ones for you to set again
   in the UI.
+- **Some of a helper's setup happens after the import.** The import never links a knowledge
+  base, cannot create an Email, SMS or FileStorage tool (no credential it can bind), and the
+  plugin never writes a credential into the file. A tool whose name is already taken on the
+  account is imported as `<name>_<number>`, and the helper's instruction then names the old name.
+  The banner lists each of these.
 - **Slash commands are Claude Code / Cowork only.** In claude.ai the skills trigger from plain
   language instead. Nothing is lost — the commands are convenience, not capability.
 
