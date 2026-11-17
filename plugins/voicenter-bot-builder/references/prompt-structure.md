@@ -7,7 +7,7 @@
 
 **Read this when:** authoring or reviewing any of the six prompt fields — Skill 1 for
 `persona` / `voiceInstructions` / `chatInstructions` / bot-level `intentInstructions`,
-Skill 2 for per-intent `intentInstructions` / `validationPrompt`.
+Skill 2 for per-intent `intentInstructions` / `validationPrompt` and a helper's `Instruction`.
 
 **Supersedes:** the Conversation Routines style (bare ALL-CAPS headers, bare numbered steps).
 Those fields are now Markdown-structured. The FP-4 quote convention is unchanged and carries
@@ -82,6 +82,7 @@ over verbatim.
 | `intentInstructions` (bot-level) | 1. Context · 2. Conversation flow — **no Iron rules section (v1.23.0)** | Skill 1 |
 | `intentInstructions` (per-intent) | 1. Post-execution | Skill 2 |
 | `validationPrompt` | 1. Capture mapping | Skill 2 |
+| helper `Instruction` (`subAgents[]`) | 1. Role · 2. Tools · 3. Rules — a tool named `**<ToolName>:**` exactly as the file names it | Skill 2 |
 
 Section titles are fixed — use them verbatim, in the bot's primary language. A field omits a
 section only when it has nothing to put in it; it never renames or reorders one.
@@ -97,6 +98,7 @@ BotID 37437):
 | `intentInstructions` (bot-level) | 1. הקשר · 2. מהלך השיחה |
 | `intentInstructions` (per-intent) | 1. לאחר הביצוע |
 | `validationPrompt` | 1. מיפוי שמירה |
+| helper `Instruction` | 1. תפקיד · 2. כלים · 3. כללים |
 
 **Where the former Iron rules go (v1.23.0).** The bot-level `intentInstructions` no longer has a
 third section. A non-negotiable that belongs to one flow step is a `CRITICAL:` line under that
@@ -110,6 +112,9 @@ scaffolding aloud literally (Compass rule 8, blocking):
 
 `openingAnnouncement` · `announcement` · `intentLoadingAnnouncement` · `fail_output` ·
 `function_output`
+
+A tool's `Description` and its arguments' descriptions are plain prose too — read by the model,
+never spoken, one or two sentences each.
 
 ## 5. Example (`persona`, Hebrew bot)
 

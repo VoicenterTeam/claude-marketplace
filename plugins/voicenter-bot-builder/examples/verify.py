@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical transcription of Skill 3 §6 — the 26-check cross-reference pass.
+"""Mechanical transcription of Skill 3 §6 — the 39-check cross-reference pass.
 
 Implements the detections in Skill 3 SKILL.md §6.2, run against the assembled
 wire structure (plus the spec, which checks 16-24 additionally consult).
@@ -8,8 +8,8 @@ Used twice in S0: to confirm F1 assembles clean, and to record which checks fire
 on the F2 seeded fixture (the v1.17.0 detection baseline that V-C3/V-C4/V-A2
 compare against).
 
-Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26, then 8, 9, 10, 14, 25.
-Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26. 8 is banded.
+Run order per §6.1: 1-7, 11-13, 15, 16-21, 22-24, 26-39, then 8, 9, 10, 14, 25.
+Blocking per §6: 1-7, 11-13, 15, 16-21, 24(announcement half), 26-39. 8 is banded.
 9, 14, 22, 23 advisory; 10 blocking on mismatch; 25 blocking since v1.22.0.
 
 CHK-25 (PersonaID) postdates the frozen v1.17.0 golden, so --wire-baseline=1.17.0
@@ -27,7 +27,8 @@ import unicodedata
 
 import assemble as A
 
-BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26}
+BLOCKING = {1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26, 27, 28,
+            29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39}
 NAMES = {
     1: "botIntents[].IntentID resolves", 2: "intentRelations[] resolves",
     3: "apiSilenceRelations[] resolves", 4: "intents[].IntentCategoryId resolves",
@@ -48,6 +49,19 @@ NAMES = {
     24: "Turn-yield announcement gating (FP-3)",
     25: "Persona derivation from Primary Language (contract R7/R11)",
     26: "Layer fields are integers (contract §2 Types)",
+    27: "Import placeholder IDs present and unique (contract R3/§7)",
+    28: "Bot status in range (contract R8/R11/§7)",
+    29: "Helper and tool labels present and unique (contract §8)",
+    30: "Tool assignments resolve (contract §8)",
+    31: "Helper intents are the file's intent labels (contract §8)",
+    32: "Helper fields (contract §8)",
+    33: "Tool fields (contract §8)",
+    34: "Tool parameter lists (contract §8)",
+    35: "Assignment conditions complete (contract §8)",
+    36: "No credential-only tool type in the file (contract §8)",
+    37: "No stray null in helpers and tools (contract §8)",
+    38: "No credential in the file (contract §8)",
+    39: "Helper instruction names its tools (contract §8)",
 }
 
 # Appendix D.12 — known shared Persona rows (AccountId=0) that are never emitted.
@@ -341,6 +355,37 @@ def run(spec, bot):
             fail(26, f"{tn}: Configuration.NEXT_VO_ID = {cfg['NEXT_VO_ID']!r} "
                      f"({type(cfg['NEXT_VO_ID']).__name__}) — must be a JSON integer")
 
+    # 27 placeholder IDs present and unique — the five lists the importer keys by ID.
+    # The import refuses the whole file (import_placeholder_clash) on either problem.
+    id_lists = [
+        ("intentCategories", "IntentCategoryId", il["intentCategories"]),
+        ("intents", "IntentId", ints),
+        ("intents[].IntentParameters", "ParameterId",
+         [p for i in ints for p in i["IntentParameters"]]),
+        ("botIntents", "BotIntentId", il["botIntents"]),
+        ("intentRelations", "IntentRelatedID", il["intentRelations"]),
+    ]
+    for lst, fld, items in id_lists:
+        seen_ids = set()
+        for idx, item in enumerate(items):
+            v = item.get(fld)
+            if not _int(v):
+                fail(27, f"{lst}[{idx}].{fld} = {v!r} — missing")
+            elif v in seen_ids:
+                fail(27, f"{lst}[{idx}].{fld} {v} — repeated")
+            else:
+                seen_ids.add(v)
+
+    # 28 bot status in range and equal to the spec's choice (default 1).
+    st = bot.get("BotStatusId")
+    want = int(spec["identity"].get("Bot status") or 1)
+    if not _int(st) or st not in (1, 2, 3):
+        fail(28, f"BotStatusId = {st!r} — must be 1, 2 or 3")
+    elif st != want:
+        fail(28, f"BotStatusId {st} != spec Bot status {want}")
+
+    run_helper_checks(il, ids, fail, _int)
+
     # 8/9 token estimate (§6.2 check 8 specifics)
     top_created = bot["AiModelConfig"]["AIModelConfig"].get("created", {})
     gated = top_created.get("model") == "models/gemini-3.1-flash-live-preview"
@@ -433,6 +478,215 @@ def run(spec, bot):
     return fails, tok, gated, skipped
 
 
+# CHK-29…CHK-39 (v1.25.0) — helpers and tools, voicebot-json-contract.md §8. Every
+# failure below is one the import answers with a bare 500 and stores nothing, or drops
+# silently; none is refused with a reason.
+TOOL_TYPES_IN_FILE = {1: "MCP", 10: "WebAPI", 13: "Database"}
+TOOL_TYPES_DEFERRED = {4: "Email", 7: "SMS", 16: "FileStorage"}
+OPERATORS = {1, 4, 7, 10, 13, 16, 19, 22, 48}
+CRED_MARKER = re.compile(r"^<USER_TO_FILL: credential\b[^>]*>$")
+CRED_LIKE = re.compile(
+    r"(?i)(\bauthorization\b|\bbearer\s+\S|\bbasic\s+[A-Za-z0-9+/=]{8,}|x-api-key|api[-_ ]?key"
+    r"|access[-_ ]?token|\btoken[\"']?\s*[:=]|secret|passw(?:or)?d|\bpwd\s*=|cookie"
+    r"|://[^/\s:@]+:[^/\s@]+@)")
+CRED_CONFIGS = {33: "AuthToken", 39: "ConnectionString"}
+# references/tool-settings-catalog.md — each type's settings (ToolTypeConfigID -> exact name).
+TOOL_SETTINGS = {
+    10: {18: "ApiEndpoint", 21: "HttpMethod", 24: "RequestPayload", 27: "RequestHeaders"},
+    1: {30: "ServerUrl", 33: "AuthToken", 36: "Timeout"},
+    13: {39: "ConnectionString", 42: "Query", 45: "Timeout"},
+}
+
+
+def run_helper_checks(il, intent_ids, fail, _int):
+    subs = il.get("subAgents", [])
+    tls = il.get("subAgentTools", [])
+    if "subAgents" not in il and "subAgentTools" not in il:
+        return
+
+    def s(v):
+        return isinstance(v, str)
+
+    # 29 labels present and unique
+    for lst, fld, items in (("subAgents", "SubAgentID", subs), ("subAgentTools", "ToolId", tls)):
+        seen = set()
+        for i, item in enumerate(items):
+            v = item.get(fld)
+            if not _int(v):
+                fail(29, f"{lst}[{i}].{fld} = {v!r} — missing")
+            elif v in seen:
+                fail(29, f"{lst}[{i}].{fld} {v} — repeated")
+            else:
+                seen.add(v)
+    tool_ids = {t.get("ToolId") for t in tls}
+    tool_name = {t.get("ToolId"): t.get("ToolName") for t in tls}
+
+    for h, sub in enumerate(subs):
+        where = f"subAgents[{h}]"
+        # 30 assignments point at a tool of this file, once per helper
+        seen = set()
+        for a, asg in enumerate(sub.get("ToolAssignments", [])):
+            v = asg.get("ToolId")
+            if not _int(v) or v not in tool_ids:
+                fail(30, f"{where}.ToolAssignments[{a}].ToolId {v!r} is not a subAgentTools label")
+            elif v in seen:
+                fail(30, f"{where}.ToolAssignments[{a}].ToolId {v} — assigned twice")
+            else:
+                seen.add(v)
+        # 31 intents: the file's own intent labels, at least one, none repeated
+        iids = sub.get("IntentIds")
+        if not isinstance(iids, list) or not iids:
+            fail(31, f"{where}.IntentIds empty or missing — the helper would serve no intent")
+        else:
+            seen = set()
+            for v in iids:
+                if not _int(v) or v not in intent_ids or v >= 0:
+                    fail(31, f"{where}.IntentIds {v!r} is not a label of the file's intents")
+                elif v in seen:
+                    fail(31, f"{where}.IntentIds {v} — repeated")
+                else:
+                    seen.add(v)
+        # 32 helper fields
+        nm = sub.get("SubAgentName")
+        if not s(nm) or not nm.strip():
+            fail(32, f"{where}.SubAgentName missing")
+        elif len(nm) > 100:
+            fail(32, f"{where}.SubAgentName is {len(nm)} characters — at most 100")
+        if not s(sub.get("SubAgentTitle", "")) or len(sub.get("SubAgentTitle", "")) > 255:
+            fail(32, f"{where}.SubAgentTitle not a string of at most 255 characters")
+        for k in ("SubAgentDescription", "Instruction"):
+            if not s(sub.get(k, "")):
+                fail(32, f"{where}.{k} not a string")
+        m = sub.get("AiModelId")
+        if not _int(m) or (m <= 0 and m != -999):
+            fail(32, f"{where}.AiModelId = {m!r} — must be an AI model ID (or the -999 sentinel)")
+        if sub.get("SubAgentStatusID", 1) not in (1, 2) or isinstance(sub.get("SubAgentStatusID"), bool):
+            fail(32, f"{where}.SubAgentStatusID = {sub.get('SubAgentStatusID')!r} — must be 1 or 2")
+        # 35 conditions complete
+        for a, asg in enumerate(sub.get("ToolAssignments", [])):
+            for c, cond in enumerate(asg.get("ConditionList", []) or []):
+                p = f"{where}.ToolAssignments[{a}].ConditionList[{c}]"
+                if not _int(cond.get("Parameter")):
+                    fail(35, f"{p}.Parameter = {cond.get('Parameter')!r} — must be a source parameter ID")
+                if cond.get("OperatorID") not in OPERATORS or isinstance(cond.get("OperatorID"), bool):
+                    fail(35, f"{p}.OperatorID = {cond.get('OperatorID')!r} — not an operator")
+                if not s(cond.get("Value")):
+                    fail(35, f"{p}.Value = {cond.get('Value')!r} — must be present")
+        # 39 the instruction names every assigned tool exactly
+        ins = sub.get("Instruction") or ""
+        for asg in sub.get("ToolAssignments", []):
+            tn = tool_name.get(asg.get("ToolId"))
+            if s(tn) and not re.search(rf"(?<![\w-]){re.escape(tn)}(?![\w-])", ins):
+                fail(39, f"{where} ({nm}): Instruction does not name its tool {tn!r}")
+
+    names = {}
+    for t, tool in enumerate(tls):
+        where = f"subAgentTools[{t}]"
+        # 33 tool fields
+        tn = tool.get("ToolName")
+        if not s(tn) or not tn.strip():
+            fail(33, f"{where}.ToolName missing")
+        elif len(tn) > 100:
+            fail(33, f"{where}.ToolName is {len(tn)} characters — at most 100")
+        elif tn.lower() in names:
+            fail(33, f"{where}.ToolName {tn!r} repeats {names[tn.lower()]}")
+        else:
+            names[tn.lower()] = where
+        if not s(tool.get("ToolDisplayName", "")) or len(tool.get("ToolDisplayName", "")) > 200:
+            fail(33, f"{where}.ToolDisplayName not a string of at most 200 characters")
+        ty = tool.get("ToolTypeId")
+        if ty not in TOOL_TYPES_IN_FILE and ty not in TOOL_TYPES_DEFERRED or isinstance(ty, bool):
+            fail(33, f"{where}.ToolTypeId = {ty!r} — not a tool type")
+        for k, ok in (("ToolExecutionTypeID", (1, 2)), ("ToolStatusID", (1, 2, 3)),
+                      ("ToolRiskTypeID", (1, 2, 3, 4))):
+            if k in tool and (tool[k] not in ok or isinstance(tool[k], bool)):
+                fail(33, f"{where}.{k} = {tool[k]!r} — must be one of {ok}")
+        if "ParameterSchemaJson" in tool and tool.get("ToolExecutionTypeID", 1) != 2:
+            fail(33, f"{where}: ParameterSchemaJson on a tool whose ToolExecutionTypeID is not 2 (AI)")
+        if "TemplateId" in tool:
+            fail(33, f"{where}.TemplateId present — the import keeps only global templates; omit it")
+        vn = (tool.get("ToolVersion") or {}).get("VersionNumber", "1.0.0")
+        if not s(vn) or len(vn) > 20:
+            fail(33, f"{where}.ToolVersion.VersionNumber {vn!r} — a string of at most 20 characters")
+        # 36 credential-only tool types are never in the file
+        if ty in TOOL_TYPES_DEFERRED:
+            fail(36, f"{where} {tn!r}: type {ty} ({TOOL_TYPES_DEFERRED[ty]}) needs a credential — "
+                     f"the import drops it; it is added after the import")
+
+    # 34 parameter lists, 38 credentials — tool level and assignment level
+    by_id = {tool.get("ToolId"): tool for tool in tls}
+    lists = [(f"subAgentTools[{t}]", tool.get("Parameters", []), tool, tool.get("ToolTypeId"))
+             for t, tool in enumerate(tls)]
+    lists += [(f"subAgents[{h}].ToolAssignments[{a}]", asg.get("Parameters", []), None,
+               (by_id.get(asg.get("ToolId")) or {}).get("ToolTypeId"))
+              for h, sub in enumerate(subs) for a, asg in enumerate(sub.get("ToolAssignments", []))]
+    for where, params, tool, ttype in lists:
+        if not isinstance(params, list):
+            fail(34, f"{where}.Parameters is not a list")
+            continue
+        props = set(((tool or {}).get("ParameterSchemaJson") or {}).get("properties", {}))
+        seen, filled = set(), set()
+        for p, prm in enumerate(params):
+            pw = f"{where}.Parameters[{p}]"
+            pn = prm.get("ParameterName")
+            if not s(pn) or not pn.strip() or len(pn) > 255:
+                fail(34, f"{pw}.ParameterName {pn!r} — a name of at most 255 characters")
+            elif pn in seen:
+                fail(34, f"{pw}.ParameterName {pn!r} — twice in one list")
+            else:
+                seen.add(pn)
+            src, cfg_id = prm.get("ToolParameterSourceID"), prm.get("ToolTypeConfigID")
+            cfg = prm.get("Config") if isinstance(prm.get("Config"), dict) else {}
+            if src not in (1, 2, 3, 4, 5) or isinstance(src, bool):
+                fail(34, f"{pw}.ToolParameterSourceID = {src!r} — not a parameter source")
+            if src == 1:
+                if cfg_id is not None:
+                    fail(34, f"{pw}: an AI argument carries ToolTypeConfigID {cfg_id!r} — must be null")
+                sf = cfg.get("source_filed")
+                if tool is not None and sf not in props:
+                    fail(34, f"{pw}.Config.source_filed {sf!r} is not an argument of ParameterSchemaJson")
+                filled.add(sf)
+            elif not _int(cfg_id):
+                fail(34, f"{pw}.ToolTypeConfigID = {cfg_id!r} — a setting needs its config ID")
+            if src == 5 and not s(cfg.get("value")):
+                fail(34, f"{pw}.Config.value must be a string")
+            if src == 5 and ttype in TOOL_SETTINGS and pn not in TOOL_SETTINGS[ttype].values():
+                fail(34, f"{pw}.ParameterName {pn!r} is not a setting of type {ttype} "
+                         f"({', '.join(TOOL_SETTINGS[ttype].values())})")
+            # 38 nothing that looks like a credential
+            for k, v in cfg.items():
+                if not s(v) or CRED_MARKER.match(v):
+                    continue
+                if v.strip() == "****":
+                    fail(38, f"{pw}.Config.{k} is a masked export secret '****' — record the setting "
+                             f"as to set after the import")
+                elif cfg_id in CRED_CONFIGS:
+                    fail(38, f"{pw} ({CRED_CONFIGS[cfg_id]}) holds a value — a credential is never "
+                             f"written into the file")
+                elif CRED_LIKE.search(v):
+                    fail(38, f"{pw}.Config.{k} looks like a credential: "
+                             f"{CRED_LIKE.search(v).group(0)!r}")
+        for missing in sorted(props - filled):
+            fail(34, f"{where}: argument {missing!r} of ParameterSchemaJson has no AI parameter")
+
+    # 37 no stray null — only an AI argument's ToolTypeConfigID may be null
+    def nulls(o, path):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if v is None:
+                    if not (k == "ToolTypeConfigID" and o.get("ToolParameterSourceID") == 1):
+                        fail(37, f"{path}.{k} is null")
+                else:
+                    nulls(v, f"{path}.{k}")
+        elif isinstance(o, list):
+            for i, v in enumerate(o):
+                if v is None:
+                    fail(37, f"{path}[{i}] is null")
+                nulls(v, f"{path}[{i}]")
+    nulls(subs, "subAgents")
+    nulls(tls, "subAgentTools")
+
+
 def build_spec_context(raw):
     """Parse a spec and attach the section-4/4.5 context the checks consult."""
     spec = A.parse_spec(raw)
@@ -461,7 +715,7 @@ def main():
     fails, tok, gated, skipped = run(spec, bot)
     blocking = sorted(n for n in fails if n in BLOCKING
                       and not all("ADVISORY" in m for m in fails[n]))
-    ran = 26 - len(skipped)
+    ran = len(NAMES) - len(skipped)
     print(f"Token estimate: {tok} tok (checks 8/9/10 {'FIRE' if gated else 'skip'})")
     print(f"Checks run: {ran} | failed: {len(fails)} | blocking: {len(blocking)}\n")
     for n in sorted(fails):

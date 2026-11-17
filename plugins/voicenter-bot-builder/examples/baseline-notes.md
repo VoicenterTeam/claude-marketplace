@@ -217,7 +217,7 @@ would look up `-19` and land on the wrong intent — and this is the one banner 
 
 **Why it survived.** Nothing verifies the banner against the JSON. `assemble.py` has no banner
 generator — `--help` exposes only `-o` for JSON — so `expected-banner.txt` was hand-captured and
-is mechanically unreproducible. The 26-check pass operates on the wire structure and never reads
+is mechanically unreproducible. The 39-check pass operates on the wire structure and never reads
 the banner; V-S9 explicitly excludes the file (its `24` is legitimately historical).
 
 **Not hand-patched**, per the frozen-fixture rule in `README.md` — a hand-edited golden stops

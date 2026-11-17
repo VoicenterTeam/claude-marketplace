@@ -32,7 +32,8 @@ Skill 1 must extract the following. If any extraction fails (header missing, unr
 | `## 3. Caller Silence Behavior` | the silence failover intent + 4 silence fields (always populated — section 3 is never `[not configured]` from v1.11.0 onward) |
 | `## 4. Intent List (Structural)` — per `### Intent N: <identifier>` | identifier, display name, description, tool name, RT, hard-intent flag, transitions out (ordered), escalation target, slots, RT-specific fields |
 | `## 4.5 Available Variables` (subsections 4.5.1–4.5.4) | each variable inventory |
-| `## 5. Intent Details` — per `### Intent: <identifier>` | the `**Status:**` marker (`[structural]`, `[detailed]`, `[detailed-revisit]`) |
+| `## 4.8 Helpers and Tools` (optional) — per `### Helper:` / `### Tool:` | every field |
+| `## 5. Intent Details` — per `### Intent: <identifier>` (and `### Helper:` / `### Tool:`) | the `**Status:**` marker (`[structural]`, `[detailed]`, `[detailed-revisit]`) |
 | `## 7. Generation Metadata` | 7.4 unknowns, 7.5 pending |
 
 This is **not** a full strict-template parse (that's Skill 3's responsibility). Skill 1 needs only enough extraction to operate the patch workflow.
@@ -68,13 +69,15 @@ Open unknowns: <count from 7.4>
 - Edit the §4.5.5 CustomData key list (v1.13.0) — re-run Check 8 after the edit; note that CHK-07 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / IVRLayerSelect_2) (v1.13.0)
 - Edit the §1 `Negative instructions` field (v1.16.0)
+- Edit the §1 `Bot status` field (v1.24.0)
 - Edit `**Sensitive:**` / `**Max turns:**` / `**Max turns sentence:**` / `**IsSilenceIntent:**` on an intent (v1.14.0) — re-run Checks 23/24 after the edit
+- Add, edit or remove a helper or tool in section 4.8 (v1.25.0), with the §3.5.6 rules and reads — a new one enters with a `[structural]` section-5 stub; a helper whose tools change, and a tool whose name or arguments change, resets to `[detailed-revisit]` along with every helper that uses a renamed tool (its instruction names the tool); re-run Check 25
 
 **Hard-change taxonomy** (cascade reset required — see 4.5):
 
 - Change an intent's Response Type
 - Modify an intent's slots (add, remove, reorder, retype)
-- Delete an intent
+- Delete an intent — and drop it from every helper's `**Serves intents:**`; a helper left serving nothing is surfaced (delete the helper, or pick an intent)
 - Modify the transition graph beyond simple reordering
 - Edit `prompts.intentInstructions` (bot-level) routing destinations — alignment with the §2.5 opening question is re-verified by Check 17
 - Change channel scope from two channels to one

@@ -40,13 +40,14 @@ The **model catalog and voice catalog are NOT fetched live** — both remain har
 Every closed-set choice the user makes during the interview must be presented through `AskUserQuestion` — never plain free-text. This applies to every "pick one" or "yes/no" step, including (but not limited to):
 
 - Setup §2.1/§2.2 — runtime correction (Single-conversation vs Claude Code) and mode override (Greenfield vs Patch) when the auto-detected value is wrong
-- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward outcome (MANDATORY — always configured), max-duration sentence confirm, max-duration layer (via MCP when connected). (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Voicenter Voicebot (`321`) per §3.1 step 8 (v1.23.1). Per-intent `max_turns` is NEVER prompted — the skills decide autonomously per §3.4.3.)
+- Phase 1 — channel scope, agent gender (female/male), voice name, caller-silence fields and silence-forward outcome (MANDATORY — always configured), max-duration sentence confirm, max-duration layer (via MCP when connected), bot status. (The identifier is **not** prompted — it is silently auto-derived from the Bot Name, transliterating non-ASCII names, per §3.1 step 2. AI model config is **not** prompted either — it silently defaults to Voicenter Voicebot (`321`) per §3.1 step 8 (v1.23.1). Per-intent `max_turns` is NEVER prompted — the skills decide autonomously per §3.4.3.)
 - Phase 2 — off-topic policy (§3.2.5): forward outcome (Human rep / Hang up / Other), loop count, and the "Accept example wording / Edit" prompt
 - Phase 3/4 — API-timeout forward outcome (once per bot, §3.5.1)
 - Phase 2 — every "Show the draft, confirm or edit" prompt (§3.2.1 persona, §3.2.3 opening announcement, §3.2.4 opening behavior) → "Accept" / "Edit" (Edit branches into free-text capture)
 - Phase 2 — "Accept template default or override?" for inactive channels (§3.2.2)
 - Phase 2/3 boundary — "Pause for Deep Research or skip and proceed?" (§3.3)
 - Phase 3 — Response Type (RT=1/2/3/4); identifier naming when reject-and-suggest fires ("Use suggestion" / "Propose alternative")
+- Phase 4 §3.5.6 — helpers yes/no, served intents, AI model, knowledge bases, tools yes/no, tool type, argument type, risk (v1.25.0)
 - Phase 4 — account selection (from live list), layer selection (from live list), POST vs GET, dial source (parameter vs static), every per-slot `ParameterTypeId` (Appendix B closed enum: STRING / PHONE / BOOLEAN / ENUM / "Other unsupported — STRING fallback"), every per-slot `IsRequired` (yes/no), RT=4 `record` (yes/no), and the RT=4 rarity-warning confirmation ("Yes, this really is an outbound dial" / "No, switch to RT=1 transfer")
 - Patch mode §4.5 — "Confirm cascade and proceed?"; every iron-rule re-prompt during patch (mirrors the self-validation prompts below)
 - Self-validation Checks 2/3/4 — "Move it?" (yes/no)
@@ -105,6 +106,7 @@ Ask, in order:
 13. **Max duration layer (v1.14.0):** if MCP is available per §2.4.A, call `voicenter-mcp.list_resources` with `entityFilter: ["Layers"]`, display the layers as an id+name table, then prompt via `AskUserQuestion` (header: "Max-duration layer"): *"Which layer should receive the call when max duration is reached?"* Written to spec section 1 as `**Max duration layer:**`. If MCP is unavailable or the user already declined MCP: **silently default `0`** — do NOT ask, do NOT re-run the §2.4.A install/auth offer; log to 7.3. `dailyLimitLayerId` and `IVRLayerSelect_2` are NOT asked and keep their default `3` (out of scope).
 14. **Record agent calls:** boolean. **Always ask — no recommended option, no silent default (v1.23.0).** Prompt via `AskUserQuestion` per Section 2.4.B (header: "Record calls", 2 options: "Yes — record" / "No — do not record"), even when the user asked for defaults. Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits it per the model's wire family — a JSON boolean on `tts`, the **string** `"false"` / `"true"` on `gemini` (both are the production export shapes).
 15. **Negative instructions (v1.16.0):** optional free text — the UI's AI Security Settings field: what the agent must never say or commit to (legally, medically, financially — e.g., "never promise a refund", "never give medical advice"). Prompt once via `AskUserQuestion` per Section 2.4.B (header: "Guardrails", 2 options: "Skip — none *(Recommended)*" / "Add never-say rules" with free-text capture). Written to spec section 1 as `**Negative instructions:**`; omit the field entirely when skipped. **NOT emitted to the wire JSON** — the wire field name is unverified; Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step (paste into the UI's AI Security Settings → Negative Instructions). Check 15 may also relocate must-never-say content here from prompt fields.
+16. **Bot status (v1.24.0):** prompt once via `AskUserQuestion` (header: "Bot status", 3 options: "Active *(Recommended)*" / "Inactive — imported switched off" / "Maintenance"). Write `**Bot status:** 2` or `**Bot status:** 3` to spec section 1; omit the field for Active (Skill 3 emits `1`).
 
 **Write at end of Phase 1:** spec sections 1, 3, and 4.6 (only if the user supplied a catalog intent).
 
@@ -469,4 +471,43 @@ Skill 1 does NOT validate the contents of section 4.7 in v1 — it's pass-throug
 
 If section 4.7 is empty or missing (the default), Skill 3 emits the safe defaults and the import proceeds normally.
 
-**Write at end of Phase 4:** spec section 4 finalized; section 4.5.3 generated; section 5 stubs created. If the user opted in, section 4.7 captured; otherwise, section 4.7 is omitted entirely.
+#### 3.5.6 Helpers and tools (optional; default: skip)
+
+A **helper** (sub-agent) is a specialist the bot hands some intents to, with its own instruction and AI model; a **tool** is something a helper calls. Most bots need none. After §3.5.5, prompt **once** via `AskUserQuestion` (header: "Helpers", options: "Skip — no helpers *(Recommended)*" / "Add helpers"). On Skip write nothing — no section 4.8 — and continue to §3.6.
+
+On "Add helpers", capture per `spec-skeleton.md` §4.8, one question per turn.
+
+**Live reads.** The real IDs come from the connected Voicenter MCP: call each read below directly where it is listed, otherwise through `SearchOperations` → `DescribeOperation` → `ExecuteRead`. Show each list as an id+name table and prompt from it. Where no read is reachable, apply §2.4.A's fallback once (install / authenticate / continue manually), then use `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` for a type's settings and write the unknown marker the skeleton gives for anything else — **never a guessed ID or setting name**. Log to 7.3 which values came from live reads.
+
+| Value | Read | Use |
+|---|---|---|
+| A helper's AI model | `VoiceBotConfData` | `Data.AiModelList[]`, `IsActive 1` only — an **AI model** ID, never a `model-catalog.md` model-config ID |
+| Tool types and whether one needs a credential | `ToolConfData` | `Data.ToolTypeList[]`; a non-empty `ProviderCredentialConfigIDList` means it is added after the import |
+| A type's settings | `ToolTypeConfig` by `ToolTypeId` | `Data.RequiredParameters[]` → `ToolTypeConfigID` and exact name; without a read, `tool-settings-catalog.md` (live wins; log a difference to 7.3) |
+| Risk levels | `ToolConfData` | `Data.ToolRiskTypeList[]` |
+| Knowledge bases | `KnowledgeBaseList` | `Data[].KnowledgeBaseID` and name |
+
+**Per helper:**
+
+1. **Name** (free text, at most 100 characters). Derive the identifier from it as for the bot (§3.1 step 2).
+2. **Title** (free text, at most 255).
+3. **Description** — a short semantic label of what the helper is for, under FP-10's rules.
+4. **Intents it serves** — from the section-4 list (`AskUserQuestion`, multi-select where the tool allows it). At least one; bot-own intents only, since the import drops a catalog intent's real ID without a word. Several helpers may serve one intent.
+5. **AI model** — the `VoiceBotConfData` list.
+6. **Knowledge bases** — `AskUserQuestion` ("None *(Recommended)*" / "Add a knowledge base"), then the `KnowledgeBaseList` table. Record each as *to link after the import*: the import never links one, and Skill 3 offers the link once the helper exists.
+
+**Then tools** — `AskUserQuestion` ("No tools *(Recommended)*" / "Add a tool"), repeated after each tool. **Per tool:**
+
+1. **ToolName** — specific snake_case ASCII naming what it does (`clinic_slot_lookup`, not `lookup`), at most 100 characters, unique in the bot. Tell the person once that a name already taken on the account is imported as `<name>_<number>`.
+2. **Display name** and **Purpose** (one line: what it does).
+3. **Type** — `AskUserQuestion` from `ToolConfData` (or MCP 1 / WebAPI 10 / Database 13 / Email 4 / SMS 7 / FileStorage 16). A type that needs a credential — Email, SMS and FileStorage today — gets `**Add after the import:**` with the skeleton's reason; tell the person why: the import cannot bind a credential, so Skill 3 offers to create it once the bot exists.
+4. **Settings** — for each of the type's settings (from `ToolTypeConfig`, else the catalog), the value (free text). The setting's name is written exactly as listed (`ApiEndpoint`, never `URL`) — it is the file's `ParameterName`. A value may name an argument as `{{argument}}`. **Never record a credential**: when a value is or holds one — an `Authorization` / API-key / token / cookie header, a password, an MCP `AuthToken`, a Database `ConnectionString`, or an export's masked `****` — write the whole setting as the skeleton's credential marker, and tell the person they set it on the tool after the import.
+5. **Arguments the model fills** — name, type (`AskUserQuestion`: string / integer / number / boolean), required or optional. Their descriptions are Skill 2's.
+6. **Risk** — `AskUserQuestion` (Read / Action / Destructive / External).
+7. **Used by** — which helpers.
+
+A spec built from an exported bot follows the same rules: keep every `****` out of the spec and record that setting with the credential marker.
+
+**Write:** section 4.8, and one section-5 stub per helper and per tool after the intents (`**Status:** [structural]`); add every unknown marker to 7.4. Skill 1 does not capture tool conditions (`ConditionList`) or per-helper setting overrides.
+
+**Write at end of Phase 4:** spec section 4 finalized; section 4.5.3 generated; section 5 stubs created. If the user opted in, section 4.7 captured; otherwise, section 4.7 is omitted entirely. Likewise section 4.8 (§3.5.6).

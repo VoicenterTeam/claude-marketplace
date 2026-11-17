@@ -35,11 +35,14 @@ which is what bounds the blast radius of the upstream functional change.
 | `expected-output-shipping.json` | **F1-shipping** — F1's exact output under current emission rules |
 | `expected-banner.txt` | F1's generation banner (§7.2), v1.17.0 vintage — the shipping banner adds exactly one DEFAULTS APPLIED line (`ActiveVersionInfo.PersonaID = 249`, derived from the sample spec's `**Primary Language:** en-US` since v1.22.0) |
 | `sample-spec-seeded.md` | **F2 seeded** — F1 plus exactly three deliberate violations |
+| `sample-spec-helpers.md` | **F3 helpers** (v1.25.0) — F1 plus spec section 4.8: two helpers (one serving two intents, both sharing `confirm_slot_booking`), a WebAPI tool with one AI argument, static settings and a credential setting, an Email tool to add after the import, a knowledge base to link after the import |
+| `expected-output-helpers.json` | **F3-expected** — F3's exact output; equal to the shipping golden outside `intentList.subAgents` / `subAgentTools` |
+| `test-helpers-regression.py` | F3's wire shape, section 4.8 parse errors, and CHK-29…CHK-39 each firing on a seeded fault |
 | `seeded-violations.md` | What each seeded violation is, where it lives, and why |
 | `expected-violations-report.md` | v1.17.0's detection baseline for F2 (V-C3/V-C4/V-A2 reference) |
 | `baseline-notes.md` | Eight v1.17.0 findings observed while building the fixtures — recorded, not fixed |
 | `assemble.py` | Mechanical transcription of Skill 3 §3-§4 (spec → wire format) |
-| `verify.py` | Mechanical transcription of Skill 3 §6 (the 26-check cross-reference pass) |
+| `verify.py` | Mechanical transcription of Skill 3 §6 (the 39-check cross-reference pass) |
 | `stub-api-server.py` | Local API standing in for the fictional clinic's scheduling endpoint |
 | `check-static.py` | The V-S static check suite (MS6 §6.1) — runs in CI on every push |
 | `trigger-evals.json` | Description trigger evals: positive sets + the cross-fire matrix (needs a live run) |
@@ -53,7 +56,7 @@ Brightview Family Clinic Assistant — `en-US`, voice-only, Gemini 3.1 - LLM dri
 - Roles: 2 `entry`, 3 `global`, 5 `chained` → 5 `botIntents[]` rows, 5 `intentRelations[]`
 - 11 Mustache references across all five 4.5.x inventories
 - FP-12 callback date/time block; FP-6 off-topic global; v1.16.0 negative instructions
-- 26/26 cross-reference checks pass on the shipping baseline (25/25 + CHK-25 skipped on the frozen one); token estimate 1,961 (advisory band)
+- 39/39 cross-reference checks pass on the shipping baseline (38/38 + CHK-25 skipped on the frozen one); token estimate 1,961 (advisory band)
 
 ## Reproducing
 
@@ -71,11 +74,17 @@ diff /tmp/f1-frozen.json expected-output.json && echo "frozen golden intact"
 python assemble.py sample-spec-detailed.md -o /tmp/f1.json
 diff /tmp/f1.json expected-output-shipping.json && echo "shipping golden intact"
 
-# 3. F1 must pass the checks on both baselines (25 + 1 skipped / 26)
+# 3. F1 must pass the checks on both baselines (38 + 1 skipped / 39)
 python verify.py sample-spec-detailed.md expected-output.json --wire-baseline=1.17.0
 python verify.py sample-spec-detailed.md expected-output-shipping.json
 
-# 4. F2 must fire exactly checks 3, 7 (blocking) and 22 (advisory)
+# 4. F3 (helpers and tools) must reproduce its golden and pass all 39 checks
+python assemble.py sample-spec-helpers.md -o /tmp/f3.json
+diff /tmp/f3.json expected-output-helpers.json && echo "helpers golden intact"
+python verify.py sample-spec-helpers.md expected-output-helpers.json
+python test-helpers-regression.py
+
+# 5. F2 must fire exactly checks 3, 7 (blocking) and 22 (advisory)
 python assemble.py sample-spec-seeded.md -o /tmp/f2.json
 python verify.py sample-spec-seeded.md /tmp/f2.json    # exits 1 — expected
 ```

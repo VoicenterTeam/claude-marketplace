@@ -23,9 +23,12 @@
 - [4. Mandatory gate before returning any JSON](#4-mandatory-gate-before-returning-any-json)
 - [5. Validator (runnable, self-contained — Python 3 stdlib only)](#5-validator-runnable-self-contained--python-3-stdlib-only)
 - [6. JSON Schema (draft 2020-12, structural checks only — optional fast gate)](#6-json-schema-draft-2020-12-structural-checks-only--optional-fast-gate)
+- [7. The import endpoint (API Manager `POST /VoiceBot/Import/`)](#7-the-import-endpoint-api-manager-post-voicebotimport)
+- [8. Helpers and tools (`intentList.subAgents[]`, `intentList.subAgentTools[]`)](#8-helpers-and-tools-intentlistsubagents-intentlistsubagenttools)
 
-**What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7) and CHK-25 in
-[`verification-procedure.md`](verification-procedure.md). The `AIModelConfigID` whitelist in R11
+**What Skill 3 owns from this file:** `ActiveVersionInfo.PersonaID` emission (R7), CHK-25, CHK-27
+(R3), CHK-28 (R8/R11) and CHK-29…CHK-39 (§8) in [`verification-procedure.md`](verification-procedure.md), and the
+optional import of §7. The `AIModelConfigID` whitelist in R11
 lists three ids (303, 312, 321) not yet in the assembler's catalog (v1.23.1: `321` is now catalogued — Voicenter Voicebot, the default) — see the known-gap note in
 `skills/voicenter-bot-json-assembler/stages/assembly-mapping.md` Appendix D.11.
 
@@ -266,3 +269,90 @@ The validator above is authoritative (it also checks cross-references and
 duplicates, which schema can't). See the source contract for the full schema;
 omitted here since Skill 3's own §6 cross-reference pass (SKILL.md) plays the
 same role for the bot-builder pipeline's specific wire shapes.
+
+## 7. The import endpoint (API Manager `POST /VoiceBot/Import/`)
+
+Observed live on 2026-11-18 through the Voicenter portal MCP's `VoiceBotImport` tool, against
+API Manager v2.6.18 (neither in production yet). Skill 3 §7.6 imports through it.
+
+- **Body:** the file itself. Declared inputs, exactly: `Name`, `AccountID` (required; one of the
+  caller's accounts, else `403`), `Description`, `BotStatusId` (1 Active, 2 Inactive,
+  3 Maintenance), `BotLanguages`, `AiModelConfig`, `ActiveVersionInfo`, `intentList`. The MCP
+  refuses any other top-level key before sending.
+- **Ignored keys:** `BotID`, `CreatedDate`, `ModifiedDate`. Skill 3 still emits them — the manual
+  and older import paths take the whole file — and an import through the MCP leaves them out.
+- **`AiModelConfig`:** `{"AccountId": 0, "AIModelConfigID": <global config>}` reuses that global
+  configuration; `AccountId` must be the number `0`. Otherwise the import copies it and needs
+  `AIModel`, `Name` and `AIModelConfig`. If neither works: `400`, ReasonPhrase
+  `ai_model_config_unusable`, `Data.GlobalAiModelConfigs: [{AIModelConfigID, Name}]` — the usable
+  global configs. A global config that is no longer active is still accepted, without a word, so
+  the file must name an active one.
+- **Placeholder IDs (R3):** a repeated or missing `intentCategories[].IntentCategoryId`,
+  `intents[].IntentId`, `intents[].IntentParameters[].ParameterId` or `botIntents[].BotIntentId`,
+  or a repeated `intentRelations[].IntentRelatedID`, is refused before anything is stored: `400`,
+  ReasonPhrase `import_placeholder_clash`, `Data: {List, Field, Id, Index, Problem}` with
+  `Problem` `"repeated"` or `"missing"`, and a Description such as
+  *"intentList.intentRelations[1].IntentRelatedID -12 repeats an earlier item's id; every item of
+  a list needs its own id. Nothing was imported."* CHK-27 guards all five lists, present and
+  unique.
+- **Transfer targets:** every transfer target except the global hang-up is removed by the import
+  and listed in the answer's `Data.Removed`; each one is set by hand afterwards.
+- **Through the portal MCP every change is a plan:** `PlanPreview` with one `VoiceBotImport` step,
+  the person's yes, then `PlanRun` with the preview's hash; the server reads the new bot back. A
+  refusal comes back as a failed step with its reason and data. A 5xx or a timeout means it is not
+  known whether the import took effect: read the account (`VoiceBotList`) before trying again.
+- **Today's production Voicenter MCP** may offer an older tool instead, `import_agent`: the same
+  file with typed top-level fields, creating the bot at once with no preview.
+
+## 8. Helpers and tools (`intentList.subAgents[]`, `intentList.subAgentTools[]`)
+
+Traced from the import's code by API Manager's maintainers (routine `ImportBotFromJSON` steps 11a
+and 11b, release v2.6.18; export masking v2.6.19). **For these two lists this section wins over
+§0–§6:** a routine-side failure rolls back the whole import and answers a bare `500` naming
+nothing — it never leaves partial data (§0) — and no key here may be `null` (§2's "free-text
+fields may be `null`" does not apply). No pre-check looks at helpers, tools, assignments or
+knowledge bases, so CHK-29…CHK-39 are the only guard.
+
+**`subAgents[]`** — one helper each, created after every tool:
+
+| Key | Rule |
+|---|---|
+| `SubAgentID` | Not read. Skill 3 still gives each its own label. |
+| `SubAgentName` | Required, ≤ 100 characters. |
+| `SubAgentTitle` | Optional, ≤ 255. |
+| `SubAgentStatusID` | `1` Enabled (default) or `2`; anything else fails. |
+| `SubAgentDescription`, `Instruction` | Text; `Instruction` is the helper's prompt. |
+| `AiModelId` | Required: an **AI model** ID (`VoiceBotConfData` → `Data.AiModelList[].AiModelID`, active ones), **not** an AI model configuration ID. An unknown ID fails. |
+| `IntentIds[]` | Labels of this file's `intents[]`. A real intent ID or an unknown label is dropped silently, unreported. The same label twice in one helper fails. One helper may serve several intents; one intent may have several helpers. |
+| `KnowledgeBases[]` | `{KnowledgeBaseID, KnowledgeBaseName}`. Never copied, never checked; each is reported in `Data.Removed` (below) so it can be linked afterwards. |
+| `ToolAssignments[]` | `{ToolId, IsEnabled, Parameters, ConditionList}`. `ToolId` is a label of this file's `subAgentTools[]`; anything else is dropped and reported. `ConditionList` items need `Parameter`, `OperatorID` (1, 4, 7, 10, 13, 16, 19, 22, 48) and `Value`. |
+
+**`subAgentTools[]`** — every tool is created new; the file cannot point at an existing one:
+
+| Key | Rule |
+|---|---|
+| `ToolId` | Required label, unique among the tools. A repeat or a missing one fails. |
+| `ToolName` | Required, ≤ 100. A name already taken on the account is renamed `<name>_<new ToolId>`, silently. |
+| `ToolDisplayName` | ≤ 200; defaults to `ToolName`. |
+| `ToolTypeId` | `1` MCP, `10` WebAPI, `13` Database are created. `4` Email, `7` SMS, `16` FileStorage need a credential no global one exists for: the tool is not created and is reported. |
+| `TemplateId` | Kept only when global; omit it. |
+| `ToolExecutionTypeID` | `1` Execute, `2` AI. `ParameterSchemaJson` (the AI arguments' JSON Schema) only with `2`. |
+| `ToolStatusID`, `ToolRiskTypeID` | `1`–`3` (Active, Inactive, Deleted); `1`–`4` (Read, Action, Destructive, External). The file's risk wins. |
+| `Parameters[]` | `{ToolTypeConfigID, ParameterName, ToolParameterSourceID, Config}`. A setting: its type's `ToolTypeConfigID` and exact setting name as `ParameterName` (`ToolTypeConfig` by `ToolTypeId` → `Data.RequiredParameters[]`; fallback [`tool-settings-catalog.md`](tool-settings-catalog.md)), source `5`, `Config {"value": "<string>"}`. An AI argument: `ToolTypeConfigID` `null`, source `1`, `Config {"source_filed": "<argument>"}` — spelled `source_filed`. `ParameterName` once per list, ≤ 255. |
+| `ToolVersion` | `{VersionNumber ≤ 20, Description, ConfigurationJson}`. |
+
+**Secrets.** An export (v2.6.19) masks an MCP tool's `AuthToken` (`ToolTypeConfigID` 33), a
+Database tool's `ConnectionString` (39) and credential-named headers inside a WebAPI tool's
+`RequestHeaders` (27) as `****`; the import leaves a still-masked value out. The plugin never
+writes a credential, a token or an API key into the file, and never `****`: such a setting is a
+`<USER_TO_FILL: credential — …>` marker, left out of an MCP import and set on the tool by hand.
+
+**`Data.Removed` after the import** — each item a to-do:
+
+| `Type` | Means | Then |
+|---|---|---|
+| `KnowledgeBase` | Every knowledge base in the file (`SourceId` = its ID, `NewEntityId` = the new helper). | `KnowledgeBaseAssignmentCreate` with `KnowledgeBaseAssignmentTypeID 4` on `NewEntityId` — or, when the entry shows none, the `SubAgentID` that `SubAgentList` gives for the exact `SubAgentName`. |
+| `Tool` | An Email, SMS or FileStorage tool, not created. | `ToolCreate` in the account with its own credential (`CredentialCenterList`, `CredentialCenterAssignmentCreate`), then `ToolAssignmentCreate` with `EntityType 7` on the helper. |
+| `ToolAssignment` | A helper lost a tool that was not created. | Assign it by hand. |
+| `ToolTemplate` | A non-global template was dropped; the tool was kept. | Nothing, or set the template by hand. |
+| `ToolSecret` | A masked `****` setting was left out (`Name` = the tool). | Set that setting on the tool by hand. |

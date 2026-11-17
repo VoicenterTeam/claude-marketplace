@@ -6,6 +6,119 @@ Two increments are staged here, neither tagged. **1.20.0** is merged to `main` a
 
 ---
 
+### 1.25.0 — a bot's helpers (sub-agents) and their tools
+
+Plugin `voicenter-bot-builder` 1.25.0 under marketplace 1.25.0. Behaviour added; nothing breaks.
+**39 checks** (CHK-29…CHK-39 appended, all blocking). A spec without the new section emits
+exactly what 1.24.0 emitted: both F1 goldens are byte-identical. The wire format follows the
+import contract traced from API Manager's code (routine `ImportBotFromJSON` steps 11a/11b,
+v2.6.18; export masking v2.6.19), recorded in `references/voicebot-json-contract.md` §8, and
+checked against a file imported live on 2026-11-18 (one helper, one WebAPI tool, one knowledge
+base).
+
+- **Skill 1 — optional spec section 4.8.** Offered once after the advanced features, skipped by
+  default. Per helper: name, title, description, the section-4 intents it serves, its AI model,
+  and knowledge bases recorded *to link after the import*. Per tool: a specific name, display
+  name, purpose, type, settings, the arguments the model fills, risk, and the helpers using it.
+  Real IDs are read live through a connected Voicenter MCP (`VoiceBotConfData` AI models —
+  an AI model ID, not a model-config ID —, `ToolConfData`, `ToolTypeConfig`,
+  `KnowledgeBaseList`); without one, the unknown marker. Email, SMS and FileStorage tools are
+  recorded "Add after the import". A credential — or an export's `****` — is never recorded:
+  the setting gets a credential marker. New self-validation Check 25; patch-mode rules.
+- **Skill 2 — `stages/helpers-and-tools.md`.** Tool and argument descriptions, then each
+  helper's `Instruction` (Role / Tools / Rules, per a new `prompt-structure.md` row), naming
+  every assigned tool exactly as the file does. Checks H1–H6. The entries join the work queue
+  as one last batch.
+- **Skill 3 — `intentList.subAgents[]` / `subAgentTools[]`** (`stages/helpers-and-tools.md`):
+  labels `-5000…` and `-6000…`; intents by the file's labels; tools through
+  `ToolAssignments[].ToolId`; `source_filed` kept as the import spells it; no `null` but an AI
+  argument's `ToolTypeConfigID`; no `TemplateId`; Email/SMS/FileStorage tools left out. Banner:
+  HELPERS AND TOOLS plus a post-import step per knowledge base, tool to add and credential
+  setting.
+- **CHK-29…CHK-39** — labels; assignments; helper intents; helper fields; tool fields;
+  parameter lists; conditions; no credential-only tool type; no stray null; no credential;
+  the instruction names its tools. Each is a failure the import answers with a bare 500 (whole
+  import rolled back, nothing named) or drops without a word; the API's maintainers are not
+  changing those 500s, so these checks are the only guard.
+- **Import stage §5.** After an MCP import, `Data.Removed` is read by `Type`: `KnowledgeBase` →
+  an offered `KnowledgeBaseAssignmentCreate` plan (type 4, on the new helper); `ToolSecret`,
+  `Tool`, `ToolAssignment`, `ToolTemplate` → listed to set by hand. Tools marked "Add after the
+  import" are offered as `ToolCreate` with their own credential plus `ToolAssignmentCreate`
+  (`EntityType 7`). A credential marker is never asked for: its parameter is left out of the
+  import.
+- **Where the older reference text and the contract disagree, the contract wins** (noted in
+  `voicebot-json-contract.md` §8): §0's "a returned bot id is not proof of success … PARTIAL
+  data" — a failure in these lists rolls everything back and answers 500; §2's "Free-text fields
+  may be `null`" — not in these lists.
+- Harness: `assemble.py` and `verify.py` extended; fixture F3 (`sample-spec-helpers.md`,
+  `expected-output-helpers.json`) and `test-helpers-regression.py` (a seeded fault per new
+  check) run in CI.
+- **Follow-up from a live build** (one helper, one WebAPI tool, a knowledge base; built from the
+  skills' text alone, imported through the MCP and the knowledge base linked afterwards):
+  `references/tool-settings-catalog.md` gives each tool type's settings — `ToolTypeConfigID` and
+  exact name (WebAPI 18 ApiEndpoint, 21 HttpMethod, 24 RequestPayload, 27 RequestHeaders, read
+  live 2026-11-18; MCP 30/33/36 and Database 39/42/45 from the contract) — as Skill 1's fallback
+  when no `ToolTypeConfig` read by `ToolTypeId` is reachable; the live read wins. The builder had
+  invented `URL` / `Method` with `-999`. CHK-34 now fails a static setting whose name is not one
+  of its type's settings. Skill 2 states that a helper reaches its intents through its
+  `IntentIds` alone — the intent's text neither mentions it nor names it as a tool. The import
+  stage falls back to `SubAgentList` (exact `SubAgentName`; several matches → ask) when a
+  removed item shows no `NewEntityId`. The F3 golden is unchanged.
+- **Recorded for the owners, not changed** (they predate this release): `examples/assemble.py`
+  copies an unknown voice as `<UNKNOWN: Voice Name>` where Skill 3 prescribes
+  `<USER_TO_FILL: …>`, and CHK-10 then fails on the corrected string; the always-asked fields
+  (voice, gender, record calls) have no marker in the skeleton, and `recordAgentCalls` becomes a
+  silent `false`; `**Terminal outcome:**` is optional in the skeleton but blocking in Skill 1
+  Check 19; `**Asks next:**` is `[none]` in Skill 2 and `[none — terminal]` in the skeleton;
+  `assemble.py` pins `CreatedDate` where the text says "at assembly time"; the default
+  max-duration sentence is Hebrew on an English bot.
+- **Open points** (the stricter reading is taken): a tool is always `ToolExecutionTypeID 2`
+  (every observed sample is); whether a helper's instruction resolves `{{variables}}`
+  (Skill 2 writes none); how `ToolCreate` binds a credential was not traced; tool
+  names are kept unique within the file; settings from sources 2–4, assignment-level
+  parameters and tool conditions are not captured by the interview.
+
+---
+
+### 1.24.0 — bot status choice, import-contract checks, import through a Voicenter MCP
+
+Plugin `voicenter-bot-builder` 1.24.0 under marketplace 1.24.0. Behaviour added; nothing breaks.
+**28 checks** (CHK-27, CHK-28 appended). Both frozen goldens are byte-identical. Found by
+importing a bot built with this plugin through API Manager's `POST /VoiceBot/Import/` (tool
+`VoiceBotImport` on the Voicenter portal MCP, API Manager v2.6.18) on 2026-11-18; neither is in
+production yet.
+
+- **Bot status is a choice.** Spec section 1 gains optional `**Bot status:**` — `1` Active,
+  `2` Inactive, `3` Maintenance. Skill 1 asks it once (Active recommended) and omits the field
+  for Active; patch mode treats it as an easy change. Skill 3 parses it strictly (`4` Deleted or
+  anything else is a parse error) and emits it as `BotStatusId`, `1` when absent — the constant
+  every earlier version emitted. The live test wanted a bot imported switched off, and couldn't.
+- **CHK-27 (blocking) — placeholder IDs present and unique** in the five lists the importer
+  keys by ID: `IntentCategoryId`, `IntentId`, `ParameterId` (across all intents), `BotIntentId`,
+  `IntentRelatedID`. The import refuses a clash with `import_placeholder_clash` and stores
+  nothing. CHK-02 had left `IntentRelatedID` to the allocator, and v1.2.0 once emitted a repeat.
+- **CHK-28 (blocking) — bot status in range** and equal to the spec's choice.
+- **Skill 3 §7.6 — optional import through a Voicenter MCP** (`stages/mcp-import.md`). After a
+  verified emission, with a Voicenter MCP connected, Skill 3 asks once whether to import now. On
+  the portal MCP it imports as a plan: `PlanPreview` with one `VoiceBotImport` step, the
+  server's preview shown, `PlanRun` only on the person's yes; then the new bot's ID, the
+  read-back, and `Data.Removed` (transfer targets other than the global hang-up, which the
+  import drops). Markers are replaced first and a file that still has one is never sent;
+  `BotID`, `CreatedDate` and `ModifiedDate` stay in the file but are left out of the import,
+  which ignores them. `ai_model_config_unusable` offers `Data.GlobalAiModelConfigs` as a choice;
+  `import_placeholder_clash` fixes the named ID and re-verifies; an unknown outcome (5xx,
+  timeout) reads the account with `VoiceBotList` before anything else. Where only the older
+  `import_agent` is offered, Skill 3 says it imports at once, with no preview, and asks first.
+  With no MCP the manual hand-off is unchanged.
+- `references/voicebot-json-contract.md` §7 records the import endpoint's behaviour. The Skill 3
+  anti-list's "No MCP in v1" and "lifecycle ends at manual import" lines now say what is true:
+  parsing, assembly and verification never touch the platform; the import is the one MCP use.
+- Harness: `assemble.py` parses and emits the status, `verify.py` implements CHK-27/28, and the
+  new `test-import-contract-regression.py` (in CI) covers the status values, the parse errors,
+  and a repeated or missing ID in every list.
+
+---
+
 ### 1.23.2 — hotfix: Voicenter Voicebot - Gemini (387) is verified
 
 Plugin `voicenter-bot-builder` 1.23.2 under marketplace 1.23.2. Emitted-output change only for

@@ -25,6 +25,7 @@
 **Max duration sentence:** [text; optional — spoken when max call duration is reached. v1.14.0 default (production-derived): `"נראה שהגענו לזמן שיחה מקסימלי, אנא נסה שנית "`. Skill 1 confirms the default with the user in one Phase-1 question (keep or replace); Skill 3 emits the default if omitted.]
 **IVRLayerSelect_2:** [int; optional (v1.13.0), default 3 — emitted to `AIModelConfig.IVRLayerSelect_2`]
 **Negative instructions:** [free text; optional (v1.16.0) — the UI's AI Security Settings free-text field: what the agent must never say or commit to (legally, medically, financially, etc.). NOT emitted to the wire JSON — the wire field name is unverified; Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step (paste into the UI's AI Security Settings → Negative Instructions). Check 15 relocates must-never-say/never-commit content here instead of recommending removal. Omit when none.]
+**Bot status:** [`1` Active | `2` Inactive | `3` Maintenance; optional (v1.24.0) — emitted to root `BotStatusId`. Omit for Active (Skill 3 emits `1`). Any other value is a Skill 3 parse error.]
 
 ---
 
@@ -185,6 +186,36 @@ A global/system catalog intent is a predefined platform intent the bot reference
 
 ---
 
+## 4.8 Helpers and Tools
+
+[Optional (v1.25.0) — present only when the user added helpers in Phase 4 §3.5.6; omit the whole section otherwise. Helpers first, then tools. Skill 3 emits them to `intentList.subAgents[]` / `subAgentTools[]`.]
+
+### Helper: [snake_case identifier, derived from the name]
+
+- **Name:** [free text, at most 100 characters — `SubAgentName`]
+- **Title:** [free text, at most 255 characters]
+- **Description:** [short semantic label of what the helper is for, in the bot's primary language (FP-10 rules)]
+- **Serves intents:** [comma-separated section-4 intent identifiers, at least one; bot-own intents only, never a section-4.6 catalog intent]
+- **AI model:** [AI model ID from the live `VoiceBotConfData` read (`Data.AiModelList`, active), optionally followed by ` — <name>` | `<UNKNOWN: AI model of <identifier>>`. An AI model ID, never a `model-catalog.md` model-config ID.]
+- **Knowledge bases to link after the import:** [`[none]` | `<KnowledgeBaseID> — <name>` items separated by `; ` (ID from the live `KnowledgeBaseList`, or `<UNKNOWN: ID of knowledge base <name>>`). The import never links one; Skill 3 offers the link afterwards.]
+
+### Tool: [ToolName — specific snake_case ASCII, at most 100 characters, unique in the bot]
+
+- **Display name:** [free text, at most 200 characters]
+- **Purpose:** [one line for human review: what the tool does. Not emitted — Skill 2 writes the model-facing description in section 5.]
+- **Type:** [`1 — MCP` | `10 — WebAPI` | `13 — Database` | `4 — Email` | `7 — SMS` | `16 — FileStorage`]
+- **Risk:** [`1 — Read` | `2 — Action` | `3 — Destructive` | `4 — External`]
+- **Settings:**
+  1. [ParameterName — the type's exact setting name] — config [ToolTypeConfigID from the live `ToolTypeConfig` read by `ToolTypeId`, else `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` | `<UNKNOWN: config ID of <setting>>`] — [`value` in backticks | `<UNKNOWN: credential — <what>; set <setting> on tool <ToolName> by hand after the import>` for any value that is or holds a credential, token, API key, password or connection string, never the value itself]
+  [or `[none]`]
+- **Arguments:**
+  1. [argument name] — [`string` | `integer` | `number` | `boolean`], [`required` | `optional`]
+  [or `[none]`; the model fills these; a setting value may reference one as `{{argument name}}`]
+- **Used by:** [comma-separated helper identifiers]
+- **Add after the import:** [Required on types 4, 7 and 16 (and any type whose live `ToolConfData` entry lists a credential provider), with the reason "This tool type needs a credential and no global credential exists: the tool was not created. Create it in the account and assign it." Omit otherwise. Skill 3 does not put such a tool in the file; it offers to add it after the import.]
+
+---
+
 ## 5. Intent Details
 
 ### Intent: [identifier]
@@ -194,6 +225,16 @@ A global/system catalog intent is a predefined platform intent the bot reference
 [No further content. Skill 2 fills.]
 
 [repeat per intent]
+
+[When section 4.8 exists, after the intents: one stub per helper and per tool, in section-4.8 order. Skill 2 fills the helper's fenced `**Instruction:**`, the tool's fenced `**Tool description:**` and one `` - `<argument>` — Description: <text> `` line per argument under `**Arguments:**`.]
+
+### Helper: [identifier]
+**Status:** [structural]
+**Reference to section 4.8:** Helper [identifier]
+
+### Tool: [ToolName]
+**Status:** [structural]
+**Reference to section 4.8:** Tool [ToolName]
 
 ---
 

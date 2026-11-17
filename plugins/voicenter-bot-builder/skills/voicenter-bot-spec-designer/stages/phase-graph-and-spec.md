@@ -34,7 +34,7 @@ Mermaid flow diagram and the refinement loop.*
    - 7.2: Doc 1 v1, Skill suite v1
    - 7.3: append the close-out log entry (see Section 6 of this SKILL.md for format)
    - 7.4: aggregate every `<UNKNOWN: ...>` and `<INCOMPLETE: ...>` marker in the spec into a single list
-   - 7.5: pending work — count and list of intents in `[structural]` state; list of hard intents
+   - 7.5: pending work — count and list of intents in `[structural]` state (and of helpers and tools, when section 4.8 exists); list of hard intents
 5. **Soft-cap warnings** (Appendix C):
    - Single-conversation: ≥7 intents triggers advisory; >8 triggers "consider Claude Code".
    - Claude Code: ≥12 intents triggers advisory; >20 triggers "consider splitting bot".

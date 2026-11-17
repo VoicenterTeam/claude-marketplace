@@ -39,6 +39,8 @@ Walk spec section 7.4. For each unknown marker, the corresponding wire-format fi
 | `<UNKNOWN: AIModelTypeId>` (integer ID) | `-999` |
 | `<UNKNOWN: AI Model Config>` (string name → triggers all model fields unknown) | `<USER_TO_FILL: ...>` for strings, `-999` for IDs across the whole `AiModelConfig` block |
 | `<UNKNOWN: <some object field>>` (object) | `{}` plus a banner note |
+| `<UNKNOWN: AI model of <helper>>`, a tool's config ID, a knowledge base ID (section 4.8) | `-999` |
+| `<UNKNOWN: credential — <what>>` (a tool setting, section 4.8) | `"<USER_TO_FILL: credential — <what>>"` — never a value; the banner tells the person to set it on the tool after the import |
 | `<INCOMPLETE: ...>` (section partial) | Section emitted with available content; banner notes incompleteness |
 | `[not configured]` (whole-section omission) | Section omitted from JSON entirely |
 
@@ -123,7 +125,7 @@ The banner is rendered **above** the JSON (single-conv runtime) or as a sidecar 
 #     "<spec section 1 Negative instructions text>"
 ```
 
-Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example.
+Each section is always emitted, even if its content is "(none)" or "(in agreement)" — the user gets a consistent banner shape regardless of whether the spec was tidy. Appendix C has a worked example. A spec with section 4.8 (helpers and tools) adds the HELPERS AND TOOLS section and its post-import steps after DEFAULTS APPLIED — Skill 3 §7.2 names where their format is.
 
 **BLOCKING HALT — unmapped primary language (v1.22.0).** `ActiveVersionInfo.PersonaID` is derived from spec section 1 `**Primary Language:**` per `assembly-mapping.md` D.12 (`he`→261 Male / 296 Female by `**Agent Gender:**` since v1.23.0, `en`→249, `ru`→252, `ar`→255, matched on the BCP-47 primary subtag). If the subtag is not in that table, Skill 3 **does not emit JSON at all**. There is no fallback row and no sentinel: an invented `PersonaID` imports cleanly and produces a bot that speaks in the wrong voice, which no post-import check would catch. Emit this instead of the banner-plus-JSON, and stop:
 

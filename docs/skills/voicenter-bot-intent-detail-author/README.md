@@ -392,3 +392,7 @@ See the reference docs for detection methods and fix recipes.
 
 - **Every field Skill 2 writes is in the bot's primary language** — spoken lines, post-execution `intentInstructions`, and the `validationPrompt` capture mapping (`# 1. מיפוי שמירה` on a Hebrew bot). Only tool names and `{{variables}}` stay ASCII. The style guide's English pattern examples now show the *shape*; on a Hebrew bot the same shape is written in Hebrew. Rule 11 (Hebrew-utterance isolation) still applies, but on a Hebrew bot it only bites a mostly-English line with Hebrew inlined.
 - Section titles follow the Hebrew title table in `references/prompt-structure.md` §3.
+
+## v1.25.0 changes
+
+- **Helpers and tools.** When the spec has section 4.8, its `### Helper:` and `### Tool:` section-5 entries join the work queue as one last batch (`stages/helpers-and-tools.md`). Tools first: a plain-prose `**Tool description:**` and one description line per argument (what it holds, its exact format). Then each helper's `**Instruction:**`, shaped per `references/prompt-structure.md` — `# 1. Role`, `#### 2. Tools`, `#### 3. Rules` — naming every tool the file gives it exactly as section 4.8 writes it (Skill 3 CHK-39 blocks otherwise), never a tool added after the import. A helper reaches its intents through its `IntentIds` alone: the intent's own text needs no mention of the helper and never names it as a tool. Call-wide rules stay in the persona (FP-6); no `{{variables}}`; never a credential. Checks H1–H6 gate the status flip.

@@ -39,9 +39,10 @@ give, and never authors per-intent language (that is Skill 2).
 |---|---|
 | `stages/phase-interview.md` | Greenfield §3 — Phases 1–4 in order, per-RT structural capture, and the full enumeration of `AskUserQuestion` prompt sites |
 | `stages/phase-graph-and-spec.md` | Close-out §3.6 — role classification, section 6 generation, section 7 init, soft caps, the Mermaid diagram and refinement loop |
-| `stages/self-validation.md` | §5 — the 24 self-validation checks; run at greenfield close-out and after every patch |
+| `stages/self-validation.md` | §5 — the 25 self-validation checks; run at greenfield close-out and after every patch |
 | `stages/patch-mode.md` | §4 — when a prior spec is attached |
 | `model-catalog.md` | Phase 1 — AI model configs and the voice catalog (hardcoded per decision F) |
+| `${CLAUDE_PLUGIN_ROOT}/references/tool-settings-catalog.md` | Phase 4 §3.5.6 — a tool type's settings when no live `ToolTypeConfig` read is reachable |
 | `trigger-detection-rules.md` | The Phase 2/3 boundary — Deep Research nudge triggers |
 | `templates/voice-default.md`, `templates/chat-default.md` | Phase 2 — templated defaults for an inactive channel |
 
@@ -83,7 +84,9 @@ fetch the live list, display it as an id+name table, and prompt from it. When MC
 unavailable, **never silently fall back to manual entry**: offer to install, then to
 authenticate, and only then capture as free text. Once the user declines, respect that for the
 rest of the session and log it once to spec section 7.3. The model and voice catalogs are
-**not** fetched live — they stay hardcoded in `model-catalog.md` per decision F.
+**not** fetched live — they stay hardcoded in `model-catalog.md` per decision F. Helpers' AI
+models, tool types and settings, and knowledge bases (optional section 4.8) are read live through
+the MCP's API Manager reads, under the same fallback (`stages/phase-interview.md` §3.5.6).
 
 **B. Menu prompts via `AskUserQuestion`.**
 
@@ -130,7 +133,7 @@ answer reveals an omission.
 | 2 — Persona bundle | Spec section 2 (all five `prompts` fields), incl. the mandatory off-topic rule | `stages/phase-interview.md` §3.2 |
 | 2/3 boundary — Deep Research nudge | A 7.3 log entry either way | `stages/phase-interview.md` §3.3 + `trigger-detection-rules.md` |
 | 3 — Flow graph and intent list | Spec section 4 and the 4.5.1/4.5.2/4.5.4 stubs | `stages/phase-interview.md` §3.4 |
-| 4 — Per-intent structural fields | Section 4 finalised, 4.5.3 derived, section 5 stubs created | `stages/phase-interview.md` §3.5 |
+| 4 — Per-intent structural fields | Section 4 finalised, 4.5.3 derived, section 5 stubs created; optional section 4.8 helpers and tools (§3.5.6) | `stages/phase-interview.md` §3.5 |
 | Close-out | Sections 6 and 7, role classification, the flow diagram, self-validation | `stages/phase-graph-and-spec.md` + `stages/self-validation.md` |
 
 Three structural intents are **mandatory on every bot** and are created by Skill 1, not
@@ -157,9 +160,9 @@ deletion introduced; mark `<UNKNOWN>` and surface it in 7.4.
 ## 5. Self-validation checklist
 
 Run on **every greenfield close-out** and **after every patch**, before declaring the spec
-ready. Read `stages/self-validation.md` for the 24 checks and their exact failure messages.
+ready. Read `stages/self-validation.md` for the 25 checks and their exact failure messages.
 
-These are Skill 1's checks on its own output. They are **not** Skill 3's CHK-01…CHK-26
+These are Skill 1's checks on its own output. They are **not** Skill 3's CHK-01…CHK-39
 cross-reference pass, which validates the assembled JSON — the two numbering schemes are
 unrelated and must not be cross-referenced by number.
 
@@ -183,6 +186,7 @@ Severity handling:
 - Section 6.6: Mermaid `flowchart TD` of the intent graph (per §3.6.1) — for human comprehension; not consumed by Skill 3 or the import proc
 - Section 7: initialized — version, schema reference, generation log entry, unknowns aggregation, pending work
 - Optional section 4.7: present iff the user opted in via §3.5.5 (advanced features)
+- Optional section 4.8 (helpers and tools) with its section-5 `[structural]` stubs: present iff the user added helpers via §3.5.6. A credential is never recorded — only its unknown marker
 
 **On patch completion:**
 - The modified spec
@@ -227,7 +231,9 @@ Examples:
 - Make creative decisions in patch mode beyond what the user describes
 - Discard `[detailed]` content silently — every reset is explicit and confirmed
 - Validate the bot at runtime — no testing, no simulation, no behavior check
-- Query live data for the model catalog or voice catalog — both remain hardcoded in `model-catalog.md` per decision F. (Accounts and layers ARE fetched live via `voicenter-mcp.list_resources` — see Section 2.4.A.)
+- Query live data for the model catalog or voice catalog — both remain hardcoded in `model-catalog.md` per decision F. (Accounts and layers ARE fetched live via `voicenter-mcp.list_resources` — see Section 2.4.A — and so are section 4.8's AI models, tool settings and knowledge bases.)
+- Guess a helper's AI model, a tool type's setting ID or a knowledge base ID — without a live read it is the unknown marker
+- Record a credential, token, API key or password anywhere in the spec
 - Capture `ConditionGroupList` or `DTMFList` as part of the default greenfield/patch flow — these are **opt-in only** per §3.5.5. The default-skip path emits empty/missing arrays which the import proc handles cleanly. v1 does not validate the contents of an opted-in section 4.7 — it's pass-through to Skill 3.
 
 ---

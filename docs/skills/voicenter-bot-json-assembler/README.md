@@ -20,7 +20,7 @@ Mechanically projects a `[detailed]` Agent Spec into Bot JSON wire format. Produ
 - `bot-<identifier>-<YYYY-MM-DD>.json` — the deployable JSON
 - `bot-<identifier>-<YYYY-MM-DD>.banner.md` — a sidecar listing every fail-loud sentinel, drift note, and applied default
 
-**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **twenty-six checks** (eight §15.4 + three Compass + three botIntents-role + one duplicate-global-intent + nine field-placement doctrine + one persona-FK sanity + one layer-typing — v1.13.0/v1.14.0/v1.17.0/v1.18.0/v1.20.1), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. Checks 1–7, 11–13, 15, 16–21, 24, and 26 are blocking; 14, 22, 23, and 25 are advisory. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
+**Operating principle: pure parser, not interpreter.** Skill 3 makes no creative decisions. If the spec deviates from the strict template, Skill 3 emits a structured parse error and refuses to assemble. If the §15.4 cross-reference pass fails any of **thirty-nine checks** (eight §15.4 + three Compass + three botIntents-role + one duplicate-global-intent + nine field-placement doctrine + one persona derivation + one layer-typing + one placeholder-ID + one bot-status + eleven helper-and-tool — v1.13.0/v1.14.0/v1.17.0/v1.18.0/v1.20.1/v1.24.0/v1.25.0), Skill 3 emits a structured failure report with routing recommendations and refuses to emit JSON. Checks 1–7, 11–13, 15, 16–21, 24, and 25–39 are blocking; 14, 22 and 23 are advisory. The discipline is the design — if Skill 3 interpreted, "what JSON does this spec produce?" would depend on Skill 3's mood, and the source-of-truth contract dies.
 
 The risk vector is **doing too much**: filling in plausible-looking values for unknowns, smoothing over template deviations, auto-fixing cross-reference violations. The skill's longest section (anti-list §8) is the explicit "do not" list.
 
@@ -59,6 +59,7 @@ Skill 3 reads the Agent Spec as a fixed grammar — no synonyms, no flexibility,
 - **Section 4.6 (optional):** either the literal `[none]`, or one or more `### Catalog Intent: <IntentId> — <Name>` blocks, each with `**Wiring:** silence-forward only|triggerable global` and a `**Definition:**` fenced ```json block. The JSON block must parse and carry a positive-integer `IntentId` and an `IntentCategoryId`. A malformed block or a non-positive `IntentId` is a parse error — Skill 3 does NOT repair it.
 - **Field labels exact:** `**Bot Name:**`, `**Identifier:**`, `**Description:**`, `**Account ID:**`, `**Primary Language:**`, `**Channels Active:**`, `**Voice Name:**`, `**AI Model Config:**`.
 - **Section 1 optional limit fields (v1.13.0):** `**Daily limit:**` (int), `**Daily limit layer:**` (int), `**Max duration layer:**` (int), `**Daily limit sentence:**` (free text), `**Max duration sentence:**` (free text), `**IVRLayerSelect_2:**` (int). All optional; absence parses to defaults 600 / 3 / 3 / production-default sentence / production-default sentence / 3 (see the version-envelope mapping below). A non-integer where an int is expected is a parse error.
+- **Section 1 `**Bot status:**` (v1.24.0, optional):** `1` | `2` | `3` (Active / Inactive / Maintenance), emitted to root `BotStatusId`. Absence parses as `1`, the value every earlier version emitted. Any other value, `4` (Deleted) included, is a parse error.
 - **Section 1 `**Negative instructions:**` (v1.16.0, optional):** free text. **Parse-only — never emitted to the wire JSON** (the wire field name is unverified). When present, the banner gains a MANDATORY POST-IMPORT step: paste the text into the UI's AI Security Settings → Negative Instructions field.
 - **Status markers exact:** `[structural]`, `[detailed]`, `[detailed-revisit]`. No synonyms.
 - **Unknown markers exact:** `<UNKNOWN: <description>>`, `<INCOMPLETE: <description>>`, `[not configured]`. Angle brackets, literal token.
@@ -90,6 +91,7 @@ Common deviations the parser surfaces:
 | Section 4 transition target missing | `Intent 'validate_customer_address' transitions to 'get_slots', but no intent 'get_slots' exists in section 4 (closest match: 'get_available_slots'). Fix: re-run Skill 1 patch mode.` |
 | Terminal outcome missing slot assignment (v1.13.0) | `Expected: '**Terminal outcome:** <slot_name> = "<fixed value>"' or '**Terminal outcome:** <slot_name> = <capture/compose description>'. Found: '**Terminal outcome:** הלקוח אישר הכל'. Fix: name the owning slot and use '=' (quote the value only when it is a fixed pinned string).` |
 | Sensitive value off-grammar (v1.13.0) | `Expected: '**Sensitive:** true\|false'. Found: '**Sensitive:** yes'. Fix: use lowercase true or false (or omit for false).` |
+| Bot status off-grammar (v1.24.0) | `Expected: '**Bot status:** 1\|2\|3'. Found: '**Bot status:** 4'. Fix: use 1 (Active), 2 (Inactive) or 3 (Maintenance), or omit the field for Active.` |
 
 Skill 3 halts on the first deviation, emits a structured error, and does not attempt to interpret around it. One deviation, one error, one halt.
 
@@ -117,9 +119,11 @@ Sequential negative integers, range-coded so the kind of ID is identifiable at a
 
 Real platform-assigned IDs after import are positive integers, so there's no collision risk on re-export.
 
+Every `IntentCategoryId`, `IntentId`, `ParameterId` (across all intents), `BotIntentId` and `IntentRelatedID` must be present and unique in its list: the importer keys its map tables on them and refuses the whole file otherwise (`import_placeholder_clash` through API Manager's import). Check 27 verifies it.
+
 ### Top-level wrapper and version envelope
 
-Section 1 fields map to top-level root keys in production order: `Name`, `BotID`, `AccountID`, `intentList` (position #4 — v1.5.0 correction), `BotStatusId`, `CreatedDate`, `Description`, `BotLanguages`, `ModifiedDate`, `AiModelConfig`, `ActiveVersionInfo`.
+Section 1 fields map to top-level root keys in production order: `Name`, `BotID`, `AccountID`, `intentList` (position #4 — v1.5.0 correction), `BotStatusId`, `CreatedDate`, `Description`, `BotLanguages`, `ModifiedDate`, `AiModelConfig`, `ActiveVersionInfo`. `BotStatusId` comes from `**Bot status:**` — `1` Active (the default, and the constant before v1.24.0), `2` Inactive, `3` Maintenance; `4` Deleted is never emitted.
 
 **`ActiveVersionInfo` field order (v1.5.0):** `IsActive` is first (was `BotVersionId` in prior baseline). Fields: `IsActive`, `CreatedDate`, `Description`, `BotVersionId`, `ModifiedDate`, `SystemPrompt`, `AIModelConfig`, `VersionNumber`, `AIModelConfigId`, `BotVersionStatusId`, `PersonaID` (v1.18.0; language-derived since v1.22.0 — see below).
 
@@ -259,16 +263,16 @@ The sentinel value carries the field role inside the placeholder text, so the ba
 
 ---
 
-## §15.4 cross-reference pass — twenty-six checks
+## §15.4 cross-reference pass — thirty-nine checks
 
-After assembly + section 6 sanity check, run all **twenty-six** checks against the in-memory wire structure — eight per Doc 1 §15.4, three Compass doctrine checks (8–10), three botIntents-role integrity checks (11–13, v1.8.0), one duplicate-global-intent check (15, v1.12.0), **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `plugins/voicenter-bot-builder/references/field-placement-doctrine.md`, one **persona-FK sanity check (25, v1.18.0)** per `plugins/voicenter-bot-builder/references/voicebot-json-contract.md` R7/R11, and one **layer-typing check (26, v1.20.1)** per the same contract's §2 Types. Checks 1–7, 11–13, 15, 16–21, 24, and 26 are blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Check 8 is advisory/blocking by token band, check 9 is advisory, check 10 is blocking on mismatch — all three gated on Gemini 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`, i.e. `AIModelConfigID=139` or `142`). Checks 14, 22, 23, and 25 are non-blocking advisory. Checks 11–13, 15, 16–24, 25, and 26 are model-agnostic. (The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped.)
+After assembly + section 6 sanity check, run all **thirty-nine** checks against the in-memory wire structure — eight per Doc 1 §15.4, three Compass doctrine checks (8–10), three botIntents-role integrity checks (11–13, v1.8.0), one duplicate-global-intent check (15, v1.12.0), **nine field-placement doctrine checks (16–24, v1.13.0/v1.14.0/v1.17.0)** per `plugins/voicenter-bot-builder/references/field-placement-doctrine.md`, one **persona-FK sanity check (25, v1.18.0)** per `plugins/voicenter-bot-builder/references/voicebot-json-contract.md` R7/R11, one **layer-typing check (26, v1.20.1)** per the same contract's §2 Types, two **import-contract checks (27–28, v1.24.0)** per its R3/R8 and §7 (the API Manager import), and eleven **helper-and-tool checks (29–39, v1.25.0)** per its §8. Checks 1–7, 11–13, 15, 16–21, 24, and 25–39 are blocking and run unconditionally so the user gets a complete failure report rather than fixing one issue at a time. Check 8 is advisory/blocking by token band, check 9 is advisory, check 10 is blocking on mismatch — all three gated on Gemini 3.1 (`AiModelConfig.created.model = "models/gemini-3.1-flash-live-preview"`, i.e. `AIModelConfigID=139` or `142`). Checks 14, 22 and 23 are non-blocking advisory. Checks 11–13, 15 and 16–39 are model-agnostic. (The v1.8.0 fan-out-completeness check was removed in v1.12.0 when global fan-out was dropped.)
 
-Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 8 → 9 → 10 → 14 → 25. The pass operates on the assembled in-memory wire structure; checks 16–24 additionally consult the spec's section-4 staggering/terminal/role fields (check 24 reads `**Asks next:**`), the 4.5 variable inventory, and — for check 23 — the persona text. The failure report is count-agnostic: `Checks failed: <count> of <total checks run>`.
+Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 26 → 27 → 28 → 29 → … → 39 → 8 → 9 → 10 → 14 → 25. The pass operates on the assembled in-memory wire structure; checks 16–24 additionally consult the spec's section-4 staggering/terminal/role fields (check 24 reads `**Asks next:**`), the 4.5 variable inventory, and — for check 23 — the persona text. The failure report is count-agnostic: `Checks failed: <count> of <total checks run>`.
 
 | # | Check | Validates |
 |---|---|---|
 | 1 | `botIntents[].IntentID` resolves | Every `botIntents[].IntentID` matches an `intents[].IntentId` |
-| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. `IntentRelatedID` is not checked separately (it's a unique row PK from the `-2000` placeholder range — verified by the allocator). |
+| 2 | `intentRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `NextIntentID` matches an `intents[].IntentId`. `IntentRelatedID` is not checked here (it's a unique row PK from the `-2000` placeholder range — check 27 verifies it). |
 | 3 | `apiSilenceRelations[]` resolves (both endpoints) | Every `OriginIntentID` and `ApiSilenceIntentID` matches an `intents[].IntentId` |
 | 4 | `intents[].IntentCategoryId` resolves | Every `IntentCategoryId` matches an `intentCategories[].IntentCategoryId` |
 | 5 | RT=2 has `apiSilenceRelations[]` pairing **and an inline failover `intent`** | Every RT=2 intent has (a) a corresponding `apiSilenceRelations[]` entry, and (b) a `Configuration.api_silence_behaviour.intent` that is a present, non-null integer equal to that entry's `ApiSilenceIntentID`. Missing/null/string `intent` is a blocking failure (no failover). |
@@ -291,6 +295,19 @@ Run order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 →
 | 24 | Turn-yield announcement gating (v1.17.0, FP-3) | **Blocking** (advisory half noted). A non-empty `announcement` makes the bot yield the turn and WAIT for a caller answer (confirmed live). Every RT=2/RT=3 intent whose section-4 `**Asks next:**` is `[none]` must have `Configuration.announcement === ""` — a non-empty value there stalls the call into the silence loop. Advisory half: those intents' `intentInstructions` should carry no wait rule, only the immediate-forward instruction. RT=1 covered by check 20 (no announcement key); RT=4 exempt (pre-dial speech). Remediation: Skill 2 reactivation — empty the announcement; remaining speech → FP-4 quoted line in `intentInstructions` before the forward. |
 | 25 | Persona derivation (v1.18.0; rewritten v1.22.0) | **Blocking.** Recomputes the expected `ActiveVersionInfo.PersonaID` from spec section 1 `**Primary Language:**` (primary subtag → `he`/261 male or 296 female by `**Agent Gender:**` since v1.23.0, `en`/249, `ru`/252, `ar`/255) and asserts the emitted value equals it. Fails on absent/null, on a mismatch, and on any value from the known-but-unemitted set (`3`, `244`) — `3` being the likeliest regression, since it was the flat default through v1.21.0. Routes to Skill 3: the value is derived, not authored, so a mismatch is an emission bug. Was advisory and trivial while the field was a constant. |
 | 26 | Layer fields are integers (v1.20.1) | **Blocking.** Every RT=1 `Configuration.layer`, every RT=4 `Configuration.NEXT_VO_ID`, and the version-level `dailyLimitLayerId` / `maxDurationLayerId` / `IVRLayerSelect_2` are JSON numbers, not quoted strings (and not booleans — in many languages `bool` subclasses `int`, so reject it explicitly). A quoted layer is an FK the platform cannot resolve; the bot imports and then the layer dropdown renders the raw ID instead of the layer name. That symptom is identical to a layer that does not exist on the target account, so operators cannot tell the two apart from the UI. The check does NOT verify a layer *exists* — it has no platform access. Remediation: Skill 3 internal bug (the spec parse rules already require integers). |
+| 27 | Import placeholder IDs present and unique (v1.24.0) | **Blocking.** Every item of `intentCategories[]` (`IntentCategoryId`), `intents[]` (`IntentId`), all intents' `IntentParameters[]` combined (`ParameterId`), `botIntents[]` (`BotIntentId`) and `intentRelations[]` (`IntentRelatedID`) carries an integer ID, and no ID repeats within its list. Each failure names list, field, ID, index and `missing` / `repeated` — the data API Manager's import returns when it refuses the file with `import_placeholder_clash`. v1.2.0 emitted a repeated `IntentRelatedID`; this check keeps that from coming back. Remediation: Skill 3 internal bug (the allocator), or Skill 1 patch mode when a section-4.6 catalog intent's real ID is the repeat. |
+| 28 | Bot status in range (v1.24.0) | **Blocking.** Root `BotStatusId` is an integer in `{1, 2, 3}` and equals spec section 1 `**Bot status:**` (`1` when absent). `4` (Deleted) is a valid FK but never a choice the plugin offers. Remediation: Skill 3 internal bug (the parser already refuses other spec values). |
+| 29 | Helper and tool labels present and unique (v1.25.0) | **Blocking.** Every `subAgents[].SubAgentID` and `subAgentTools[].ToolId` is an integer, unique in its list. A repeated or missing tool label is a bare 500 from the import. Remediation: Skill 3 internal bug. |
+| 30 | Tool assignments resolve (v1.25.0) | **Blocking.** Every `ToolAssignments[].ToolId` is a `ToolId` of the file's `subAgentTools`, once per helper; a real tool ID is dropped. Remediation: Skill 1 patch mode. |
+| 31 | Helper intents are the file's intent labels (v1.25.0) | **Blocking.** `IntentIds` is non-empty, holds only the file's own intent labels, none twice (a repeat is a bare 500; a real ID is dropped silently). Remediation: Skill 1 patch mode. |
+| 32 | Helper fields (v1.25.0) | **Blocking.** `SubAgentName` present and ≤ 100, `SubAgentTitle` ≤ 255, `AiModelId` an AI model ID (or `-999`), `SubAgentStatusID` 1 or 2. Remediation: Skill 1 patch mode. |
+| 33 | Tool fields (v1.25.0) | **Blocking.** `ToolName` present, ≤ 100, unique; `ToolDisplayName` ≤ 200; known type, execution type, status and risk; schema only on an AI tool; no `TemplateId`; `VersionNumber` ≤ 20. Remediation: Skill 1 patch mode. |
+| 34 | Tool parameter lists (v1.25.0) | **Blocking.** No `ParameterName` twice in one tool's or one assignment's list; a static setting named exactly as one of its type's settings (`references/tool-settings-catalog.md`); known sources; an AI argument has a null `ToolTypeConfigID` and a `source_filed` naming a schema property, and every schema property has one. Remediation: Skill 1 patch mode / Skill 3. |
+| 35 | Assignment conditions complete (v1.25.0) | **Blocking.** Every `ConditionList` item has `Parameter`, a known `OperatorID` and `Value`. Remediation: Skill 3 internal bug (the pipeline emits `[]`). |
+| 36 | No credential-only tool type in the file (v1.25.0) | **Blocking.** No Email (4), SMS (7) or FileStorage (16) tool — the import drops them; they are added after the import. Remediation: Skill 1 patch mode. |
+| 37 | No stray null in helpers and tools (v1.25.0) | **Blocking.** Only an AI argument's `ToolTypeConfigID` may be `null`. Remediation: Skill 3 internal bug. |
+| 38 | No credential in the file (v1.25.0) | **Blocking.** No setting value that is or looks like a credential (headers such as `Authorization`, bearer/basic tokens, API keys, passwords, cookies, `user:pass@` URLs, an MCP `AuthToken`, a Database `ConnectionString`), and no masked `****`; only a `<USER_TO_FILL: credential …>` marker. Remediation: Skill 1 patch mode. |
+| 39 | Helper instruction names its tools (v1.25.0) | **Blocking.** Each assigned tool's `ToolName` appears in the helper's `Instruction` as a whole token. Remediation: Skill 2 reactivation. |
 
 Failure routing:
 
@@ -315,6 +332,11 @@ Failure routing:
 | Check 22 — authored edge into a type-2 global (advisory) | Informational — recommend Skill 1 patch mode to drop the redundant relation; the global is reachable from anywhere by construction |
 | Check 25 — PersonaID outside known whitelist (advisory) | Informational — banner note asking the operator to confirm the `Persona` row exists on the target account before import; not user-actionable during authoring until Skill 1 gets a persona-selection field |
 | Check 26 — layer field emitted as a string/bool | Skill 3 internal bug — the emission path stringified a value the spec parse rules already require to be an integer. Report and halt; user files a skill-level issue |
+| Check 27 — placeholder ID missing or repeated | Skill 3 internal bug (the allocator); Skill 1 patch mode when the repeat is a section-4.6 catalog intent's real ID |
+| Check 28 — `BotStatusId` out of range or not the spec's | Skill 3 internal bug — the parser already refuses other spec values |
+| Checks 30, 31, 32, 33, 36, 38 — helper or tool structure, or a credential | Skill 1 patch mode — section 4.8 |
+| Check 39 — a helper's instruction does not name its tool | Skill 2 reactivation — the helper's section-5 entry |
+| Checks 29, 35, 37 (and 34 outside a repeated name) | Skill 3 internal bug |
 
 Skill 3 does not invoke Skill 1 or Skill 2 itself. It reports the routing recommendation; the user invokes the appropriate skill.
 
@@ -413,6 +435,18 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 | **Single-conversation** | Banner rendered as plain text in the chat message; JSON in a fenced code block; closing message instructs how to copy and import |
 | **Claude Code** | JSON written to `bot-<id>-<date>.json`; banner written to `bot-<id>-<date>.banner.md`; closing message references both files |
 
+### Import through a Voicenter MCP (§7.6, optional — v1.24.0)
+
+After a successful emission, if the session lists tools from a Voicenter MCP, Skill 3 asks once whether to import the file now ("Import now" / "I'll import it myself"). On yes it loads `stages/mcp-import.md`; otherwise — or with no Voicenter MCP — the manual hand-off above stands. The endpoint's behaviour is recorded in `references/voicebot-json-contract.md` §7 (API Manager `POST /VoiceBot/Import/`, observed live 2026-11-18 against v2.6.18, not yet in production).
+
+1. **Pick the path from what the MCP lists.** `PlanPreview` + `PlanRun` and `VoiceBotImport` (listed, or found with `SearchOperations` and read with `DescribeOperation`) → a previewed plan. Only `import_agent`, or `VoiceBotImport` without plans → an import with no preview. Neither → manual hand-off.
+2. **Replace every marker first.** Each `<USER_TO_FILL: …>` and `-999` the banner lists is asked from the person and written into the file (for `AccountID`, offering the MCP's account list, and also into every `intents[].AccountId` / `intentCategories[].AccountId`). A file that still carries a marker is never imported.
+3. **Send only the declared keys:** `Name`, `AccountID`, `Description`, `BotStatusId`, `BotLanguages`, `AiModelConfig`, `ActiveVersionInfo`, `intentList`. `BotID`, `CreatedDate` and `ModifiedDate` are left out — the import ignores them and the MCP refuses undeclared keys — but they stay in the file, which the manual and older import paths still read whole.
+4. **Previewed plan:** `PlanPreview` with one step `{step: 1, tool: "VoiceBotImport", args: <the keys above>, expect: "<one plain sentence>"}`; show the server's preview; `PlanRun` with the preview's hash only on the person's yes. Report the new bot's ID, what the server's read-back confirmed, and every `Data.Removed` entry (transfer targets other than the global hang-up, which the import drops and the person sets again by hand). The banner's post-import steps still apply. One `Skill 3  importing` line goes to spec section 7.3.
+5. **Refusals by name.** `ai_model_config_unusable` → offer `Data.GlobalAiModelConfigs` as a choice; a pick of the same wire family is written into `AiModelConfig` / `ActiveVersionInfo.AIModelConfigId` and previewed again, anything else goes back through Skill 1 patch mode. `import_placeholder_clash` → nothing was stored; a repeated/missing `IntentRelatedID`, `BotIntentId` or `ParameterId` gets a fresh ID from its range and the verification pass is re-run on the file before a new preview; an `IntentId` / `IntentCategoryId` clash means running Skill 3 on the spec again. Any other refusal is shown and nothing is changed.
+6. **Unknown outcome** (5xx, timeout): read the account with `VoiceBotList` before anything else; never import twice blindly.
+7. **No preview** (`import_agent`): Skill 3 says it imports at once and asks before calling it.
+
 ---
 
 ## Anti-list — what Skill 3 does NOT do
@@ -427,6 +461,8 @@ After §4 assembly and before §6 cross-reference pass, Skill 3 regenerates spec
 - Emit JSON if any **blocking** cross-reference check fails (v1.13.0 wording — a partial JSON looks deployable and breaks at runtime; hard halt is the correct behavior)
 - Emit `max_turns` / `max_turns_sentence` as direct siblings of `prompts` inside `IntentConfig` (the pre-v1.13 shape) — since v1.13.0 they live inside `IntentConfig.additional` together with `sensitive`
 - Modify the spec beyond the section 7.3 generation log entry
+- Query the Voicenter platform to parse, assemble or verify — the only MCP use is the optional import after emission (§7.6)
+- Import without the person's explicit yes, import a file that still carries a marker, or import again after an unknown outcome without first reading the account
 
 ---
 
@@ -614,3 +650,41 @@ The limit and layer fields (`max_duration`, `daily_limit`, …, `IVRLayerSelect_
 **`387` Voicenter Voicebot - Gemini (Gemini 3.8) is verified** (`AIModel 33`) from production export BotID 37428 v0.1.151, so Skill 3 builds it instead of halting. It gets a third wire family, **`voicenter-gemini`**: empty top-level `AIModelConfig`, a version-level `created` holding **only** `generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` (no `realtimeInputConfig`, no model string), no `tts` object, boolean `recordAgentCalls`. The limit and layer fields are still emitted. `Sadachbia` (Male) joins the Gemini voice list.
 
 **CHK-10** gains `voicenter-gemini` shape assertions (not gated on Gemini 3.1). Still 26 checks. `examples/test-elevenlabs-regression.py` asserts the `387` shape and still exercises the unverified halt by flipping the flag in memory. Both frozen goldens are unchanged.
+
+## v1.24.0 changes
+
+**`BotStatusId` follows the spec.** `**Bot status:**` (`1` Active, `2` Inactive, `3` Maintenance) is parsed strictly and emitted; absent means `1`, the former constant, so both frozen goldens are unchanged.
+
+**Twenty-eight checks.** Check 27 (placeholder IDs present and unique in the five lists the importer keys by ID) and check 28 (bot status in range and equal to the spec's) are appended, both blocking. `examples/test-import-contract-regression.py` (in CI) exercises them.
+
+**Optional import through a Voicenter MCP** (§7.6, above). `references/voicebot-json-contract.md` §7 records API Manager's import endpoint; the anti-list now limits "no platform queries" to parsing, assembly and verification.
+
+## v1.25.0 changes
+
+**Helpers (sub-agents) and their tools.** When the spec has the optional section 4.8, Skill 3
+emits `intentList.subAgents[]` and `intentList.subAgentTools[]` after `apiSilenceRelations`,
+per `skills/voicenter-bot-json-assembler/stages/helpers-and-tools.md`:
+
+- **Labels:** `SubAgentID` `-5000, -5001, …` per helper; `ToolId` `-6000, -6001, …` per tool
+  emitted. A helper's `IntentIds` are the file's intent labels; `ToolAssignments[].ToolId` the
+  tool labels.
+- **Tools:** `ToolExecutionTypeID 2`, `ParameterSchemaJson` only when the tool has arguments,
+  settings as source `5` `{"value"}`, arguments as source `1` with `ToolTypeConfigID: null` and
+  `{"source_filed"}` (the import's spelling), no `TemplateId`. Email, SMS and FileStorage tools
+  are never in the file: the import cannot bind their credential, so they are added after it.
+- **Credentials** are never written: a credential setting stays a `<USER_TO_FILL: credential …>`
+  marker, left out of an MCP import and set on the tool by hand.
+- **Knowledge bases** are carried in `KnowledgeBases[]` so the import reports them; it never links
+  one.
+- **Banner:** a HELPERS AND TOOLS section (helpers, tools, the tool-rename note) and a
+  post-import step per knowledge base, tool to add, and credential setting.
+- **Import (§7.6):** after the import, `Data.Removed` is read by `Type` — `KnowledgeBase` is
+  offered as a `KnowledgeBaseAssignmentCreate` plan (type 4, on the new helper — its `NewEntityId`, or
+  the `SubAgentID` `SubAgentList` gives for the exact `SubAgentName`), `ToolSecret`,
+  `Tool`, `ToolAssignment` and `ToolTemplate` are listed to set by hand, and tools marked "Add
+  after the import" are offered as `ToolCreate` with their own credential plus
+  `ToolAssignmentCreate` (`EntityType 7`).
+- **Eleven blocking checks, 29–39**, cover every way the contract says a helper or tool fails
+  with a bare 500 or is dropped without a word. A spec without section 4.8 emits exactly what it
+  did before; both F1 goldens are byte-identical. Fixture F3 (`sample-spec-helpers.md`) and
+  `test-helpers-regression.py` run in CI.

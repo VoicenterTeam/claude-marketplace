@@ -41,6 +41,7 @@ structure (that is Skill 1) and never emits JSON (that is Skill 3).
 | `stages/authoring-steps.md` | Steps 1, 2, 4 — slot detailing, `validationPrompt` capture mapping, post-execution instructions, Mustache mechanics, the style brief |
 | `stages/rt-configuration.md` | Step 3 — the per-RT Configuration fields and the cross-RT iron rules |
 | `conversation-routines-style-guide.md` | Steps 2 and 4 — worked templates and the C1–C5 capture-mapping patterns |
+| `stages/helpers-and-tools.md` | After the intents, when section 5 holds `### Helper:` / `### Tool:` entries — tool and argument descriptions, helper instructions, checks H1–H6 |
 | `${CLAUDE_PLUGIN_ROOT}/references/verification-procedure.md` | Optional — the CHK-NN checks Skill 3 will run downstream, when you want to know what a failure there will look like |
 
 ---
@@ -66,7 +67,7 @@ If no spec is found, abort with the message: "No Agent Spec found. Skill 2 requi
 
 ### 2.3 Build the work queue
 
-Walk section 5. Identify all intents whose status is `[structural]` or `[detailed-revisit]`. These are the work queue.
+Walk section 5. Identify all intents whose status is `[structural]` or `[detailed-revisit]`. These are the work queue. Helper and tool entries (spec section 4.8) with those statuses join it as one last batch, detailed per `stages/helpers-and-tools.md`.
 
 | Status | Treatment |
 |---|---|
@@ -215,7 +216,7 @@ in `stages/authoring-steps.md` §5, and §6 check 9 re-verifies before the statu
 
 ## 6. Self-validation checklist
 
-Per intent, before flipping status to `[detailed]`. Each check has a timing classification: **during** (fires while authoring the relevant step) or **gate** (fires at end-of-intent before status flip). Some fire at both.
+Per intent, before flipping status to `[detailed]` (helpers and tools: H1–H6 in `stages/helpers-and-tools.md`). Each check has a timing classification: **during** (fires while authoring the relevant step) or **gate** (fires at end-of-intent before status flip). Some fire at both.
 
 | # | Check | Source | Severity | Timing |
 |---|---|---|---|---|
@@ -252,7 +253,7 @@ Skill 2 modifies a defined subset of the spec. Crossing these boundaries silentl
 
 | Section | Operation | When |
 |---|---|---|
-| Section 5 entry per intent | Fill content; flip status `[structural]` or `[detailed-revisit]` → `[detailed]` | After self-validation passes |
+| Section 5 entry per intent, helper and tool | Fill content; flip status `[structural]` or `[detailed-revisit]` → `[detailed]` | After self-validation passes |
 | Section 4 `**Max turns sentence:**` per intent (v1.14.0) | Write the bot's gender-matched default sentence (narrow explicit exception to the section-4 boundary — language content only) | Once per bot, during the first step 3 |
 | Section 4.5.3 (slot inventory) | Regenerate from section 5 state | At end of each batch |
 | Section 6.1 (Mustache variable usage) | Append references just written, with location and resolution source | After each intent's step 2/3/4 |
@@ -356,6 +357,7 @@ Read `stages/authoring-steps.md` §9.2 for the exact closing-message wording per
 - Write speech content into `validationPrompt` — no scripts, questions, greetings, turn-taking guards, or routing (v1.13.0, FP-5). It is a capture mapping only.
 - Paste turn-taking / human-rep / disapproval rules into per-intent fields — call-wide rules live once, in persona (FP-6; Skill 1's domain).
 - Invent `{{…}}` placeholder names — only keys declared in 4.5.1–4.5.5 (FP-11).
+- Change section 4.8 (helpers and tools — Skill 1's), name a tool differently from it, or write a credential anywhere.
 - Mandate the same sentence as speech in two fields (FP-6 — check 14).
 - Change an intent's Response Type. Structural — Skill 1 patch mode.
 - Add or remove intents. Skill 1.

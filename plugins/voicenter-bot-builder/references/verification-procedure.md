@@ -1,4 +1,4 @@
-# Verification Procedure (26-check cross-reference pass)
+# Verification Procedure (39-check cross-reference pass)
 
 **Single source of truth** for the Voicenter Bot cross-reference verification pass. Every
 consumer executes this file and nothing else: the `spec-verifier` subagent, Skill 3's
@@ -7,18 +7,19 @@ inline path, and any future CI harness. No check text lives anywhere else in the
 Origin: Doc 1 §15.4 (checks 1–8), Compass doctrine (9, 10, 14 via
 `voice-prompt-doctrine.md`), botIntents-role integrity (11–13), duplicate-global (15),
 field-placement doctrine (16–24 via `field-placement-doctrine.md`), and the
-`ImportBotFromJSON` stored-procedure contract (25–26 via `voicebot-json-contract.md`).
+`ImportBotFromJSON` stored-procedure contract and its import endpoint (25–28 via
+`voicebot-json-contract.md`), and its helpers and tools (29–39, the same file's §8).
 
-Check IDs `CHK-01`…`CHK-26` map 1:1 to the legacy numbering. **Never renumber.**
+Check IDs `CHK-01`…`CHK-39` map 1:1 to the legacy numbering. **Never renumber.**
 Retire an ID if a check is removed; append new IDs at the end.
 
-> **CHK-25 and CHK-26 were appended, not renumbered.** CHK-25 arrived with the functional
+> **CHK-25…CHK-39 were appended, not renumbered.** CHK-25 arrived with the functional
 > v1.18.0 (`ActiveVersionInfo.PersonaID` emission) after this file became canonical;
-> CHK-26 followed in v1.20.1. Adding a check means: one entry below, one TOC line, one
+> CHK-26 followed in v1.20.1, CHK-27 and CHK-28 in v1.24.0, CHK-29…CHK-39 in v1.25.0. Adding a check means: one entry below, one TOC line, one
 > severity-table cell, one run-order position — and nothing else anywhere in the plugin.
 > That is the property this file exists to provide.
 >
-> **The count, however, is not confined here.** "26-check" and `CHK-01…CHK-26` appear in
+> **The count, however, is not confined here.** "39-check" and `CHK-01…CHK-39` appear in
 > the consumers too (Skill 3's SKILL.md, the `spec-verifier` agent, the `/bot-assemble`
 > command, both READMEs, the docs mirror, and `examples/verify.py`). CHK-25 shipped with
 > three of those stale — both the output contract below and the consumer-side validity
@@ -59,6 +60,19 @@ Retire an ID if a check is removed; append new IDs at the end.
   - [CHK-24 — Turn-yield announcement gating](#chk-24--turn-yield-announcement-gating)
   - [CHK-25 — Persona FK sanity](#chk-25--persona-fk-sanity)
   - [CHK-26 — Layer fields are integers](#chk-26--layer-fields-are-integers)
+  - [CHK-27 — Import placeholder IDs present and unique](#chk-27--import-placeholder-ids-present-and-unique)
+  - [CHK-28 — Bot status in range](#chk-28--bot-status-in-range)
+  - [CHK-29 — Helper and tool labels present and unique](#chk-29--helper-and-tool-labels-present-and-unique)
+  - [CHK-30 — Tool assignments resolve](#chk-30--tool-assignments-resolve)
+  - [CHK-31 — Helper intents are the file's intent labels](#chk-31--helper-intents-are-the-files-intent-labels)
+  - [CHK-32 — Helper fields](#chk-32--helper-fields)
+  - [CHK-33 — Tool fields](#chk-33--tool-fields)
+  - [CHK-34 — Tool parameter lists](#chk-34--tool-parameter-lists)
+  - [CHK-35 — Assignment conditions complete](#chk-35--assignment-conditions-complete)
+  - [CHK-36 — No credential-only tool type in the file](#chk-36--no-credential-only-tool-type-in-the-file)
+  - [CHK-37 — No stray null in helpers and tools](#chk-37--no-stray-null-in-helpers-and-tools)
+  - [CHK-38 — No credential in the file](#chk-38--no-credential-in-the-file)
+  - [CHK-39 — Helper instruction names its tools](#chk-39--helper-instruction-names-its-tools)
 - [Output contract](#output-contract)
 
 ---
@@ -75,7 +89,8 @@ Sentinel values (`-999`, `<USER_TO_FILL: ...>`) are present at this point and ar
 treated as missing references for the ID-resolution checks (CHK-01…CHK-04). Those operate
 on placeholder integers (the negative-integer cache), which are internally consistent by
 construction; sentinel `-999` only appears in user-supplied ID fields (`AccountID`,
-`layer`, `NEXT_VO_ID`), which are not the subject of any check.
+`layer`, `NEXT_VO_ID`, and a helper's `AiModelId`, a setting's `ToolTypeConfigID` or a
+`KnowledgeBaseID`), which no check treats as missing.
 
 When executing standalone (subagent or CI) against a spec that has not been assembled,
 derive the wire structure per Skill 3 §4 first, then run the checks against it.
@@ -84,7 +99,8 @@ derive the wire structure per Skill 3 §4 first, then run the checks against it.
 
 ```
 1 → 2 → 3 → 4 → 5 → 6 → 7 → 11 → 12 → 13 → 15 → 16 → 17 → 18 → 19 → 20
-  → 21 → 22 → 23 → 24 → 26 → 8 → 9 → 10 → 14 → 25
+  → 21 → 22 → 23 → 24 → 26 → 27 → 28 → 29 → 30 → 31 → 32 → 33 → 34 → 35 → 36
+  → 37 → 38 → 39 → 8 → 9 → 10 → 14 → 25
 ```
 
 **All checks run unconditionally — no short-circuit on first failure.** The caller gets a
@@ -98,13 +114,13 @@ one-time per-spec log entry to spec section 7.3. **Exception (v1.23.0):** CHK-10
 `tts`-family shape assertions run whenever the model's catalog wire family is
 `tts` (the default model `321`, and `390`) — they are not `[GL3.1]`-gated. Read
 `created.model` defensively: on `tts` there is no `created` object at all. CHK-11…CHK-13, CHK-15, CHK-16…CHK-24,
-CHK-25 and CHK-26 are model-agnostic.
+CHK-25…CHK-39 are model-agnostic.
 
 ### Severity
 
 | Severity | Checks |
 |---|---|
-| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half), CHK-26 |
+| **blocking** | CHK-01…CHK-07, CHK-11, CHK-12, CHK-13, CHK-15, CHK-16…CHK-21, CHK-24 (announcement half), CHK-26, CHK-27, CHK-28, CHK-29…CHK-39 |
 | **banded** | CHK-08 — advisory 1,500–4,999 tok; blocking ≥ 5,000; forced decomposition ≥ 6,000 |
 | **blocking on mismatch** | CHK-10 |
 | **advisory** | CHK-09, CHK-14, CHK-22, CHK-23, CHK-24 (wait-rule half), CHK-25 |
@@ -468,6 +484,112 @@ CHK-15: No duplicate global intents by tool name (C-e)
 
 **Scope note.** This check does NOT verify that a layer *exists* on the target account; it cannot, since the pass has no platform access. Cross-account existence is handled by Skill 1's portable-layer defaults (`666` built-in hang-up, `0` first-layer) and by the banner's post-import verification note.
 
+### CHK-27 — Import placeholder IDs present and unique
+
+- **Verifies:** every item of the five lists the importer keys by ID carries its own ID.
+- **Source:** `voicebot-json-contract.md` R3 and §7 (the import's `import_placeholder_clash` refusal)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — §4.1 allocates every one of these IDs, so a missing or repeated one means the allocator drifted. When the repeat is a section-4.6 catalog intent's real ID, route to **Skill 1 patch mode** to correct that definition.
+- **Procedure:** Collect the values of each field: `intentCategories[].IntentCategoryId`, `intents[].IntentId`, `intents[].IntentParameters[].ParameterId` (one list across all intents combined), `botIntents[].BotIntentId`, `intentRelations[].IntentRelatedID`. An item whose field is absent, null, a string or a boolean fails as `missing`; a value that appears twice in its list fails as `repeated`. Report each failure with list, field, ID and index — the data the import's refusal names. This is the guard CHK-02 leaves to the allocator: an import that finds either problem refuses the whole file and stores nothing.
+
+### CHK-28 — Bot status in range
+
+- **Verifies:** root `BotStatusId` is a status the plugin may emit and the one the spec chose.
+- **Source:** `voicebot-json-contract.md` R8/R11 and §7 (the import's `BotStatusId` input)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — §3.1 refuses a spec value outside `1`–`3`, so a mismatch here is emission drift. (If the spec itself carries such a value, the missing parse error is the bug to report.)
+- **Procedure:** Assert `<root>.BotStatusId` is an integer (not a string, not a boolean) in `{1, 2, 3}` — 1 Active, 2 Inactive, 3 Maintenance — and equals spec section 1 `**Bot status:**`, or `1` when that field is absent. `4` (Deleted) is a valid FK but fails here: importing a bot as deleted is not a choice the plugin offers.
+
+### CHK-29 — Helper and tool labels present and unique
+
+*CHK-29…CHK-39 run on `intentList.subAgents[]` and `intentList.subAgentTools[]` (`voicebot-json-contract.md` §8). With neither list in the file, each passes with detail `no helpers`. Every fault they catch is one the import answers with a bare `500` and stores nothing, or drops without a word.*
+
+- **Verifies:** every `subAgents[].SubAgentID` and every `subAgentTools[].ToolId` is present and unique in its list.
+- **Source:** `voicebot-json-contract.md` §8 (`tool_id_map` primary key)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — the allocator gives each its label.
+- **Procedure:** For each list, an item whose label is absent, null, a string or a boolean fails as `missing`; a value seen earlier in the list fails as `repeated`. Report list, index and value.
+
+### CHK-30 — Tool assignments resolve
+
+- **Verifies:** every `subAgents[].ToolAssignments[].ToolId` is a `ToolId` of this file's `subAgentTools[]`, at most once per helper.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** — the tool's `**Used by:**` names the helper but the tool is not in the file (a real tool ID never resolves: the file can only create tools).
+- **Procedure:** Collect the tools' `ToolId` values. Fail every assignment whose `ToolId` is not an integer in that set, and every second assignment of the same `ToolId` within one helper.
+
+### CHK-31 — Helper intents are the file's intent labels
+
+- **Verifies:** each helper's `IntentIds` is non-empty, holds only labels of this file's own `intents[]`, and repeats none.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** — `**Serves intents:**` must name section-4 intents; a section-4.6 catalog intent's real ID is dropped by the import.
+- **Procedure:** Collect the negative `intents[].IntentId` labels. Fail a helper whose `IntentIds` is missing or empty, every item that is not an integer in that set (a positive real ID included), and every item already seen within the same helper.
+
+### CHK-32 — Helper fields
+
+- **Verifies:** each helper carries what the import requires.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** (name, title, model); **Skill 3 internal bug** for a status other than `1`.
+- **Procedure:** Fail when `SubAgentName` is absent, empty or longer than 100 characters; `SubAgentTitle` is not a string of at most 255; `SubAgentDescription` or `Instruction` is not a string; `AiModelId` is not a positive integer or the `-999` sentinel; `SubAgentStatusID` is present and not `1` or `2`.
+
+### CHK-33 — Tool fields
+
+- **Verifies:** each tool carries what the import requires, with known lookup values.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** (name, type, risk); **Skill 3 internal bug** for the constants.
+- **Procedure:** Fail when `ToolName` is absent, empty, longer than 100 characters, or repeats another tool's name (case-insensitive: one would be renamed and the helper's instruction would name the wrong tool); `ToolDisplayName` is longer than 200; `ToolTypeId` is not one of 1, 4, 7, 10, 13, 16 (4, 7, 16 are CHK-36's); `ToolExecutionTypeID` is not 1 or 2, `ToolStatusID` not 1–3, `ToolRiskTypeID` not 1–4; `ParameterSchemaJson` is present while `ToolExecutionTypeID` is not 2; `TemplateId` is present; `ToolVersion.VersionNumber` is longer than 20.
+
+### CHK-34 — Tool parameter lists
+
+- **Verifies:** every `Parameters[]` list, a tool's and an assignment's, is one the import can store.
+- **Source:** `voicebot-json-contract.md` §8 (`uk_TargetParameter`); `tool-settings-catalog.md`
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** (a setting or argument named twice); **Skill 3 internal bug** otherwise.
+- **Procedure:** Within each list: fail a `ParameterName` that is absent, longer than 255, or seen earlier in the same list; a `ToolParameterSourceID` outside 1–5. Source `1` (an AI argument): `ToolTypeConfigID` must be null and `Config.source_filed` must name a property of the tool's `ParameterSchemaJson`. Any other source: `ToolTypeConfigID` must be an integer. Source `5`: `Config.value` must be a string, and on a type `tool-settings-catalog.md` lists (1, 10, 13) the `ParameterName` must be one of that type's setting names, exactly (for an assignment, the assigned tool's type). Finally, every `ParameterSchemaJson` property must have its source-`1` parameter.
+
+### CHK-35 — Assignment conditions complete
+
+- **Verifies:** every `ToolAssignments[].ConditionList[]` item has `Parameter`, `OperatorID` and `Value`.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — the pipeline emits `ConditionList: []`; an item means the file was edited.
+- **Procedure:** Fail an item whose `Parameter` is not an integer, whose `OperatorID` is not one of 1, 4, 7, 10, 13, 16, 19, 22, 48, or whose `Value` is absent or not a string.
+
+### CHK-36 — No credential-only tool type in the file
+
+- **Verifies:** no `subAgentTools[]` item is type `4` Email, `7` SMS or `16` FileStorage.
+- **Source:** `voicebot-json-contract.md` §8 (the credential skip)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** — mark the tool `**Add after the import:**`; Skill 3 then lists it for after the import instead of sending it to be dropped.
+- **Procedure:** Fail each tool whose `ToolTypeId` is 4, 7 or 16, naming the tool and its type.
+
+### CHK-37 — No stray null in helpers and tools
+
+- **Verifies:** no key anywhere under `subAgents[]` or `subAgentTools[]` is `null`, and no list item is `null`, except `Parameters[].ToolTypeConfigID` on a source-`1` AI argument.
+- **Source:** `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 3 internal bug** — an unknown value is the `-999` or `<USER_TO_FILL: …>` sentinel, never `null`.
+- **Procedure:** Walk both lists recursively; report the path of every `null` outside the one exception.
+
+### CHK-38 — No credential in the file
+
+- **Verifies:** no setting carries a credential, a token, an API key or a masked export secret.
+- **Source:** `voicebot-json-contract.md` §8 (secrets)
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 1 patch mode** — record the setting as `<UNKNOWN: credential — <what>; set <setting> on tool <name> by hand after the import>`.
+- **Procedure:** For every string in every `Parameters[].Config` (tools and assignments): skip a value that is exactly a `<USER_TO_FILL: credential …>` marker. Fail a value that is `****`; any value of a setting whose `ToolTypeConfigID` is 33 (AuthToken) or 39 (ConnectionString); and a value matching, case-insensitively, `authorization`, `bearer <x>`, `basic <base64>`, `x-api-key`, `api key` / `api_key` / `api-key`, `access token`, `token:` / `token=`, `secret`, `password` / `passwd`, `pwd=`, `cookie`, or `://user:pass@`.
+
+### CHK-39 — Helper instruction names its tools
+
+- **Verifies:** each helper's `Instruction` names every tool assigned to it exactly as the file names it.
+- **Source:** Skill 2 helper authoring; `voicebot-json-contract.md` §8
+- **Severity:** `blocking`
+- **On failure route to:** **Skill 2 reactivation** — redo the helper's instruction.
+- **Procedure:** For each assignment, take the assigned tool's `ToolName`; fail when it does not occur in the helper's `Instruction` as a whole token (not preceded or followed by a letter, digit, `_` or `-`).
+
 ---
 
 ## Output contract
@@ -488,7 +610,7 @@ Executed: <delegated | inline>
 |-----|----------|---------|--------|
 | CHK-01 | blocking | pass | — |
 | CHK-02 | blocking | FAIL | <one-line: what, where in the spec (section/intent id)> |
-| …all 26 rows, in order, no omissions… |
+| …all 39 rows, in order, no omissions… |
 
 ### Blocking failures
 <numbered list of every blocking FAIL: CHK id, spec location, one-line description.
@@ -506,7 +628,7 @@ Executed: <delegated | inline>
 
 ### Rules
 
-- **All 26 rows, always, in CHK order.** A skipped check is itself a malformed report.
+- **All 39 rows, always, in CHK order.** A skipped check is itself a malformed report.
   A model- or baseline-gated check that did not fire is still a row, with its verdict
   recorded as `error` (unrunnable) or noted as skipped in the detail column.
 - Verdict vocabulary: `pass` | `FAIL` | `error` (check could not be executed — detail says why). `error` on a blocking check is treated as blocking.
@@ -535,6 +657,6 @@ the main conversation) but must not guess.
 ### Consumer-side validity check
 
 A delegated report is valid iff: the `## Verification Report` header is present, the
-Verdicts table contains exactly CHK-01…CHK-26 in order, and every verdict is in the
+Verdicts table contains exactly CHK-01…CHK-39 in order, and every verdict is in the
 allowed vocabulary. Anything else → discard, log one line to the user (`verifier report
 malformed — running checks inline`), and fall back to the inline path.

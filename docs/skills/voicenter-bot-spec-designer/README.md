@@ -19,7 +19,7 @@ Skill 1 fills these spec sections:
 
 | Section | Content |
 |---|---|
-| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls; optional limit fields (v1.13.0): daily limit, daily-limit layer, max-duration layer, limit sentences, `IVRLayerSelect_2`; optional `Negative instructions` (v1.16.0, AI-security never-say field — banner-only, not emitted to the JSON) |
+| 1. Bot Identity | Name, identifier, description, account ID, language, channels, voice, model, created by, max call duration, record agent calls; optional limit fields (v1.13.0): daily limit, daily-limit layer, max-duration layer, limit sentences, `IVRLayerSelect_2`; optional `Negative instructions` (v1.16.0, AI-security never-say field — banner-only, not emitted to the JSON); optional `Bot status` (v1.24.0 — `2` Inactive or `3` Maintenance; absent means Active) |
 | 2. Persona Bundle | `persona`, voice/chat instructions, opening behavior, opening announcement |
 | 3. Caller Silence Behavior | Mandatory (v1.11.0) — 4 silence fields (with defaults) + the silence forward intent |
 | 4. Intent List (Structural) | One row per intent — identifier, RT, transitions, slots, RT-specific fields; v1.13.0 adds the staggering fields (`**Captures answer to:**` / `**Asks next:**`) and `**Terminal outcome:**` on RT=1 terminals |
@@ -118,6 +118,7 @@ Captures section 1 + section 3:
 11. **Max call duration (seconds)** — integer, default `1200`. `AskUserQuestion` (header: "Max call duration", options: "Use default 1200 *(Recommended)*" / "Set a different value"). Written to spec section 1 as `**Max call duration:**`.
 12. **Record agent calls** — boolean, **always asked, no recommended option (v1.23.0)**. `AskUserQuestion` (header: "Record calls", options: "Yes — record" / "No — do not record"). Written to spec section 1 as `**Record agent calls:**`. **Note:** Skill 3 emits a JSON boolean on the `tts` wire family and the **string** `"false"` / `"true"` on `gemini` — both production export shapes.
 13. **Negative instructions (v1.16.0)** — optional free text: the UI's AI Security Settings field for what the agent must never say or commit to (legally, medically, financially — e.g., "never promise a refund", "never give medical advice"). `AskUserQuestion` (header: "Guardrails", options: "Skip — none *(Recommended)*" / "Add never-say rules" with free-text capture). Written to spec section 1 as `**Negative instructions:**`; omitted entirely when skipped. **Not emitted to the wire JSON** (wire field name unverified) — Skill 3 surfaces it as a MANDATORY POST-IMPORT banner step: paste the text into the UI's AI Security Settings → Negative Instructions. Self-validation Check 15 may also relocate must-never-say content here from prompt fields.
+14. **Bot status (v1.24.0)** — `AskUserQuestion` once (header: "Bot status", options: "Active *(Recommended)*" / "Inactive — imported switched off" / "Maintenance"). Written to spec section 1 as `**Bot status:** 2` or `3`; omitted for Active, which Skill 3 emits as `BotStatusId` `1` (the value every earlier version emitted).
 
 ### Phase 2 — Persona Bundle
 
@@ -232,6 +233,7 @@ Used when the user wants to modify an existing spec.
 - Edit the §4.5.5 CustomData key list (v1.13.0) — Check 8 re-runs after the edit; Skill 3 check 7 re-validates every `{{reference}}` at assembly
 - Edit the §1 limit fields (Daily limit / layers / sentences / `IVRLayerSelect_2`) (v1.13.0)
 - Edit the §1 `Negative instructions` field (v1.16.0)
+- Edit the §1 `Bot status` field (v1.24.0)
 
 **Hard changes** (cascade reset to `[detailed-revisit]` for affected intents):
 
@@ -479,3 +481,14 @@ Skill 2 owns FP-3, FP-4, FP-5, FP-7, and the per-intent half of FP-6; Skill 3 ve
 
 - **`387` Voicenter Voicebot - Gemini (Gemini 3.8) is verified** (`AIModelTypeId 33`) from production export BotID 37428 v0.1.151. Skill 1 records it when the user asks for Gemini 3.8 and offers the Gemini voice list; it is never the default. No catalog entry is UNVERIFIED any more.
 - `Sadachbia` (Male) added to the Gemini voices.
+
+## v1.24.0 changes
+
+- **Bot status** — Phase 1 step 14 asks once whether the bot is imported Active (recommended), Inactive or in Maintenance; spec section 1 carries `**Bot status:** 2` or `3`, and nothing for Active. Patch mode treats it as an easy change. Skill 3 emits it as `BotStatusId` and checks it (CHK-28).
+
+## v1.25.0 changes
+
+- **Helpers and tools (optional spec section 4.8).** After the advanced-features prompt, Phase 4 §3.5.6 asks once whether the bot hands any intents to a helper (a sub-agent with its own instruction and AI model); "Skip" is recommended and writes nothing, so a bot without helpers is unchanged. Per helper: name, title, description, the section-4 intents it serves (several helpers may share one), its AI model, and knowledge bases recorded *to link after the import*. Per tool: a specific snake_case name, display name, purpose, type, settings, the arguments the model fills, risk, and the helpers that use it.
+- **Live reads, never guesses.** The helper's AI model (`VoiceBotConfData` → `AiModelList`, active — an AI model ID, not a model-config ID), tool types (`ToolConfData`), a type's settings (`ToolTypeConfig` by `ToolTypeId`) and knowledge bases (`KnowledgeBaseList`) come from the connected Voicenter MCP. Without one, a type's settings — each `ToolTypeConfigID` and its exact name, the file's `ParameterName` — come from `references/tool-settings-catalog.md` (dated; the live read wins), and anything else is the `<UNKNOWN: …>` marker.
+- **Credentials stay out.** Email, SMS and FileStorage tools are recorded `**Add after the import:**` — the import cannot bind their credential. A setting that is or holds a credential (or an export's `****`) is recorded as `<UNKNOWN: credential — …>`, to set on the tool by hand after the import.
+- Section 5 gets a `[structural]` stub per helper and tool for Skill 2. Self-validation **Check 25** covers section 4.8; patch mode treats helper and tool edits as easy changes that reset the affected section-5 entries.

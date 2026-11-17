@@ -20,7 +20,7 @@ plugin splits that work into three stages, each with its own guardrails:
 |---|---|---|
 | 1 | **Agent Spec Designer** | The structural skeleton — identity, persona, flow graph, intents, slots — via interview. Writes an Agent Spec markdown file. |
 | 2 | **Intent Detail Author** | The language content per intent: what the bot says, how it captures answers, what it does next. Walks intents in batches with checkpoints. |
-| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 26-check verification pass. |
+| 3 | **JSON Assembler** | A mechanical projection of the finished spec into wire-format JSON, gated behind a 39-check verification pass. |
 
 The **Agent Spec markdown is the source of truth** at every stage. No skill invents a value:
 anything the interview didn't establish is emitted as a fail-loud sentinel and listed in the
@@ -79,7 +79,19 @@ markers.
 
 Runs Skill 3 — parse, assemble, verify, emit. You get `bot-<name>-<date>.json` plus a banner
 listing every default applied, every unknown you must replace, and any mandatory post-import
-step.
+step. With a Voicenter MCP connected, Skill 3 then offers to import the file for you.
+
+**Give the bot helpers and tools** *(optional)*
+
+> Hand the booking intents to a helper that can look up open slots through our scheduling API.
+
+Skill 1 asks once whether the bot needs helpers (sub-agents: a specialist the bot hands some
+intents to, with its own instruction and AI model) and the tools they call; skipping is the
+default and changes nothing. With a Voicenter MCP it reads the real AI models, tool settings and
+knowledge bases live. Skill 2 writes each helper's instruction and each tool's description;
+Skill 3 emits them as `intentList.subAgents` / `subAgentTools`. Knowledge bases, Email / SMS /
+FileStorage tools and any credential a tool needs are set up after the import — never written
+into the file; Skill 3 lists them in the banner and, through the MCP, offers to do them.
 
 **Change an existing bot**
 
@@ -92,7 +104,7 @@ shows you that cascade, and waits for confirmation before applying it.
 
 > @voicenter-bot-builder:spec-verifier verify agent-spec.md
 
-Runs the 26-check pass in an isolated read-only context and returns a pass/fail report with
+Runs the 39-check pass in an isolated read-only context and returns a pass/fail report with
 routing recommendations. Never modifies anything.
 
 ## Data handling
@@ -104,9 +116,10 @@ routing recommendations. Never modifies anything.
 - The only artifacts written are files in your own workspace: the Agent Spec markdown and the
   generated bot JSON (plus a banner sidecar in Claude Code).
 - No credentials are requested, stored, or needed. The plugin never contacts the Voicenter
-  platform to build a bot; you import the generated JSON yourself.
+  platform to build a bot. Importing it is your call: by hand, or through a connected Voicenter
+  MCP when you say yes (below).
 
-Two things to be aware of, because they involve *your* choices rather than the plugin's:
+Three things to be aware of, because they involve *your* choices rather than the plugin's:
 
 - If you have the separate **`voicenter-mcp`** plugin installed, Skill 1 will offer to fetch
   your live account and layer lists so you can pick from real values instead of typing IDs.
@@ -116,6 +129,11 @@ Two things to be aware of, because they involve *your* choices rather than the p
   is real by calling it once with sample values you supply. The URL is yours; nothing is sent
   to Voicenter. Secrets are never written to the spec — only the status code, the confirmed
   field paths, and a redacted echo of the request.
+- If a **Voicenter MCP** is connected when Skill 3 finishes, it offers to import the file
+  through that connection, as your own login. Nothing is sent without your yes: where the MCP
+  previews changes, you see the server's preview first; where it only offers the older
+  `import_agent`, which imports at once, Skill 3 says so before asking. Decline and you import
+  the file yourself, as before.
 
 ## Known limitations
 
@@ -124,7 +142,7 @@ Two things to be aware of, because they involve *your* choices rather than the p
   output (JSON keys, identifiers, filenames, check IDs) is deliberately ASCII/LTR, so what is
   *generated* is correct even where the *display* is confusing. Read generated JSON from the
   file rather than the terminal if the direction looks scrambled.
-- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 26-check pass can
+- **Subagent verification is a Claude Code / Cowork enhancement.** There, the 39-check pass can
   run in a fresh isolated context, which catches more than a verifier that watched the spec get
   written. In claude.ai consumer chat, subagents are inert, so the *identical* checks run
   inline from the same procedure file. No feature is lost — only the context isolation.
@@ -141,6 +159,15 @@ Two things to be aware of, because they involve *your* choices rather than the p
   interview and language-authoring skills inherit your session's model, because those genuinely
   need reasoning. `model` is a Claude Code extension: **claude.ai ignores it**, so the same
   assembly costs more there. No behavioural difference either way, only cost.
+- **The previewed import needs the new Voicenter portal MCP.** Importing as a previewed plan
+  (`VoiceBotImport`, API Manager v2.6.18) is not in production yet. That import drops every
+  transfer target except the global hang-up; Skill 3 lists the dropped ones for you to set again
+  in the UI.
+- **Some of a helper's setup happens after the import.** The import never links a knowledge
+  base, cannot create an Email, SMS or FileStorage tool (no credential it can bind), and the
+  plugin never writes a credential into the file. A tool whose name is already taken on the
+  account is imported as `<name>_<number>`, and the helper's instruction then names the old name.
+  The banner lists each of these.
 - **Slash commands are Claude Code / Cowork only.** In claude.ai the skills trigger from plain
   language instead. Nothing is lost — the commands are convenience, not capability.
 
